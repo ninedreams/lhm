@@ -1,0 +1,10 @@
+.vscode
+.codefree
+logs
+build
+build_check
+.DS_Store
+*/.DS_Store
+*/*/.DS_Store
+*/*/*/.DS_Store
+*/*/*/*/.DS_Store
