@@ -35,7 +35,7 @@ bool lhm_batch_allocr::init(
 
     this->vocab = &vocab;
 
-    GGML_ASSERT(batch.n_tokens > 0);
+    LHM_ASSERT(batch.n_tokens > 0);
 
     //
     // validate input batch

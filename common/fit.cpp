@@ -233,7 +233,7 @@ static void common_params_fit_impl(
         sum_projected_used = dmds_full.back().mb.total();
         sum_free           = dmds_full.back().total;
         sum_projected_free = sum_free - sum_projected_used;
-        LOG_INF("%s: projected to use %" PRId64 " MiB of host memory vs. %" PRId64 " MiB of total host memory\n",
+        LOG_INFO("%s: projected to use %" PRId64 " MiB of host memory vs. %" PRId64 " MiB of total host memory\n",
             __func__, sum_projected_used/MiB, sum_free/MiB);
         if (sum_projected_free >= margins[0]) {
             LHM_LOG_TRACE("%s: will leave %" PRId64 " >= %" PRId64 " MiB of system memory, no changes needed\n",
@@ -804,7 +804,7 @@ enum common_params_fit_status common_fit_params(
         LOG_WARN("%s: failed to fit params to free device memory: %s\n", __func__, e.what());
         status = COMMON_PARAMS_FIT_STATUS_FAILURE;
     } catch (const std::runtime_error & e) {
-        LOG_ERR("%s: encountered an error while trying to fit params to free device memory: %s\n", __func__, e.what());
+        LOG_ERROR("%s: encountered an error while trying to fit params to free device memory: %s\n", __func__, e.what());
         status = COMMON_PARAMS_FIT_STATUS_ERROR;
     }
     const int64_t t1_us = lhm_time_us();
@@ -964,7 +964,7 @@ void common_fit_print(
     uint32_t hp_nex = 0; // hparams.n_expert
 
     auto dmd = common_get_device_memory_data_impl(path_model, mparams, cparams, devs, hp_ngl, hp_nct, hp_nex, GGML_LOG_LEVEL_ERROR);
-    GGML_ASSERT(dmd.size() == devs.size() + 1);
+    LHM_ASSERT(dmd.size() == devs.size() + 1);
 
     for (size_t id = 0; id < devs.size(); id++) {
         printf("%s ",  ggml_backend_dev_name(devs[id]));

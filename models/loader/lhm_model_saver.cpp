@@ -1,8 +1,9 @@
-#include "lhm_model-saver.h"
+#include "lhm_model_saver.h"
 
 #include "ggml.h"
 #include "gguf.h"
 
+#include "lhm_assert.h"
 #include "lhm_arch.h"
 #include "lhm.h"
 #include "lhm_hparams.h"
@@ -24,7 +25,7 @@ bool lhm_model_saver_supports_arch(llm_arch arch) {
 
 lhm_model_saver::lhm_model_saver(const struct lhm_model * model) :
         gguf_ctx(gguf_init_empty()), gguf_ctx_owned(true), model(model), llm_kv(model->arch) {
-    GGML_ASSERT(lhm_model_saver_supports_arch(model->arch));
+    LHM_ASSERT(lhm_model_saver_supports_arch(model->arch));
 }
 
 lhm_model_saver::lhm_model_saver(enum llm_arch arch, struct gguf_context * gguf_ctx) :
@@ -65,9 +66,9 @@ void lhm_model_saver::add_kv(const enum llm_kv key, const char value) {
 
 template <typename Container>
 void lhm_model_saver::add_kv(const enum llm_kv key, const Container & value, const bool per_layer) {
-    GGML_ASSERT(model != nullptr || !per_layer);
+    LHM_ASSERT(model != nullptr || !per_layer);
     const size_t n_values = per_layer ? size_t(model->hparams.n_layer()) : value.size();
-    GGML_ASSERT(n_values <= value.size());
+    LHM_ASSERT(n_values <= value.size());
 
     if (n_values == 0) {
         return;
@@ -122,7 +123,7 @@ void lhm_model_saver::add_tensor(const struct ggml_tensor * tensor) {
     }
     if (gguf_find_tensor(gguf_ctx, tensor->name) >= 0) {
         const std::string tensor_name = tensor->name;
-        GGML_ASSERT(
+        LHM_ASSERT(
             tensor_name == "rope_freqs.weight" || tensor_name == "rope_factors_long.weight" ||
             tensor_name == "rope_factors_short.weight"); // FIXME
         return;

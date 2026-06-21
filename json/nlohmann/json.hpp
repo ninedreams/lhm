@@ -2565,12 +2565,6 @@ JSON_HEDLEY_DIAGNOSTIC_POP
     #define JSON_INTERNAL_CATCH JSON_INTERNAL_CATCH_USER
 #endif
 
-// allow overriding assert
-#if !defined(JSON_ASSERT)
-    #include <cassert> // assert
-    #define JSON_ASSERT(x) assert(x)
-#endif
-
 // allow to access some private functions (needed by the test suite)
 #if defined(JSON_TESTS_PRIVATE)
     #define JSON_PRIVATE_UNLESS_TESTED public
@@ -3098,7 +3092,7 @@ template<typename StringType>
 inline void replace_substring(StringType& s, const StringType& f,
                               const StringType& t)
 {
-    JSON_ASSERT(!f.empty());
+    LHM_ASSERT(!f.empty());
     for (auto pos = s.find(f);                // find first occurrence of f
             pos != StringType::npos;          // make sure f was found
             s.replace(pos, f.size(), t),      // replace with t, and
@@ -5538,7 +5532,7 @@ template<typename IteratorType> class iteration_proxy_value
     /// return key of the iterator
     const string_type& key() const
     {
-        JSON_ASSERT(anchor.m_object != nullptr);
+        LHM_ASSERT(anchor.m_object != nullptr);
 
         switch (anchor.m_object->type())
         {
@@ -6404,7 +6398,7 @@ std::size_t hash(const BasicJsonType& j)
         }
 
         default:                   // LCOV_EXCL_LINE
-            JSON_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
+            LHM_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
             return 0;              // LCOV_EXCL_LINE
     }
 }
@@ -6501,7 +6495,7 @@ class file_input_adapter
     explicit file_input_adapter(std::FILE* f) noexcept
         : m_file(f)
     {
-        JSON_ASSERT(m_file != nullptr);
+        LHM_ASSERT(m_file != nullptr);
     }
 
     // make class move-only
@@ -6797,13 +6791,13 @@ class wide_string_input_adapter
         {
             fill_buffer<sizeof(WideCharType)>();
 
-            JSON_ASSERT(utf8_bytes_filled > 0);
-            JSON_ASSERT(utf8_bytes_index == 0);
+            LHM_ASSERT(utf8_bytes_filled > 0);
+            LHM_ASSERT(utf8_bytes_index == 0);
         }
 
         // use buffer
-        JSON_ASSERT(utf8_bytes_filled > 0);
-        JSON_ASSERT(utf8_bytes_index < utf8_bytes_filled);
+        LHM_ASSERT(utf8_bytes_filled > 0);
+        LHM_ASSERT(utf8_bytes_index < utf8_bytes_filled);
         return utf8_bytes[utf8_bytes_index++];
     }
 
@@ -7166,7 +7160,7 @@ class lexer : public lexer_base<BasicJsonType>
     static char get_decimal_point() noexcept
     {
         const auto* loc = localeconv();
-        JSON_ASSERT(loc != nullptr);
+        LHM_ASSERT(loc != nullptr);
         return (loc->decimal_point == nullptr) ? '.' : *(loc->decimal_point);
     }
 
@@ -7192,7 +7186,7 @@ class lexer : public lexer_base<BasicJsonType>
     int get_codepoint()
     {
         // this function only makes sense after reading `\u`
-        JSON_ASSERT(current == 'u');
+        LHM_ASSERT(current == 'u');
         int codepoint = 0;
 
         const auto factors = { 12u, 8u, 4u, 0u };
@@ -7218,7 +7212,7 @@ class lexer : public lexer_base<BasicJsonType>
             }
         }
 
-        JSON_ASSERT(0x0000 <= codepoint && codepoint <= 0xFFFF);
+        LHM_ASSERT(0x0000 <= codepoint && codepoint <= 0xFFFF);
         return codepoint;
     }
 
@@ -7239,7 +7233,7 @@ class lexer : public lexer_base<BasicJsonType>
     */
     bool next_byte_in_range(std::initializer_list<char_int_type> ranges)
     {
-        JSON_ASSERT(ranges.size() == 2 || ranges.size() == 4 || ranges.size() == 6);
+        LHM_ASSERT(ranges.size() == 2 || ranges.size() == 4 || ranges.size() == 6);
         add(current);
 
         for (auto range = ranges.begin(); range != ranges.end(); ++range)
@@ -7280,7 +7274,7 @@ class lexer : public lexer_base<BasicJsonType>
         reset();
 
         // we entered the function by reading an open quote
-        JSON_ASSERT(current == '\"');
+        LHM_ASSERT(current == '\"');
 
         while (true)
         {
@@ -7400,7 +7394,7 @@ class lexer : public lexer_base<BasicJsonType>
                             }
 
                             // result of the above calculation yields a proper codepoint
-                            JSON_ASSERT(0x00 <= codepoint && codepoint <= 0x10FFFF);
+                            LHM_ASSERT(0x00 <= codepoint && codepoint <= 0x10FFFF);
 
                             // translate codepoint into bytes
                             if (codepoint < 0x80)
@@ -8029,7 +8023,7 @@ class lexer : public lexer_base<BasicJsonType>
 
             // all other characters are rejected outside scan_number()
             default:            // LCOV_EXCL_LINE
-                JSON_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
+                LHM_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
         }
 
 scan_number_minus:
@@ -8278,7 +8272,7 @@ scan_number_done:
             const auto x = std::strtoull(token_buffer.data(), &endptr, 10);
 
             // we checked the number format before
-            JSON_ASSERT(endptr == token_buffer.data() + token_buffer.size());
+            LHM_ASSERT(endptr == token_buffer.data() + token_buffer.size());
 
             if (errno != ERANGE)
             {
@@ -8294,7 +8288,7 @@ scan_number_done:
             const auto x = std::strtoll(token_buffer.data(), &endptr, 10);
 
             // we checked the number format before
-            JSON_ASSERT(endptr == token_buffer.data() + token_buffer.size());
+            LHM_ASSERT(endptr == token_buffer.data() + token_buffer.size());
 
             if (errno != ERANGE)
             {
@@ -8311,7 +8305,7 @@ scan_number_done:
         strtof(value_float, token_buffer.data(), &endptr);
 
         // we checked the number format before
-        JSON_ASSERT(endptr == token_buffer.data() + token_buffer.size());
+        LHM_ASSERT(endptr == token_buffer.data() + token_buffer.size());
 
         return token_type::value_float;
     }
@@ -8325,7 +8319,7 @@ scan_number_done:
     token_type scan_literal(const char_type* literal_text, const std::size_t length,
                             token_type return_type)
     {
-        JSON_ASSERT(char_traits<char_type>::to_char_type(current) == literal_text[0]);
+        LHM_ASSERT(char_traits<char_type>::to_char_type(current) == literal_text[0]);
         for (std::size_t i = 1; i < length; ++i)
         {
             if (JSON_HEDLEY_UNLIKELY(char_traits<char_type>::to_char_type(get()) != literal_text[i]))
@@ -8418,7 +8412,7 @@ scan_number_done:
 
         if (JSON_HEDLEY_LIKELY(current != char_traits<char_type>::eof()))
         {
-            JSON_ASSERT(!token_string.empty());
+            LHM_ASSERT(!token_string.empty());
             token_string.pop_back();
         }
     }
@@ -8907,8 +8901,8 @@ class json_sax_dom_parser
 
     bool key(string_t& val)
     {
-        JSON_ASSERT(!ref_stack.empty());
-        JSON_ASSERT(ref_stack.back()->is_object());
+        LHM_ASSERT(!ref_stack.empty());
+        LHM_ASSERT(ref_stack.back()->is_object());
 
         // add null at given key and store the reference for later
         object_element = &(ref_stack.back()->m_data.m_value.object->operator[](val));
@@ -8917,8 +8911,8 @@ class json_sax_dom_parser
 
     bool end_object()
     {
-        JSON_ASSERT(!ref_stack.empty());
-        JSON_ASSERT(ref_stack.back()->is_object());
+        LHM_ASSERT(!ref_stack.empty());
+        LHM_ASSERT(ref_stack.back()->is_object());
 
 #if JSON_DIAGNOSTIC_POSITIONS
         if (m_lexer_ref)
@@ -8956,8 +8950,8 @@ class json_sax_dom_parser
 
     bool end_array()
     {
-        JSON_ASSERT(!ref_stack.empty());
-        JSON_ASSERT(ref_stack.back()->is_array());
+        LHM_ASSERT(!ref_stack.empty());
+        LHM_ASSERT(ref_stack.back()->is_array());
 
 #if JSON_DIAGNOSTIC_POSITIONS
         if (m_lexer_ref)
@@ -9054,7 +9048,7 @@ class json_sax_dom_parser
                 }
                 default: // LCOV_EXCL_LINE
                     // Handle all possible types discretely, default handler should never be reached.
-                    JSON_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert,-warnings-as-errors) LCOV_EXCL_LINE
+                    LHM_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert,-warnings-as-errors) LCOV_EXCL_LINE
             }
         }
     }
@@ -9081,7 +9075,7 @@ class json_sax_dom_parser
             return &root;
         }
 
-        JSON_ASSERT(ref_stack.back()->is_array() || ref_stack.back()->is_object());
+        LHM_ASSERT(ref_stack.back()->is_array() || ref_stack.back()->is_object());
 
         if (ref_stack.back()->is_array())
         {
@@ -9094,8 +9088,8 @@ class json_sax_dom_parser
             return &(ref_stack.back()->m_data.m_value.array->back());
         }
 
-        JSON_ASSERT(ref_stack.back()->is_object());
-        JSON_ASSERT(object_element);
+        LHM_ASSERT(ref_stack.back()->is_object());
+        LHM_ASSERT(object_element);
         *object_element = BasicJsonType(std::forward<Value>(v));
 
 #if JSON_DIAGNOSTIC_POSITIONS
@@ -9268,8 +9262,8 @@ class json_sax_dom_callback_parser
             }
         }
 
-        JSON_ASSERT(!ref_stack.empty());
-        JSON_ASSERT(!keep_stack.empty());
+        LHM_ASSERT(!ref_stack.empty());
+        LHM_ASSERT(!keep_stack.empty());
         ref_stack.pop_back();
         keep_stack.pop_back();
 
@@ -9353,8 +9347,8 @@ class json_sax_dom_callback_parser
             }
         }
 
-        JSON_ASSERT(!ref_stack.empty());
-        JSON_ASSERT(!keep_stack.empty());
+        LHM_ASSERT(!ref_stack.empty());
+        LHM_ASSERT(!keep_stack.empty());
         ref_stack.pop_back();
         keep_stack.pop_back();
 
@@ -9445,7 +9439,7 @@ class json_sax_dom_callback_parser
                 }
                 default: // LCOV_EXCL_LINE
                     // Handle all possible types discretely, default handler should never be reached.
-                    JSON_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert,-warnings-as-errors) LCOV_EXCL_LINE
+                    LHM_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert,-warnings-as-errors) LCOV_EXCL_LINE
             }
         }
     }
@@ -9469,7 +9463,7 @@ class json_sax_dom_callback_parser
     template<typename Value>
     std::pair<bool, BasicJsonType*> handle_value(Value&& v, const bool skip_callback = false)
     {
-        JSON_ASSERT(!keep_stack.empty());
+        LHM_ASSERT(!keep_stack.empty());
 
         // do not handle this value if we know it would be added to a discarded
         // container
@@ -9508,7 +9502,7 @@ class json_sax_dom_callback_parser
         }
 
         // we now only expect arrays and objects
-        JSON_ASSERT(ref_stack.back()->is_array() || ref_stack.back()->is_object());
+        LHM_ASSERT(ref_stack.back()->is_array() || ref_stack.back()->is_object());
 
         // array
         if (ref_stack.back()->is_array())
@@ -9518,9 +9512,9 @@ class json_sax_dom_callback_parser
         }
 
         // object
-        JSON_ASSERT(ref_stack.back()->is_object());
+        LHM_ASSERT(ref_stack.back()->is_object());
         // check if we should store an element for the current key
-        JSON_ASSERT(!key_keep_stack.empty());
+        LHM_ASSERT(!key_keep_stack.empty());
         const bool store_element = key_keep_stack.back();
         key_keep_stack.pop_back();
 
@@ -9529,7 +9523,7 @@ class json_sax_dom_callback_parser
             return {false, nullptr};
         }
 
-        JSON_ASSERT(object_element);
+        LHM_ASSERT(object_element);
         *object_element = std::move(value);
         return {true, object_element};
     }
@@ -9909,7 +9903,7 @@ class binary_reader
 
             case input_format_t::json: // LCOV_EXCL_LINE
             default:            // LCOV_EXCL_LINE
-                JSON_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
+                LHM_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
         }
 
         // strict mode: next byte must be EOF
@@ -10598,7 +10592,7 @@ class binary_reader
                     }
 
                     default:                 // LCOV_EXCL_LINE
-                        JSON_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
+                        LHM_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
                         return false;        // LCOV_EXCL_LINE
                 }
             }
@@ -10641,8 +10635,8 @@ class binary_reader
                 {
                     const int exp = (half >> 10u) & 0x1Fu;
                     const unsigned int mant = half & 0x3FFu;
-                    JSON_ASSERT(0 <= exp&& exp <= 32);
-                    JSON_ASSERT(mant <= 1024);
+                    LHM_ASSERT(0 <= exp&& exp <= 32);
+                    LHM_ASSERT(mant <= 1024);
                     switch (exp)
                     {
                         case 0:
@@ -12198,8 +12192,8 @@ class binary_reader
                 {
                     const int exp = (half >> 10u) & 0x1Fu;
                     const unsigned int mant = half & 0x3FFu;
-                    JSON_ASSERT(0 <= exp&& exp <= 32);
-                    JSON_ASSERT(mant <= 1024);
+                    LHM_ASSERT(0 <= exp&& exp <= 32);
+                    LHM_ASSERT(mant <= 1024);
                     switch (exp)
                     {
                         case 0:
@@ -12774,7 +12768,7 @@ class binary_reader
 
             case input_format_t::json: // LCOV_EXCL_LINE
             default:            // LCOV_EXCL_LINE
-                JSON_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
+                LHM_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
         }
 
         return concat(error_msg, ' ', context, ": ", detail);
@@ -13261,7 +13255,7 @@ class parser
                     // new value, we need to evaluate the new state first.
                     // By setting skip_to_state_evaluation to false, we
                     // are effectively jumping to the beginning of this if.
-                    JSON_ASSERT(!states.empty());
+                    LHM_ASSERT(!states.empty());
                     states.pop_back();
                     skip_to_state_evaluation = true;
                     continue;
@@ -13315,7 +13309,7 @@ class parser
                 // new value, we need to evaluate the new state first.
                 // By setting skip_to_state_evaluation to false, we
                 // are effectively jumping to the beginning of this if.
-                JSON_ASSERT(!states.empty());
+                LHM_ASSERT(!states.empty());
                 states.pop_back();
                 skip_to_state_evaluation = true;
                 continue;
@@ -13657,7 +13651,7 @@ class iter_impl // NOLINT(cppcoreguidelines-special-member-functions,hicpp-speci
     */
     explicit iter_impl(pointer object) noexcept : m_object(object)
     {
-        JSON_ASSERT(m_object != nullptr);
+        LHM_ASSERT(m_object != nullptr);
 
         switch (m_object->m_data.m_type)
         {
@@ -13754,7 +13748,7 @@ class iter_impl // NOLINT(cppcoreguidelines-special-member-functions,hicpp-speci
     */
     void set_begin() noexcept
     {
-        JSON_ASSERT(m_object != nullptr);
+        LHM_ASSERT(m_object != nullptr);
 
         switch (m_object->m_data.m_type)
         {
@@ -13798,7 +13792,7 @@ class iter_impl // NOLINT(cppcoreguidelines-special-member-functions,hicpp-speci
     */
     void set_end() noexcept
     {
-        JSON_ASSERT(m_object != nullptr);
+        LHM_ASSERT(m_object != nullptr);
 
         switch (m_object->m_data.m_type)
         {
@@ -13837,19 +13831,19 @@ class iter_impl // NOLINT(cppcoreguidelines-special-member-functions,hicpp-speci
     */
     reference operator*() const
     {
-        JSON_ASSERT(m_object != nullptr);
+        LHM_ASSERT(m_object != nullptr);
 
         switch (m_object->m_data.m_type)
         {
             case value_t::object:
             {
-                JSON_ASSERT(m_it.object_iterator != m_object->m_data.m_value.object->end());
+                LHM_ASSERT(m_it.object_iterator != m_object->m_data.m_value.object->end());
                 return m_it.object_iterator->second;
             }
 
             case value_t::array:
             {
-                JSON_ASSERT(m_it.array_iterator != m_object->m_data.m_value.array->end());
+                LHM_ASSERT(m_it.array_iterator != m_object->m_data.m_value.array->end());
                 return *m_it.array_iterator;
             }
 
@@ -13881,19 +13875,19 @@ class iter_impl // NOLINT(cppcoreguidelines-special-member-functions,hicpp-speci
     */
     pointer operator->() const
     {
-        JSON_ASSERT(m_object != nullptr);
+        LHM_ASSERT(m_object != nullptr);
 
         switch (m_object->m_data.m_type)
         {
             case value_t::object:
             {
-                JSON_ASSERT(m_it.object_iterator != m_object->m_data.m_value.object->end());
+                LHM_ASSERT(m_it.object_iterator != m_object->m_data.m_value.object->end());
                 return &(m_it.object_iterator->second);
             }
 
             case value_t::array:
             {
-                JSON_ASSERT(m_it.array_iterator != m_object->m_data.m_value.array->end());
+                LHM_ASSERT(m_it.array_iterator != m_object->m_data.m_value.array->end());
                 return &*m_it.array_iterator;
             }
 
@@ -13934,7 +13928,7 @@ class iter_impl // NOLINT(cppcoreguidelines-special-member-functions,hicpp-speci
     */
     iter_impl& operator++()
     {
-        JSON_ASSERT(m_object != nullptr);
+        LHM_ASSERT(m_object != nullptr);
 
         switch (m_object->m_data.m_type)
         {
@@ -13985,7 +13979,7 @@ class iter_impl // NOLINT(cppcoreguidelines-special-member-functions,hicpp-speci
     */
     iter_impl& operator--()
     {
-        JSON_ASSERT(m_object != nullptr);
+        LHM_ASSERT(m_object != nullptr);
 
         switch (m_object->m_data.m_type)
         {
@@ -14142,7 +14136,7 @@ class iter_impl // NOLINT(cppcoreguidelines-special-member-functions,hicpp-speci
     */
     iter_impl& operator+=(difference_type i)
     {
-        JSON_ASSERT(m_object != nullptr);
+        LHM_ASSERT(m_object != nullptr);
 
         switch (m_object->m_data.m_type)
         {
@@ -14221,7 +14215,7 @@ class iter_impl // NOLINT(cppcoreguidelines-special-member-functions,hicpp-speci
     */
     difference_type operator-(const iter_impl& other) const
     {
-        JSON_ASSERT(m_object != nullptr);
+        LHM_ASSERT(m_object != nullptr);
 
         switch (m_object->m_data.m_type)
         {
@@ -14250,7 +14244,7 @@ class iter_impl // NOLINT(cppcoreguidelines-special-member-functions,hicpp-speci
     */
     reference operator[](difference_type n) const
     {
-        JSON_ASSERT(m_object != nullptr);
+        LHM_ASSERT(m_object != nullptr);
 
         switch (m_object->m_data.m_type)
         {
@@ -14288,7 +14282,7 @@ class iter_impl // NOLINT(cppcoreguidelines-special-member-functions,hicpp-speci
     */
     const typename object_t::key_type& key() const
     {
-        JSON_ASSERT(m_object != nullptr);
+        LHM_ASSERT(m_object != nullptr);
 
         if (JSON_HEDLEY_LIKELY(m_object->is_object()))
         {
@@ -15208,7 +15202,7 @@ class json_pointer
                     pos != string_t::npos;
                     pos = reference_token.find_first_of('~', pos + 1))
             {
-                JSON_ASSERT(reference_token[pos] == '~');
+                LHM_ASSERT(reference_token[pos] == '~');
 
                 // ~ must be followed by 0 or 1
                 if (JSON_HEDLEY_UNLIKELY(pos == reference_token.size() - 1 ||
@@ -15797,7 +15791,7 @@ class binary_writer
     */
     explicit binary_writer(output_adapter_t<CharType> adapter) : oa(std::move(adapter))
     {
-        JSON_ASSERT(oa);
+        LHM_ASSERT(oa);
     }
 
     /*!
@@ -16553,7 +16547,7 @@ class binary_writer
                 bool prefix_required = true;
                 if (use_type && !j.m_data.m_value.array->empty())
                 {
-                    JSON_ASSERT(use_count);
+                    LHM_ASSERT(use_count);
                     const CharType first_prefix = ubjson_prefix(j.front(), use_bjdata);
                     const bool same_prefix = std::all_of(j.begin() + 1, j.end(),
                                                          [this, first_prefix, use_bjdata](const BasicJsonType & v)
@@ -16599,7 +16593,7 @@ class binary_writer
 
                 if (use_type && (bjdata_draft3 || !j.m_data.m_value.binary->empty()))
                 {
-                    JSON_ASSERT(use_count);
+                    LHM_ASSERT(use_count);
                     oa->write_character(to_char_type('$'));
                     oa->write_character(bjdata_draft3 ? 'B' : 'U');
                 }
@@ -16651,7 +16645,7 @@ class binary_writer
                 bool prefix_required = true;
                 if (use_type && !j.m_data.m_value.object->empty())
                 {
-                    JSON_ASSERT(use_count);
+                    LHM_ASSERT(use_count);
                     const CharType first_prefix = ubjson_prefix(j.front(), use_bjdata);
                     const bool same_prefix = std::all_of(j.begin(), j.end(),
                                                          [this, first_prefix, use_bjdata](const BasicJsonType & v)
@@ -16948,7 +16942,7 @@ class binary_writer
             // LCOV_EXCL_START
             case value_t::discarded:
             default:
-                JSON_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert)
+                LHM_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert)
                 return 0ul;
                 // LCOV_EXCL_STOP
         }
@@ -16995,7 +16989,7 @@ class binary_writer
             // LCOV_EXCL_START
             case value_t::discarded:
             default:
-                JSON_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert)
+                LHM_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert)
                 return;
                 // LCOV_EXCL_STOP
         }
@@ -17689,8 +17683,8 @@ struct diyfp // f * 2^e
     */
     static diyfp sub(const diyfp& x, const diyfp& y) noexcept
     {
-        JSON_ASSERT(x.e == y.e);
-        JSON_ASSERT(x.f >= y.f);
+        LHM_ASSERT(x.e == y.e);
+        LHM_ASSERT(x.f >= y.f);
 
         return {x.f - y.f, x.e};
     }
@@ -17766,7 +17760,7 @@ struct diyfp // f * 2^e
     */
     static diyfp normalize(diyfp x) noexcept
     {
-        JSON_ASSERT(x.f != 0);
+        LHM_ASSERT(x.f != 0);
 
         while ((x.f >> 63u) == 0)
         {
@@ -17785,8 +17779,8 @@ struct diyfp // f * 2^e
     {
         const int delta = x.e - target_exponent;
 
-        JSON_ASSERT(delta >= 0);
-        JSON_ASSERT(((x.f << delta) >> delta) == x.f);
+        LHM_ASSERT(delta >= 0);
+        LHM_ASSERT(((x.f << delta) >> delta) == x.f);
 
         return {x.f << delta, target_exponent};
     }
@@ -17808,8 +17802,8 @@ boundaries.
 template<typename FloatType>
 boundaries compute_boundaries(FloatType value)
 {
-    JSON_ASSERT(std::isfinite(value));
-    JSON_ASSERT(value > 0);
+    LHM_ASSERT(std::isfinite(value));
+    LHM_ASSERT(value > 0);
 
     // Convert the IEEE representation into a diyfp.
     //
@@ -18089,18 +18083,18 @@ inline cached_power get_cached_power_for_binary_exponent(int e)
     //      k = ceil((kAlpha - e - 1) * 0.30102999566398114)
     // for |e| <= 1500, but doesn't require floating-point operations.
     // NB: log_10(2) ~= 78913 / 2^18
-    JSON_ASSERT(e >= -1500);
-    JSON_ASSERT(e <=  1500);
+    LHM_ASSERT(e >= -1500);
+    LHM_ASSERT(e <=  1500);
     const int f = kAlpha - e - 1;
     const int k = ((f * 78913) / (1 << 18)) + static_cast<int>(f > 0);
 
     const int index = (-kCachedPowersMinDecExp + k + (kCachedPowersDecStep - 1)) / kCachedPowersDecStep;
-    JSON_ASSERT(index >= 0);
-    JSON_ASSERT(static_cast<std::size_t>(index) < kCachedPowers.size());
+    LHM_ASSERT(index >= 0);
+    LHM_ASSERT(static_cast<std::size_t>(index) < kCachedPowers.size());
 
     const cached_power cached = kCachedPowers[static_cast<std::size_t>(index)];
-    JSON_ASSERT(kAlpha <= cached.e + e + 64);
-    JSON_ASSERT(kGamma >= cached.e + e + 64);
+    LHM_ASSERT(kAlpha <= cached.e + e + 64);
+    LHM_ASSERT(kGamma >= cached.e + e + 64);
 
     return cached;
 }
@@ -18166,10 +18160,10 @@ inline int find_largest_pow10(const std::uint32_t n, std::uint32_t& pow10)
 inline void grisu2_round(char* buf, int len, std::uint64_t dist, std::uint64_t delta,
                          std::uint64_t rest, std::uint64_t ten_k)
 {
-    JSON_ASSERT(len >= 1);
-    JSON_ASSERT(dist <= delta);
-    JSON_ASSERT(rest <= delta);
-    JSON_ASSERT(ten_k > 0);
+    LHM_ASSERT(len >= 1);
+    LHM_ASSERT(dist <= delta);
+    LHM_ASSERT(rest <= delta);
+    LHM_ASSERT(ten_k > 0);
 
     //               <--------------------------- delta ---->
     //                                  <---- dist --------->
@@ -18194,7 +18188,7 @@ inline void grisu2_round(char* buf, int len, std::uint64_t dist, std::uint64_t d
             && delta - rest >= ten_k
             && (rest + ten_k < dist || dist - rest > rest + ten_k - dist))
     {
-        JSON_ASSERT(buf[len - 1] != '0');
+        LHM_ASSERT(buf[len - 1] != '0');
         buf[len - 1]--;
         rest += ten_k;
     }
@@ -18222,8 +18216,8 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
     // Grisu2 generates the digits of M+ from left to right and stops as soon as
     // V is in [M-,M+].
 
-    JSON_ASSERT(M_plus.e >= kAlpha);
-    JSON_ASSERT(M_plus.e <= kGamma);
+    LHM_ASSERT(M_plus.e >= kAlpha);
+    LHM_ASSERT(M_plus.e <= kGamma);
 
     std::uint64_t delta = diyfp::sub(M_plus, M_minus).f; // (significand of (M+ - M-), implicit exponent is e)
     std::uint64_t dist  = diyfp::sub(M_plus, w      ).f; // (significand of (M+ - w ), implicit exponent is e)
@@ -18244,7 +18238,7 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
     //
     // Generate the digits of the integral part p1 = d[n-1]...d[1]d[0]
 
-    JSON_ASSERT(p1 > 0);
+    LHM_ASSERT(p1 > 0);
 
     std::uint32_t pow10{};
     const int k = find_largest_pow10(p1, pow10);
@@ -18280,7 +18274,7 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
         //      M+ = buffer * 10^n + (d * 10^(n-1) + r) + p2 * 2^e
         //         = (buffer * 10 + d) * 10^(n-1) + (r + p2 * 2^e)
         //
-        JSON_ASSERT(d <= 9);
+        LHM_ASSERT(d <= 9);
         buffer[length++] = static_cast<char>('0' + d); // buffer := buffer * 10 + d
         //
         //      M+ = buffer * 10^(n-1) + (r + p2 * 2^e)
@@ -18367,7 +18361,7 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
     //
     // and stop as soon as 10^-m * r * 2^e <= delta * 2^e
 
-    JSON_ASSERT(p2 > delta);
+    LHM_ASSERT(p2 > delta);
 
     int m = 0;
     for (;;)
@@ -18378,7 +18372,7 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
         //         = buffer * 10^-m + 10^-m * (1/10 * (10 * p2)                   ) * 2^e
         //         = buffer * 10^-m + 10^-m * (1/10 * ((10*p2 div 2^-e) * 2^-e + (10*p2 mod 2^-e)) * 2^e
         //
-        JSON_ASSERT(p2 <= (std::numeric_limits<std::uint64_t>::max)() / 10);
+        LHM_ASSERT(p2 <= (std::numeric_limits<std::uint64_t>::max)() / 10);
         p2 *= 10;
         const std::uint64_t d = p2 >> -one.e;     // d = (10 * p2) div 2^-e
         const std::uint64_t r = p2 & (one.f - 1); // r = (10 * p2) mod 2^-e
@@ -18387,7 +18381,7 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
         //         = buffer * 10^-m + 10^-m * (1/10 * (d + r * 2^e))
         //         = (buffer * 10 + d) * 10^(-m-1) + 10^(-m-1) * r * 2^e
         //
-        JSON_ASSERT(d <= 9);
+        LHM_ASSERT(d <= 9);
         buffer[length++] = static_cast<char>('0' + d); // buffer := buffer * 10 + d
         //
         //      M+ = buffer * 10^(-m-1) + 10^(-m-1) * r * 2^e
@@ -18448,8 +18442,8 @@ JSON_HEDLEY_NON_NULL(1)
 inline void grisu2(char* buf, int& len, int& decimal_exponent,
                    diyfp m_minus, diyfp v, diyfp m_plus)
 {
-    JSON_ASSERT(m_plus.e == m_minus.e);
-    JSON_ASSERT(m_plus.e == v.e);
+    LHM_ASSERT(m_plus.e == m_minus.e);
+    LHM_ASSERT(m_plus.e == v.e);
 
     //  --------(-----------------------+-----------------------)--------    (A)
     //          m-                      v                       m+
@@ -18510,8 +18504,8 @@ void grisu2(char* buf, int& len, int& decimal_exponent, FloatType value)
     static_assert(diyfp::kPrecision >= std::numeric_limits<FloatType>::digits + 3,
                   "internal error: not enough precision");
 
-    JSON_ASSERT(std::isfinite(value));
-    JSON_ASSERT(value > 0);
+    LHM_ASSERT(std::isfinite(value));
+    LHM_ASSERT(value > 0);
 
     // If the neighbors (and boundaries) of 'value' are always computed for double-precision
     // numbers, all float's can be recovered using strtod (and strtof). However, the resulting
@@ -18547,8 +18541,8 @@ JSON_HEDLEY_NON_NULL(1)
 JSON_HEDLEY_RETURNS_NON_NULL
 inline char* append_exponent(char* buf, int e)
 {
-    JSON_ASSERT(e > -1000);
-    JSON_ASSERT(e <  1000);
+    LHM_ASSERT(e > -1000);
+    LHM_ASSERT(e <  1000);
 
     if (e < 0)
     {
@@ -18600,8 +18594,8 @@ JSON_HEDLEY_RETURNS_NON_NULL
 inline char* format_buffer(char* buf, int len, int decimal_exponent,
                            int min_exp, int max_exp)
 {
-    JSON_ASSERT(min_exp < 0);
-    JSON_ASSERT(max_exp > 0);
+    LHM_ASSERT(min_exp < 0);
+    LHM_ASSERT(max_exp > 0);
 
     const int k = len;
     const int n = len + decimal_exponent;
@@ -18627,7 +18621,7 @@ inline char* format_buffer(char* buf, int len, int decimal_exponent,
         // dig.its
         // len <= max_digits10 + 1
 
-        JSON_ASSERT(k > n);
+        LHM_ASSERT(k > n);
 
         std::memmove(buf + (static_cast<size_t>(n) + 1), buf + n, static_cast<size_t>(k) - static_cast<size_t>(n));
         buf[n] = '.';
@@ -18685,7 +18679,7 @@ JSON_HEDLEY_RETURNS_NON_NULL
 char* to_chars(char* first, const char* last, FloatType value)
 {
     static_cast<void>(last); // maybe unused - fix warning
-    JSON_ASSERT(std::isfinite(value));
+    LHM_ASSERT(std::isfinite(value));
 
     // Use signbit(value) instead of (value < 0) since signbit works for -0.
     if (std::signbit(value))
@@ -18710,7 +18704,7 @@ char* to_chars(char* first, const char* last, FloatType value)
 #pragma GCC diagnostic pop
 #endif
 
-    JSON_ASSERT(last - first >= std::numeric_limits<FloatType>::max_digits10);
+    LHM_ASSERT(last - first >= std::numeric_limits<FloatType>::max_digits10);
 
     // Compute v = buffer * 10^decimal_exponent.
     // The decimal digits are stored in the buffer, which needs to be interpreted
@@ -18720,16 +18714,16 @@ char* to_chars(char* first, const char* last, FloatType value)
     int decimal_exponent = 0;
     dtoa_impl::grisu2(first, len, decimal_exponent, value);
 
-    JSON_ASSERT(len <= std::numeric_limits<FloatType>::max_digits10);
+    LHM_ASSERT(len <= std::numeric_limits<FloatType>::max_digits10);
 
     // Format the buffer like printf("%.*g", prec, value)
     constexpr int kMinExp = -4;
     // Use digits10 here to increase compatibility with version 2.
     constexpr int kMaxExp = std::numeric_limits<FloatType>::digits10;
 
-    JSON_ASSERT(last - first >= kMaxExp + 2);
-    JSON_ASSERT(last - first >= 2 + (-kMinExp - 1) + std::numeric_limits<FloatType>::max_digits10);
-    JSON_ASSERT(last - first >= std::numeric_limits<FloatType>::max_digits10 + 6);
+    LHM_ASSERT(last - first >= kMaxExp + 2);
+    LHM_ASSERT(last - first >= 2 + (-kMinExp - 1) + std::numeric_limits<FloatType>::max_digits10);
+    LHM_ASSERT(last - first >= std::numeric_limits<FloatType>::max_digits10 + 6);
 
     return dtoa_impl::format_buffer(first, len, decimal_exponent, kMinExp, kMaxExp);
 }
@@ -18865,8 +18859,8 @@ class serializer
                     }
 
                     // last element
-                    JSON_ASSERT(i != val.m_data.m_value.object->cend());
-                    JSON_ASSERT(std::next(i) == val.m_data.m_value.object->cend());
+                    LHM_ASSERT(i != val.m_data.m_value.object->cend());
+                    LHM_ASSERT(std::next(i) == val.m_data.m_value.object->cend());
                     o->write_characters(indent_string.c_str(), new_indent);
                     o->write_character('\"');
                     dump_escaped(i->first, ensure_ascii);
@@ -18893,8 +18887,8 @@ class serializer
                     }
 
                     // last element
-                    JSON_ASSERT(i != val.m_data.m_value.object->cend());
-                    JSON_ASSERT(std::next(i) == val.m_data.m_value.object->cend());
+                    LHM_ASSERT(i != val.m_data.m_value.object->cend());
+                    LHM_ASSERT(std::next(i) == val.m_data.m_value.object->cend());
                     o->write_character('\"');
                     dump_escaped(i->first, ensure_ascii);
                     o->write_characters("\":", 2);
@@ -18935,7 +18929,7 @@ class serializer
                     }
 
                     // last element
-                    JSON_ASSERT(!val.m_data.m_value.array->empty());
+                    LHM_ASSERT(!val.m_data.m_value.array->empty());
                     o->write_characters(indent_string.c_str(), new_indent);
                     dump(val.m_data.m_value.array->back(), true, ensure_ascii, indent_step, new_indent);
 
@@ -18956,7 +18950,7 @@ class serializer
                     }
 
                     // last element
-                    JSON_ASSERT(!val.m_data.m_value.array->empty());
+                    LHM_ASSERT(!val.m_data.m_value.array->empty());
                     dump(val.m_data.m_value.array->back(), false, ensure_ascii, indent_step, current_indent);
 
                     o->write_character(']');
@@ -19090,7 +19084,7 @@ class serializer
             }
 
             default:            // LCOV_EXCL_LINE
-                JSON_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
+                LHM_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
         }
     }
 
@@ -19289,7 +19283,7 @@ class serializer
                         }
 
                         default:            // LCOV_EXCL_LINE
-                            JSON_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
+                            LHM_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
                     }
                     break;
                 }
@@ -19350,7 +19344,7 @@ class serializer
                 }
 
                 default:            // LCOV_EXCL_LINE
-                    JSON_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
+                    LHM_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
             }
         }
     }
@@ -19479,7 +19473,7 @@ class serializer
         }
 
         // spare 1 byte for '\0'
-        JSON_ASSERT(n_chars < number_buffer.size() - 1);
+        LHM_ASSERT(n_chars < number_buffer.size() - 1);
 
         // jump to the end to generate the string from backward,
         // so we later avoid reversing the result
@@ -19556,9 +19550,9 @@ class serializer
         std::ptrdiff_t len = (std::snprintf)(number_buffer.data(), number_buffer.size(), "%.*g", d, x);
 
         // negative value indicates an error
-        JSON_ASSERT(len > 0);
+        LHM_ASSERT(len > 0);
         // check if buffer was large enough
-        JSON_ASSERT(static_cast<std::size_t>(len) < number_buffer.size());
+        LHM_ASSERT(static_cast<std::size_t>(len) < number_buffer.size());
 
         // erase thousands separator
         if (thousands_sep != '\0')
@@ -19566,7 +19560,7 @@ class serializer
             // NOLINTNEXTLINE(readability-qualified-auto,llvm-qualified-auto): std::remove returns an iterator, see https://github.com/nlohmann/json/issues/3081
             const auto end = std::remove(number_buffer.begin(), number_buffer.begin() + len, thousands_sep);
             std::fill(end, number_buffer.end(), '\0');
-            JSON_ASSERT((end - number_buffer.begin()) <= len);
+            LHM_ASSERT((end - number_buffer.begin()) <= len);
             len = (end - number_buffer.begin());
         }
 
@@ -19640,7 +19634,7 @@ class serializer
             }
         };
 
-        JSON_ASSERT(byte < utf8d.size());
+        LHM_ASSERT(byte < utf8d.size());
         const std::uint8_t type = utf8d[byte];
 
         codep = (state != UTF8_ACCEPT)
@@ -19648,7 +19642,7 @@ class serializer
                 : (0xFFu >> type) & (byte);
 
         const std::size_t index = 256u + (static_cast<size_t>(state) * 16u) + static_cast<size_t>(type);
-        JSON_ASSERT(index < utf8d.size());
+        LHM_ASSERT(index < utf8d.size());
         state = utf8d[index];
         return state;
     }
@@ -19660,7 +19654,7 @@ class serializer
      */
     number_unsigned_t remove_sign(number_unsigned_t x)
     {
-        JSON_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
+        LHM_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
         return x; // LCOV_EXCL_LINE
     }
 
@@ -19675,7 +19669,7 @@ class serializer
      */
     number_unsigned_t remove_sign(number_integer_t x) noexcept
     {
-        JSON_ASSERT(x < 0 && x < (std::numeric_limits<number_integer_t>::max)()); // NOLINT(misc-redundant-expression)
+        LHM_ASSERT(x < 0 && x < (std::numeric_limits<number_integer_t>::max)()); // NOLINT(misc-redundant-expression)
         return static_cast<number_unsigned_t>(-(x + 1)) + 1;
     }
 
@@ -20403,7 +20397,7 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
         };
         std::unique_ptr<T, decltype(deleter)> obj(AllocatorTraits::allocate(alloc, 1), deleter);
         AllocatorTraits::construct(alloc, obj.get(), std::forward<Args>(args)...);
-        JSON_ASSERT(obj != nullptr);
+        LHM_ASSERT(obj != nullptr);
         return obj.release();
     }
 
@@ -20698,16 +20692,16 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
     */
     void assert_invariant(bool check_parents = true) const noexcept
     {
-        JSON_ASSERT(m_data.m_type != value_t::object || m_data.m_value.object != nullptr);
-        JSON_ASSERT(m_data.m_type != value_t::array || m_data.m_value.array != nullptr);
-        JSON_ASSERT(m_data.m_type != value_t::string || m_data.m_value.string != nullptr);
-        JSON_ASSERT(m_data.m_type != value_t::binary || m_data.m_value.binary != nullptr);
+        LHM_ASSERT(m_data.m_type != value_t::object || m_data.m_value.object != nullptr);
+        LHM_ASSERT(m_data.m_type != value_t::array || m_data.m_value.array != nullptr);
+        LHM_ASSERT(m_data.m_type != value_t::string || m_data.m_value.string != nullptr);
+        LHM_ASSERT(m_data.m_type != value_t::binary || m_data.m_value.binary != nullptr);
 
 #if JSON_DIAGNOSTICS
         JSON_TRY
         {
             // cppcheck-suppress assertWithSideEffect
-            JSON_ASSERT(!check_parents || !is_structured() || std::all_of(begin(), end(), [this](const basic_json & j)
+            LHM_ASSERT(!check_parents || !is_structured() || std::all_of(begin(), end(), [this](const basic_json & j)
             {
                 return j.m_parent == this;
             }));
@@ -20773,7 +20767,7 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
         if (old_capacity != detail::unknown_size())
         {
             // see https://github.com/nlohmann/json/issues/2838
-            JSON_ASSERT(type() == value_t::array);
+            LHM_ASSERT(type() == value_t::array);
             if (JSON_HEDLEY_UNLIKELY(m_data.m_value.array->capacity() != old_capacity))
             {
                 // capacity has changed: update all parents
@@ -20911,9 +20905,9 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
                 m_data.m_type = value_t::discarded;
                 break;
             default:            // LCOV_EXCL_LINE
-                JSON_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
+                LHM_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
         }
-        JSON_ASSERT(m_data.m_type == val.type());
+        LHM_ASSERT(m_data.m_type == val.type());
 
         set_parents();
         assert_invariant();
@@ -21053,8 +21047,8 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
                    std::is_same<InputIT, typename basic_json_t::const_iterator>::value, int >::type = 0 >
     basic_json(InputIT first, InputIT last) // NOLINT(performance-unnecessary-value-param)
     {
-        JSON_ASSERT(first.m_object != nullptr);
-        JSON_ASSERT(last.m_object != nullptr);
+        LHM_ASSERT(first.m_object != nullptr);
+        LHM_ASSERT(last.m_object != nullptr);
 
         // make sure iterator fits the current value
         if (JSON_HEDLEY_UNLIKELY(first.m_object != last.m_object))
@@ -22185,7 +22179,7 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
         if (JSON_HEDLEY_LIKELY(is_object()))
         {
             auto it = m_data.m_value.object->find(key);
-            JSON_ASSERT(it != m_data.m_value.object->end());
+            LHM_ASSERT(it != m_data.m_value.object->end());
             return it->second;
         }
 
@@ -22240,7 +22234,7 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
         if (JSON_HEDLEY_LIKELY(is_object()))
         {
             auto it = m_data.m_value.object->find(std::forward<KeyType>(key));
-            JSON_ASSERT(it != m_data.m_value.object->end());
+            LHM_ASSERT(it != m_data.m_value.object->end());
             return it->second;
         }
 
@@ -23307,7 +23301,7 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
     iterator insert_iterator(const_iterator pos, Args&& ... args) // NOLINT(performance-unnecessary-value-param)
     {
         iterator result(this);
-        JSON_ASSERT(m_data.m_value.array != nullptr);
+        LHM_ASSERT(m_data.m_value.array != nullptr);
 
         auto insert_pos = std::distance(m_data.m_value.array->begin(), pos.m_it.array_iterator);
         m_data.m_value.array->insert(pos.m_it.array_iterator, std::forward<Args>(args)...);
@@ -24858,7 +24852,7 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
                 case value_t::binary: // LCOV_EXCL_LINE
                 case value_t::discarded: // LCOV_EXCL_LINE
                 default:            // LCOV_EXCL_LINE
-                    JSON_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
+                    LHM_ASSERT(false); // NOLINT(cert-dcl03-c,hicpp-static-assert,misc-static-assert) LCOV_EXCL_LINE
             }
         };
 
@@ -25332,7 +25326,7 @@ inline void swap(nlohmann::NLOHMANN_BASIC_JSON_TPL& j1, nlohmann::NLOHMANN_BASIC
 #endif
 
 // clean up
-#undef JSON_ASSERT
+#undef LHM_ASSERT
 #undef JSON_INTERNAL_CATCH
 #undef JSON_THROW
 #undef JSON_PRIVATE_UNLESS_TESTED

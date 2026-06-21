@@ -1,11 +1,11 @@
-#include "chat-auto-parser-helpers.h"
+#include "chat_auto_parser_helpers.h"
 
-#include "chat-auto-parser.h"
-#include "chat-peg-parser.h"
+#include "chat_auto_parser.h"
+#include "chat_peg_parser.h"
 #include "chat.h"
 #include "log.h"
 #include "nlohmann/json.hpp"
-#include "peg-parser.h"
+#include "peg_parser.h"
 
 #include <cctype>
 #include <numeric>

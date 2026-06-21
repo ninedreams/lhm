@@ -1,11 +1,10 @@
-#include "arg.h"
+#include "config.h"
 
 #include "common.h"
 #include "log.h"
 #include "download.h"
 #include "hf-cache.h"
 
-#define JSON_ASSERT GGML_ASSERT
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
@@ -63,16 +62,16 @@ static void write_file(const std::string & fname, const std::string & content) {
 
         // Makes write atomic
         if (rename(fname_tmp.c_str(), fname.c_str()) != 0) {
-            LOG_ERR("%s: unable to rename file: %s to %s\n", __func__, fname_tmp.c_str(), fname.c_str());
+            LOG_ERROR("%s: unable to rename file: %s to %s\n", __func__, fname_tmp.c_str(), fname.c_str());
             // If rename fails, try to delete the temporary file
             if (remove(fname_tmp.c_str()) != 0) {
-                LOG_ERR("%s: unable to delete temporary file: %s\n", __func__, fname_tmp.c_str());
+                LOG_ERROR("%s: unable to delete temporary file: %s\n", __func__, fname_tmp.c_str());
             }
         }
     } catch (...) {
         // If anything fails, try to delete the temporary file
         if (remove(fname_tmp.c_str()) != 0) {
-            LOG_ERR("%s: unable to delete temporary file: %s\n", __func__, fname_tmp.c_str());
+            LOG_ERROR("%s: unable to delete temporary file: %s\n", __func__, fname_tmp.c_str());
         }
 
         throw std::runtime_error(string_format("error: failed to write file '%s'\n", fname.c_str()));
@@ -92,7 +91,7 @@ static std::string read_etag(const std::string & path) {
     }
     std::ifstream etag_in(etag_path);
     if (!etag_in) {
-        LOG_ERR("%s: could not open .etag file for reading: %s\n", __func__, etag_path.c_str());
+        LOG_ERROR("%s: could not open .etag file for reading: %s\n", __func__, etag_path.c_str());
         return {};
     }
     std::string etag;
@@ -214,7 +213,7 @@ static bool common_pull_file(httplib::Client & cli,
                              common_download_callback * callback) {
     std::ofstream ofs(path_tmp, std::ios::binary | std::ios::app);
     if (!ofs.is_open()) {
-        LOG_ERR("%s: error opening local file for writing: %s\n", __func__, path_tmp.c_str());
+        LOG_ERROR("%s: error opening local file for writing: %s\n", __func__, path_tmp.c_str());
         return false;
     }
 
@@ -249,7 +248,7 @@ static bool common_pull_file(httplib::Client & cli,
         [&](const char *data, size_t len) {
             ofs.write(data, len);
             if (!ofs) {
-                LOG_ERR("%s: error writing to file: %s\n", func, path_tmp.c_str());
+                LOG_ERROR("%s: error writing to file: %s\n", func, path_tmp.c_str());
                 return false;
             }
             p.downloaded += len;
@@ -270,7 +269,7 @@ static bool common_pull_file(httplib::Client & cli,
     );
 
     if (!res) {
-        LOG_ERR("%s: download failed: %s (status: %d)\n",
+        LOG_ERROR("%s: download failed: %s (status: %d)\n",
                 __func__,
                 httplib::to_string(res.error()).c_str(),
                 res ? res->status : -1);
@@ -362,7 +361,7 @@ static int common_download_file_single_online(const std::string & url,
             return -2; // special code to indicate that the download was skipped due to etag mismatch
         }
         if (remove(path.c_str()) != 0) {
-            LOG_ERR("%s: unable to delete file: %s\n", __func__, path.c_str());
+            LOG_ERROR("%s: unable to delete file: %s\n", __func__, path.c_str());
             return -1;
         }
     }
@@ -396,7 +395,7 @@ static int common_download_file_single_online(const std::string & url,
             if (supports_ranges) {
                 existing_size = std::filesystem::file_size(path_temporary);
             } else if (remove(path_temporary.c_str()) != 0) {
-                LOG_ERR("%s: unable to delete file: %s\n", __func__, path_temporary.c_str());
+                LOG_ERROR("%s: unable to delete file: %s\n", __func__, path_temporary.c_str());
                 break;
             }
         }
@@ -409,7 +408,7 @@ static int common_download_file_single_online(const std::string & url,
 
         if (common_pull_file(cli, parts.path, path_temporary, supports_ranges, p, opts.callback)) {
             if (std::rename(path_temporary.c_str(), path.c_str()) != 0) {
-                LOG_ERR("%s: unable to rename file: %s to %s\n", __func__, path_temporary.c_str(), path.c_str());
+                LOG_ERROR("%s: unable to rename file: %s to %s\n", __func__, path_temporary.c_str(), path.c_str());
                 break;
             }
             if (!etag.empty() && !skip_etag) {
@@ -426,11 +425,11 @@ static int common_download_file_single_online(const std::string & url,
     if (opts.callback && opts.callback->is_cancelled() &&
         std::filesystem::exists(path_temporary)) {
         if (remove(path_temporary.c_str()) != 0) {
-            LOG_ERR("%s: unable to delete temporary file: %s\n", __func__, path_temporary.c_str());
+            LOG_ERROR("%s: unable to delete temporary file: %s\n", __func__, path_temporary.c_str());
         }
     }
     if (!success) {
-        LOG_ERR("%s: download failed after %d attempts\n", __func__, max_attempts);
+        LOG_ERROR("%s: download failed after %d attempts\n", __func__, max_attempts);
         return -1; // max attempts reached
     }
 
@@ -482,7 +481,7 @@ int common_download_file_single(const std::string & url,
     }
 
     if (!std::filesystem::exists(path)) {
-        LOG_ERR("%s: required file is not available in cache (offline mode): %s\n", __func__, path.c_str());
+        LOG_ERROR("%s: required file is not available in cache (offline mode): %s\n", __func__, path.c_str());
         return -1;
     }
 
@@ -676,10 +675,10 @@ static hf_cache::hf_file find_best_model(const hf_cache::hf_files & files,
 }
 
 static void list_available_gguf_files(const hf_cache::hf_files & files) {
-    LOG_INF("Available GGUF files:\n");
+    LOG_INFO("Available GGUF files:\n");
     for (const auto & f : files) {
         if (string_ends_with(f.path, ".gguf")) {
-            LOG_INF(" - %s\n", f.path.c_str());
+            LOG_INFO(" - %s\n", f.path.c_str());
         }
     }
 }
@@ -729,14 +728,14 @@ static hf_plan get_hf_plan(const common_params_model  & model,
             }
         }
         if (primary.path.empty()) {
-            LOG_ERR("%s: file '%s' not found in repository\n", __func__, model.hf_file.c_str());
+            LOG_ERROR("%s: file '%s' not found in repository\n", __func__, model.hf_file.c_str());
             list_available_gguf_files(all);
             return plan;
         }
     } else {
         primary = find_best_model(all, tag);
         if (primary.path.empty()) {
-            LOG_ERR("%s: no GGUF files found in repository %s\n", __func__, repo.c_str());
+            LOG_ERROR("%s: no GGUF files found in repository %s\n", __func__, repo.c_str());
             list_available_gguf_files(all);
             return plan;
         }
@@ -908,7 +907,7 @@ std::string common_docker_resolve_model(const std::string & docker) {
         repo.insert(0, "ai/");
     }
 
-    LOG_INF("%s: Downloading Docker Model: %s:%s\n", __func__, repo.c_str(), tag.c_str());
+    LOG_INFO("%s: Downloading Docker Model: %s:%s\n", __func__, repo.c_str(), tag.c_str());
     try {
         // --- helper: digest validation ---
         auto validate_oci_digest = [](const std::string & digest) -> std::string {
@@ -981,10 +980,10 @@ std::string common_docker_resolve_model(const std::string & docker) {
             throw std::runtime_error("Failed to download Docker Model");
         }
 
-        LOG_INF("%s: Downloaded Docker Model to: %s\n", __func__, local_path.c_str());
+        LOG_INFO("%s: Downloaded Docker Model to: %s\n", __func__, local_path.c_str());
         return local_path;
     } catch (const std::exception & e) {
-        LOG_ERR("%s: Docker Model download failed: %s\n", __func__, e.what());
+        LOG_ERROR("%s: Docker Model download failed: %s\n", __func__, e.what());
         throw;
     }
 }

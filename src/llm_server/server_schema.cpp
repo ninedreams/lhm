@@ -1,5 +1,5 @@
 #include "server_schema.h"
-
+#include "lhm_assert.h"
 #include "json_schema_to_grammar.h"
 
 namespace server_schema {
@@ -329,7 +329,7 @@ std::vector<std::unique_ptr<field>> make_lhm_cmpl_schema(const common_params & p
     add((new field_json("preserved_tokens"))
         ->set_desc("List of token strings that must not be split during tokenization")
         ->set_handler([&](field_eval_context & ctx, const json & data) {
-            GGML_ASSERT(ctx.vocab != nullptr);
+            LHM_ASSERT(ctx.vocab != nullptr);
             for (const auto & t : data.at("preserved_tokens")) {
                 auto ids = common_tokenize(ctx.vocab, t.get<std::string>(), false, true);
                 if (ids.size() == 1) {
@@ -341,7 +341,7 @@ std::vector<std::unique_ptr<field>> make_lhm_cmpl_schema(const common_params & p
     add((new field_json("grammar_triggers"))
         ->set_desc("List of strings or patterns that trigger grammar-constrained generation")
         ->set_handler([&](field_eval_context & ctx, const json & data) {
-            GGML_ASSERT(ctx.vocab != nullptr);
+            LHM_ASSERT(ctx.vocab != nullptr);
             for (const auto & t : data.at("grammar_triggers")) {
                 server_grammar_trigger ct(t);
                 if (ct.value.type == COMMON_GRAMMAR_TRIGGER_TYPE_WORD) {
@@ -379,14 +379,14 @@ std::vector<std::unique_ptr<field>> make_lhm_cmpl_schema(const common_params & p
     add((new field_str("reasoning_budget_start_tag"))
         ->set_desc("Token string marking the start of the reasoning budget section")
         ->set_handler([&](field_eval_context & ctx, const json & data) {
-            GGML_ASSERT(ctx.vocab != nullptr);
+            LHM_ASSERT(ctx.vocab != nullptr);
             ctx.params.sampling.reasoning_budget_start = common_tokenize(ctx.vocab, data.at("reasoning_budget_start_tag").get<std::string>(), false, true);
         }));
 
     add((new field_str("reasoning_budget_end_tag"))
         ->set_desc("Token string marking the end of the reasoning budget section")
         ->set_handler([&](field_eval_context & ctx, const json & data) {
-            GGML_ASSERT(ctx.vocab != nullptr);
+            LHM_ASSERT(ctx.vocab != nullptr);
             std::string end_tag = data.at("reasoning_budget_end_tag").get<std::string>();
             ctx.params.sampling.reasoning_budget_end = common_tokenize(ctx.vocab, end_tag, false, true);
         }));
@@ -394,7 +394,7 @@ std::vector<std::unique_ptr<field>> make_lhm_cmpl_schema(const common_params & p
     add((new field_str("reasoning_budget_message"))
         ->set_desc("Message to prepend to the reasoning budget end tag when forcing it")
         ->set_handler([&](field_eval_context & ctx, const json & data) {
-            GGML_ASSERT(ctx.vocab != nullptr);
+            LHM_ASSERT(ctx.vocab != nullptr);
             std::string end_tag = json_value(data, "reasoning_budget_end_tag", std::string());
             std::string message = data.at("reasoning_budget_message").get<std::string>();
             ctx.params.sampling.reasoning_budget_forced = common_tokenize(ctx.vocab, message + end_tag, false, true);
@@ -403,7 +403,7 @@ std::vector<std::unique_ptr<field>> make_lhm_cmpl_schema(const common_params & p
     add((new field_json("logit_bias"))
         ->set_desc("Modify the likelihood of specific tokens. Accepts an array of [token, bias] pairs or an object mapping token to bias. Use false as bias to ban a token")
         ->set_handler([&](field_eval_context & ctx, const json & data) {
-            GGML_ASSERT(ctx.vocab != nullptr);
+            LHM_ASSERT(ctx.vocab != nullptr);
             ctx.params.sampling.logit_bias.clear();
             const auto & logit_bias = data.at("logit_bias");
             const int n_vocab = lhm_vocab_n_tokens(ctx.vocab);
@@ -444,7 +444,7 @@ std::vector<std::unique_ptr<field>> make_lhm_cmpl_schema(const common_params & p
     add((new field_bool("ignore_eos", params.sampling.ignore_eos))
         ->set_desc("Ignore the end-of-sequence token and continue generating")
         ->set_handler([&](field_eval_context & ctx, const json & data) {
-            GGML_ASSERT(ctx.logit_bias_eog != nullptr);
+            LHM_ASSERT(ctx.logit_bias_eog != nullptr);
             ctx.params.sampling.ignore_eos = data.at("ignore_eos").get<bool>();
             if (ctx.params.sampling.ignore_eos && ctx.logit_bias_eog) {
                 ctx.params.sampling.logit_bias.insert(
@@ -583,7 +583,7 @@ void field_num<T>::eval(field_eval_context & ctx, const json & data) {
 }
 
 void field_str::eval(field_eval_context & ctx, const json & data) {
-    GGML_ASSERT(custom_handler);
+    LHM_ASSERT(custom_handler);
     for (const auto & n : name) {
         if (data.contains(n)) {
             handle_with_catch(n, [&]() {
@@ -610,7 +610,7 @@ void field_bool::eval(field_eval_context & ctx, const json & data) {
 }
 
 void field_json::eval(field_eval_context & ctx, const json & data) {
-    GGML_ASSERT(custom_handler);
+    LHM_ASSERT(custom_handler);
     for (const auto & n : name) {
         if (data.contains(n)) {
             handle_with_catch(n, [&]() {

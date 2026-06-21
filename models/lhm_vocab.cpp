@@ -278,7 +278,7 @@ struct llm_bigram_bpe {
 
 struct llm_tokenizer_bpe : llm_tokenizer {
     llm_tokenizer_bpe(const lhm_vocab & vocab) {
-        GGML_ASSERT(vocab.get_type() == LHM_VOCAB_TYPE_BPE);
+        LHM_ASSERT(vocab.get_type() == LHM_VOCAB_TYPE_BPE);
         switch (vocab.get_pre_type()) {
             case LHM_VOCAB_PRE_TYPE_QWEN35:
                 regex_exprs = {
@@ -314,7 +314,7 @@ struct llm_tokenizer_bpe_session {
 
     bool append_bos(std::vector<lhm_token> & output) const {
         if (vocab.get_add_bos()) {
-            GGML_ASSERT(vocab.token_bos() != LHM_TOKEN_NULL);
+            LHM_ASSERT(vocab.token_bos() != LHM_TOKEN_NULL);
             output.push_back(vocab.token_bos());
             return true;
         }
@@ -323,7 +323,7 @@ struct llm_tokenizer_bpe_session {
 
     bool append_eos(std::vector<lhm_token> & output) const {
         if (vocab.get_add_eos()) {
-            GGML_ASSERT(vocab.token_eos() != LHM_TOKEN_NULL);
+            LHM_ASSERT(vocab.token_eos() != LHM_TOKEN_NULL);
             output.push_back(vocab.token_eos());
             return true;
         }
@@ -1500,9 +1500,9 @@ struct fragment_buffer_variant {
         raw_text(_raw_text),
         offset(_offset),
         length(_length){
-            GGML_ASSERT(_offset >= 0);
-            GGML_ASSERT(_length >= 1);
-            GGML_ASSERT(offset + length <= raw_text.length());
+            LHM_ASSERT(_offset >= 0);
+            LHM_ASSERT(_length >= 1);
+            LHM_ASSERT(offset + length <= raw_text.length());
         }
 
     const FRAGMENT_BUFFER_VARIANT_TYPE type;
@@ -1727,7 +1727,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
                 const int n_merges = gguf_get_arr_n(ctx, merges_keyidx);
                 for (int i = 0; i < n_merges; i++) {
                     const std::string word = gguf_get_arr_str(ctx, merges_keyidx, i);
-                    //GGML_ASSERT(unicode_cpts_from_utf8(word).size() > 0);
+                    //LHM_ASSERT(unicode_cpts_from_utf8(word).size() > 0);
 
                     std::string first;
                     std::string second;
@@ -1764,7 +1764,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
             const int precompiled_charsmap_keyidx = gguf_find_key(ctx, kv(LLM_KV_TOKENIZER_PRECOMPILED_CHARSMAP).c_str());
             if (precompiled_charsmap_keyidx != -1) {
                 const gguf_type pc_type = gguf_get_arr_type(ctx, precompiled_charsmap_keyidx);
-                GGML_ASSERT(pc_type == GGUF_TYPE_INT8 || pc_type == GGUF_TYPE_UINT8);
+                LHM_ASSERT(pc_type == GGUF_TYPE_INT8 || pc_type == GGUF_TYPE_UINT8);
 
                 const size_t n_precompiled_charsmap = gguf_get_arr_n(ctx, precompiled_charsmap_keyidx);
                 const char * pc = (const char *) gguf_get_arr_data(ctx, precompiled_charsmap_keyidx);
@@ -1951,7 +1951,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
             }
         }
     }
-    GGML_ASSERT(id_to_token.size() == token_to_id.size());
+    LHM_ASSERT(id_to_token.size() == token_to_id.size());
 
     // hybriddna: the marker suffix kept k-mer ids distinct in token_to_id; erase
     // it from id_to_token so the k-mers detokenize to the bare DNA sequence. The
@@ -1984,12 +1984,12 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
         linefeed_id = special_pad_id;
     } else if (type == LHM_VOCAB_TYPE_RWKV) {
         const std::vector<int> ids = tokenize("\n", false);
-        GGML_ASSERT(!ids.empty() && "model vocab missing newline token");
+        LHM_ASSERT(!ids.empty() && "model vocab missing newline token");
         linefeed_id = ids[0];
     } else {
         const std::vector<int> ids = tokenize("\n", false);
 
-        //GGML_ASSERT(!ids.empty() && "model vocab missing newline token");
+        //LHM_ASSERT(!ids.empty() && "model vocab missing newline token");
         if (ids.empty()) {
             LOG_WARN("%s: model vocab missing newline token, using special_pad_id instead\n", __func__);
             linefeed_id = special_pad_id;
@@ -2538,32 +2538,32 @@ std::string lhm_vocab::impl::type_name() const{
 }
 
 bool lhm_vocab::impl::is_normal(lhm_token id) const {
-    GGML_ASSERT(type != LHM_VOCAB_TYPE_NONE);
+    LHM_ASSERT(type != LHM_VOCAB_TYPE_NONE);
     return id_to_token[id].attr & LHM_TOKEN_ATTR_NORMAL;
 }
 
 bool lhm_vocab::impl::is_unknown(lhm_token id) const {
-    GGML_ASSERT(type != LHM_VOCAB_TYPE_NONE);
+    LHM_ASSERT(type != LHM_VOCAB_TYPE_NONE);
     return id_to_token[id].attr & LHM_TOKEN_ATTR_UNKNOWN;
 }
 
 bool lhm_vocab::impl::is_control(lhm_token id) const {
-    GGML_ASSERT(type != LHM_VOCAB_TYPE_NONE);
+    LHM_ASSERT(type != LHM_VOCAB_TYPE_NONE);
     return id_to_token[id].attr & LHM_TOKEN_ATTR_CONTROL;
 }
 
 bool lhm_vocab::impl::is_byte(lhm_token id) const {
-    GGML_ASSERT(type != LHM_VOCAB_TYPE_NONE);
+    LHM_ASSERT(type != LHM_VOCAB_TYPE_NONE);
     return id_to_token[id].attr & LHM_TOKEN_ATTR_BYTE;
 }
 
 bool lhm_vocab::impl::is_user_defined(lhm_token id) const {
-    GGML_ASSERT(type != LHM_VOCAB_TYPE_NONE);
+    LHM_ASSERT(type != LHM_VOCAB_TYPE_NONE);
     return id_to_token[id].attr & LHM_TOKEN_ATTR_USER_DEFINED;
 }
 
 bool lhm_vocab::impl::is_unused(lhm_token id) const {
-    GGML_ASSERT(type != LHM_VOCAB_TYPE_NONE);
+    LHM_ASSERT(type != LHM_VOCAB_TYPE_NONE);
     return id_to_token[id].attr & LHM_TOKEN_ATTR_UNUSED;
 }
 
@@ -2572,8 +2572,8 @@ bool lhm_vocab::impl::is_eog(lhm_token id) const {
 }
 
 uint8_t lhm_vocab::impl::token_to_byte(lhm_token id) const {
-    GGML_ASSERT(get_type() != LHM_VOCAB_TYPE_NONE);
-    GGML_ASSERT(is_byte(id));
+    LHM_ASSERT(get_type() != LHM_VOCAB_TYPE_NONE);
+    LHM_ASSERT(is_byte(id));
     const auto & token_data = id_to_token.at(id);
     switch (get_type()) {
         case LHM_VOCAB_TYPE_SPM:
@@ -2595,7 +2595,7 @@ uint8_t lhm_vocab::impl::token_to_byte(lhm_token id) const {
 }
 
 lhm_token_attr lhm_vocab::impl::token_get_attr(lhm_token id) const {
-    GGML_ASSERT(type != LHM_VOCAB_TYPE_NONE);
+    LHM_ASSERT(type != LHM_VOCAB_TYPE_NONE);
     return id_to_token.at(id).attr;
 }
 
@@ -2758,7 +2758,7 @@ std::string lhm_vocab::impl::token_to_piece_for_cache(lhm_token token, bool spec
     if (n_chars < 0) {
         piece.resize(-n_chars);
         int check = vocab.token_to_piece(token, &piece[0], piece.size(), 0, special);
-        GGML_ASSERT(check == -n_chars);
+        LHM_ASSERT(check == -n_chars);
     }
     else {
         piece.resize(n_chars);
@@ -2799,7 +2799,7 @@ std::vector<lhm_token> lhm_vocab::impl::tokenize(
         const std::string & raw_text,
         bool add_special,
         bool parse_special) const {
-    GGML_ASSERT(tokenizer && "Tokenizer not initialized. Call lhm_vocab::init_tokenizer() first.");
+    LHM_ASSERT(tokenizer && "Tokenizer not initialized. Call lhm_vocab::init_tokenizer() first.");
 
     std::vector<lhm_token> output;
     std::forward_list<fragment_buffer_variant> fragment_buffer;
@@ -2820,7 +2820,7 @@ std::vector<lhm_token> lhm_vocab::impl::tokenize(
                 bool is_prev_special = true;  // prefix with space if first token
 
                 if (add_special && add_bos) {
-                    GGML_ASSERT(special_bos_id != LHM_TOKEN_NULL);
+                    LHM_ASSERT(special_bos_id != LHM_TOKEN_NULL);
                     output.push_back(special_bos_id);
                     is_prev_special = true;
                 }
@@ -2857,7 +2857,7 @@ std::vector<lhm_token> lhm_vocab::impl::tokenize(
                 }
 
                 if (add_special && add_eos) {
-                    GGML_ASSERT(special_eos_id != LHM_TOKEN_NULL);
+                    LHM_ASSERT(special_eos_id != LHM_TOKEN_NULL);
                     output.push_back(special_eos_id);
                 }
             } break;
@@ -2904,7 +2904,7 @@ std::vector<lhm_token> lhm_vocab::impl::tokenize(
         case LHM_VOCAB_TYPE_WPM:
             {
                 if (add_special) {
-                    GGML_ASSERT(special_bos_id != LHM_TOKEN_NULL);
+                    LHM_ASSERT(special_bos_id != LHM_TOKEN_NULL);
                     output.push_back(special_bos_id);
                 }
 
@@ -2924,14 +2924,14 @@ std::vector<lhm_token> lhm_vocab::impl::tokenize(
                 }
 
                 if (add_special) {
-                    GGML_ASSERT(special_sep_id != LHM_TOKEN_NULL);
+                    LHM_ASSERT(special_sep_id != LHM_TOKEN_NULL);
                     output.push_back(special_sep_id);
                 }
             } break;
         case LHM_VOCAB_TYPE_UGM:
             {
                 if (add_special && add_bos) {
-                    GGML_ASSERT(special_bos_id != LHM_TOKEN_NULL);
+                    LHM_ASSERT(special_bos_id != LHM_TOKEN_NULL);
                     output.push_back(special_bos_id);
                 }
                 llm_tokenizer_ugm_session session(vocab, *static_cast<const llm_tokenizer_ugm *>(tokenizer.get()));
@@ -2956,7 +2956,7 @@ std::vector<lhm_token> lhm_vocab::impl::tokenize(
                 }
 
                 if (add_special && add_eos) {
-                    GGML_ASSERT(special_eos_id != LHM_TOKEN_NULL);
+                    LHM_ASSERT(special_eos_id != LHM_TOKEN_NULL);
                     output.push_back(special_eos_id);
                 }
             } break;
@@ -3133,7 +3133,7 @@ int32_t lhm_vocab::impl::detokenize(
         return 0;
     }
 
-    GGML_ASSERT(tokenizer && "Tokenizer not initialized. Call lhm_vocab::init_tokenizer() first.");
+    LHM_ASSERT(tokenizer && "Tokenizer not initialized. Call lhm_vocab::init_tokenizer() first.");
 
     int32_t avail = text_len_max;
     int32_t total = 0;
@@ -3156,7 +3156,7 @@ int32_t lhm_vocab::impl::detokenize(
     }
 
     for (int32_t i = 0; i < n_tokens; ++i) {
-        GGML_ASSERT(avail >= 0);
+        LHM_ASSERT(avail >= 0);
         int32_t n_chars = token_to_piece(tokens[i], text, avail, remove_space, unparse_special);
         remove_space = false;
         if (n_chars < 0) {
@@ -3335,7 +3335,7 @@ uint8_t lhm_vocab::token_to_byte(lhm_token id) const {
 }
 
 lhm_token lhm_vocab::byte_to_token(uint8_t ch) const {
-    GGML_ASSERT(get_type() != LHM_VOCAB_TYPE_NONE);
+    LHM_ASSERT(get_type() != LHM_VOCAB_TYPE_NONE);
     static const char * hex = "0123456789ABCDEF";
     switch (get_type()) {
         case LHM_VOCAB_TYPE_SPM:
@@ -3365,7 +3365,7 @@ lhm_token lhm_vocab::byte_to_token(uint8_t ch) const {
 }
 
 lhm_token lhm_vocab::text_to_token(const std::string & text) const {
-    GGML_ASSERT(pimpl->type != LHM_VOCAB_TYPE_NONE);
+    LHM_ASSERT(pimpl->type != LHM_VOCAB_TYPE_NONE);
     auto it = pimpl->token_to_id.find(text);
     if (it != pimpl->token_to_id.end()) {
         return (*it).second;
@@ -3374,17 +3374,17 @@ lhm_token lhm_vocab::text_to_token(const std::string & text) const {
 }
 
 const lhm_vocab::token_data & lhm_vocab::get_token_data(lhm_token id) const {
-    GGML_ASSERT(pimpl->type != LHM_VOCAB_TYPE_NONE);
+    LHM_ASSERT(pimpl->type != LHM_VOCAB_TYPE_NONE);
     return pimpl->id_to_token.at(id);
 }
 
 const char * lhm_vocab::token_get_text(lhm_token id) const {
-    GGML_ASSERT(pimpl->type != LHM_VOCAB_TYPE_NONE);
+    LHM_ASSERT(pimpl->type != LHM_VOCAB_TYPE_NONE);
     return pimpl->id_to_token.at(id).text.c_str();
 }
 
 float lhm_vocab::token_get_score(lhm_token id) const {
-    GGML_ASSERT(pimpl->type != LHM_VOCAB_TYPE_NONE);
+    LHM_ASSERT(pimpl->type != LHM_VOCAB_TYPE_NONE);
     return pimpl->id_to_token.at(id).score;
 }
 
@@ -3513,8 +3513,8 @@ int lhm_vocab::max_token_len() const {
 }
 
 int lhm_vocab::find_bpe_rank(const std::string & token_left, const std::string & token_right) const {
-    GGML_ASSERT(token_left.find(' ')   == std::string::npos);
-    GGML_ASSERT(token_right.find(' ')  == std::string::npos);
+    LHM_ASSERT(token_left.find(' ')   == std::string::npos);
+    LHM_ASSERT(token_right.find(' ')  == std::string::npos);
 
     auto it = pimpl->bpe_ranks.find(std::make_pair(token_left, token_right));
     if (it == pimpl->bpe_ranks.end()) {
@@ -3595,7 +3595,7 @@ std::string lhm_vocab::detokenize(const std::vector<lhm_token> & tokens, bool sp
     if (n_chars < 0) {
         text.resize(-n_chars);
         n_chars = detokenize(tokens.data(), (int32_t)tokens.size(), &text[0], (int32_t)text.size(), false, special);
-        GGML_ASSERT(n_chars <= (int32_t)text.size());  // whitespace trimming is performed after per-token detokenization
+        LHM_ASSERT(n_chars <= (int32_t)text.size());  // whitespace trimming is performed after per-token detokenization
     }
 
     text.resize(n_chars);

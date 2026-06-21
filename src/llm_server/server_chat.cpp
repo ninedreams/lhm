@@ -318,7 +318,7 @@ static void normalize_anthropic_billing_header(std::string & system_text) {
             system_text[index_replace + i] = 'f';
         }
     } else {
-        LOG_ERR("anthropic string not as expected: %s", system_text.c_str());
+        LOG_ERROR("anthropic string not as expected: %s", system_text.c_str());
     }
 }
 

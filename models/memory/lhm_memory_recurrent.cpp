@@ -1,5 +1,6 @@
 #include "lhm_memory_recurrent.h"
 
+#include "lhm_assert.h"
 #include "ggml-backend.h"
 #include "lhm_impl.h"
 #include "lhm_io.h"
@@ -499,7 +500,7 @@ bool lhm_memory_recurrent::find_slot(const lhm_ubatch & ubatch) {
     // A slot should be always be contiguous.
 
     // can only process batches with an equal number of new tokens in each sequence
-    GGML_ASSERT(ubatch.equal_seqs());
+    LHM_ASSERT(ubatch.equal_seqs());
 
     int32_t min = size - 1;
     int32_t max = 0;
@@ -575,13 +576,13 @@ bool lhm_memory_recurrent::find_slot(const lhm_ubatch & ubatch) {
         bool has_cell = false;
         if (seq_meta.tail >= 0) {
             auto & cell = cells[seq_meta.tail];
-            GGML_ASSERT(cell.has_seq_id(seq_id));
+            LHM_ASSERT(cell.has_seq_id(seq_id));
             // does this seq_id "own" the cell?
             if (cell.seq_id.size() == 1) { has_cell = true; }
         }
         if (!has_cell) {
             auto & empty_cell = cells[next_empty_cell];
-            GGML_ASSERT(empty_cell.is_empty());
+            LHM_ASSERT(empty_cell.is_empty());
             // copy old tail into the empty cell
             if (seq_meta.tail >= 0) {
                 auto & orig_cell = cells[seq_meta.tail];
@@ -589,7 +590,7 @@ bool lhm_memory_recurrent::find_slot(const lhm_ubatch & ubatch) {
                 empty_cell.src = orig_cell.src;
                 orig_cell.seq_id.erase(seq_id);
                 empty_cell.seq_id.insert(seq_id); // will be overwritten
-                GGML_ASSERT(!orig_cell.is_empty()); // has at least one remaining seq_id
+                LHM_ASSERT(!orig_cell.is_empty()); // has at least one remaining seq_id
             }
             seq_meta.tail = next_empty_cell;
             // find next empty cell
@@ -674,7 +675,7 @@ bool lhm_memory_recurrent::find_slot(const lhm_ubatch & ubatch) {
 
         for (int i = min; i <= max; ++i) {
             if (cells[i].src < 0) {
-                GGML_ASSERT(rs_z >= 0);
+                LHM_ASSERT(rs_z >= 0);
                 cells[i].src0 = rs_z;
             } else {
                 // Stage the source ids for all used cells to allow correct seq_* behavior
@@ -751,12 +752,12 @@ void lhm_memory_recurrent::state_write(lhm_io_write_i & io, lhm_seq_id seq_id, l
 
             if (n_rs_seq != 0) {
                 if (seq_id != -1) {
-                    GGML_ASSERT(seq_id >= 0 && (size_t) seq_id < rs_idx.size());
+                    LHM_ASSERT(seq_id >= 0 && (size_t) seq_id < rs_idx.size());
                     rs_idx_cur = rs_idx[seq_id];
                 } else {
                     bool has_rs_idx = false;
                     for (const lhm_seq_id cell_seq_id : cell.seq_id) {
-                        GGML_ASSERT(cell_seq_id >= 0 && (size_t) cell_seq_id < rs_idx.size());
+                        LHM_ASSERT(cell_seq_id >= 0 && (size_t) cell_seq_id < rs_idx.size());
 
                         const uint32_t seq_rs_idx = rs_idx[cell_seq_id];
                         if (!has_rs_idx) {
@@ -799,13 +800,13 @@ void lhm_memory_recurrent::state_write(lhm_io_write_i & io, lhm_seq_id seq_id, l
     for (const auto & range : cell_ranges) {
         cell_count_check += range.second - range.first;
     }
-    GGML_ASSERT(cell_count == cell_count_check);
+    LHM_ASSERT(cell_count == cell_count_check);
 
     cell_count_check = 0;
     for (const auto & range : cell_ranges_data) {
         cell_count_check += range.second - range.first;
     }
-    GGML_ASSERT(cell_count == cell_count_check);
+    LHM_ASSERT(cell_count == cell_count_check);
 
     io.write(&cell_count, sizeof(cell_count));
 
@@ -982,11 +983,11 @@ bool lhm_memory_recurrent::state_read_meta(lhm_io_read_i & io, uint32_t cell_cou
 
         // DEBUG CHECK: kv.head should be our first cell, kv.head + cell_count - 1 should be our last cell (verify seq_id and pos values)
         // Assume that this is one contiguous block of cells
-        GGML_ASSERT(head + cell_count <= size);
-        GGML_ASSERT(cells[head].pos == ubatch.pos[0]);
-        GGML_ASSERT(cells[head + cell_count - 1].pos == ubatch.pos[cell_count - 1]);
-        GGML_ASSERT(cells[head].has_seq_id(dest_seq_id));
-        GGML_ASSERT(cells[head + cell_count - 1].has_seq_id(dest_seq_id));
+        LHM_ASSERT(head + cell_count <= size);
+        LHM_ASSERT(cells[head].pos == ubatch.pos[0]);
+        LHM_ASSERT(cells[head + cell_count - 1].pos == ubatch.pos[cell_count - 1]);
+        LHM_ASSERT(cells[head].has_seq_id(dest_seq_id));
+        LHM_ASSERT(cells[head + cell_count - 1].has_seq_id(dest_seq_id));
     } else {
         // whole KV cache restore
 

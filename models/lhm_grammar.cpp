@@ -523,7 +523,7 @@ const char * lhm_grammar_parser::parse_sequence(
             rule.push_back({LHM_GRETYPE_RULE_REF, last_rec_rule_id});
         }
         n_prev_rules *= total_rules;
-        GGML_ASSERT(n_prev_rules >= 1);
+        LHM_ASSERT(n_prev_rules >= 1);
     };
 
     while (*pos) {
@@ -761,7 +761,7 @@ static std::pair<bool, const lhm_grammar_element *> lhm_grammar_match_char(
     bool found            = false;
     bool is_positive_char = pos->type == LHM_GRETYPE_CHAR || pos->type == LHM_GRETYPE_CHAR_ANY;
 
-    GGML_ASSERT(is_positive_char || pos->type == LHM_GRETYPE_CHAR_NOT); // NOLINT
+    LHM_ASSERT(is_positive_char || pos->type == LHM_GRETYPE_CHAR_NOT); // NOLINT
 
     do {
         if (pos[1].type == LHM_GRETYPE_CHAR_RNG_UPPER) {
@@ -789,7 +789,7 @@ static bool lhm_grammar_match_partial_char(
         const lhm_grammar_element * pos,
         const lhm_partial_utf8      partial_utf8) {
     bool is_positive_char = pos->type == LHM_GRETYPE_CHAR || pos->type == LHM_GRETYPE_CHAR_ANY;
-    GGML_ASSERT(is_positive_char || pos->type == LHM_GRETYPE_CHAR_NOT);
+    LHM_ASSERT(is_positive_char || pos->type == LHM_GRETYPE_CHAR_NOT);
 
     uint32_t partial_value = partial_utf8.value;
     int      n_remain      = partial_utf8.n_remain;
@@ -838,7 +838,7 @@ static bool lhm_grammar_match_partial_char(
 static bool lhm_grammar_match_token(
     const lhm_grammar_element * pos,
     const lhm_token             token) {
-    GGML_ASSERT(pos->type == LHM_GRETYPE_TOKEN || pos->type == LHM_GRETYPE_TOKEN_NOT);
+    LHM_ASSERT(pos->type == LHM_GRETYPE_TOKEN || pos->type == LHM_GRETYPE_TOKEN_NOT);
     if (pos->type == LHM_GRETYPE_TOKEN) {
         return pos->value == static_cast<uint32_t>(token);
     }
@@ -937,7 +937,7 @@ static lhm_grammar_candidates lhm_grammar_reject_candidates(
         const lhm_grammar_rules      & rules,
         const lhm_grammar_stacks     & stacks,
         const lhm_grammar_candidates & candidates) {
-    GGML_ASSERT(!stacks.empty()); // REVIEW
+    LHM_ASSERT(!stacks.empty()); // REVIEW
 
     if (candidates.empty()) {
         return {};
@@ -1271,11 +1271,11 @@ struct lhm_grammar * lhm_grammar_init_impl(
     std::vector<lhm_token>    vec_trigger_tokens;
     std::vector<lhm_grammar_trigger_pattern> vec_trigger_patterns;
     for (size_t i = 0; i < num_trigger_tokens; i++) {
-        GGML_ASSERT(trigger_tokens != nullptr);
+        LHM_ASSERT(trigger_tokens != nullptr);
         vec_trigger_tokens.push_back(trigger_tokens[i]);
     }
     for (size_t i = 0; i < num_trigger_patterns; i++) {
-        GGML_ASSERT(trigger_patterns != nullptr);
+        LHM_ASSERT(trigger_patterns != nullptr);
         auto & trigger = vec_trigger_patterns.emplace_back();
         trigger.pattern = trigger_patterns[i];
         trigger.regex = std::regex(trigger.pattern);
@@ -1337,7 +1337,7 @@ struct lhm_grammar * lhm_grammar_clone_impl(const struct lhm_grammar & grammar) 
 }
 
 void lhm_grammar_apply_impl(const struct lhm_grammar & grammar, lhm_token_data_array * cur_p) {
-    GGML_ASSERT(grammar.vocab != nullptr);
+    LHM_ASSERT(grammar.vocab != nullptr);
 
     if (grammar.awaiting_trigger) {
         return;
@@ -1380,7 +1380,7 @@ void lhm_grammar_apply_impl(const struct lhm_grammar & grammar, lhm_token_data_a
 }
 
 void lhm_grammar_accept_impl(struct lhm_grammar & grammar, lhm_token token) {
-    GGML_ASSERT(grammar.vocab != nullptr);
+    LHM_ASSERT(grammar.vocab != nullptr);
 
     const auto & piece = grammar.vocab->token_to_piece(token);
 

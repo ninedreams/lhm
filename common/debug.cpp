@@ -77,7 +77,7 @@ static float common_ggml_get_float_value(const uint8_t * data,
 #define INDENT "    "
 
 static void common_debug_print_tensor(uint8_t * data, ggml_type type, const int64_t * ne, const size_t * nb, int64_t n, bool abort_on_nan) {
-    GGML_ASSERT(n > 0);
+    LHM_ASSERT(n > 0);
     float sum = 0;
     for (int64_t i3 = 0; i3 < ne[3]; i3++) {
         for (int64_t i2 = 0; i2 < ne[2]; i2++) {

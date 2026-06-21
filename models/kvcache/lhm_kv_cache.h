@@ -43,8 +43,8 @@ public:
         std::vector<idx_vec_t>    idxs; // [ns]
 
         uint32_t head() const {
-            GGML_ASSERT(idxs.size() == 1);
-            GGML_ASSERT(!idxs[0].empty());
+            LHM_ASSERT(idxs.size() == 1);
+            LHM_ASSERT(!idxs[0].empty());
 
             return idxs[0][0];
         }
@@ -55,8 +55,8 @@ public:
         }
 
         size_t size() const {
-            GGML_ASSERT(idxs.size() == strm.size());
-            GGML_ASSERT(!idxs.empty());
+            LHM_ASSERT(idxs.size() == strm.size());
+            LHM_ASSERT(!idxs.empty());
 
             return idxs[0].size();
         }

@@ -6,6 +6,7 @@
 #include "server_queue.h"
 #include "server_schema.h"
 
+#include "lhm_assert.h"
 #include "common.h"
 #include "fit.h"
 #include "lhm.h"
@@ -129,7 +130,7 @@ struct server_slot {
             return false;
         }
 
-        GGML_ASSERT(prompt.data.size() == 0);
+        LHM_ASSERT(prompt.data.size() == 0);
 
         const size_t cur_size_tgt =           lhm_state_seq_get_size_ext(ctx_tgt, id, LHM_STATE_SEQ_FLAGS_NONE);
         const size_t cur_size_dft = ctx_dft ? lhm_state_seq_get_size_ext(ctx_dft, id, LHM_STATE_SEQ_FLAGS_NONE) : 0;
@@ -163,7 +164,7 @@ struct server_slot {
 
     void prompt_clear(bool allow_processing) {
         if (!allow_processing) {
-            GGML_ASSERT(!is_processing());
+            LHM_ASSERT(!is_processing());
         }
 
         SLT_INF(*this, "clearing prompt with %zu tokens\n", prompt.tokens.size());
@@ -270,12 +271,12 @@ struct server_slot {
     }
 
     bool need_embd() const {
-        GGML_ASSERT(task);
+        LHM_ASSERT(task);
         return task->need_embd() || (spec && common_speculative_need_embd(spec));
     }
 
     bool need_embd_nextn() const {
-        GGML_ASSERT(task);
+        LHM_ASSERT(task);
         return spec && common_speculative_need_embd_nextn(spec);
     }
 
@@ -283,7 +284,7 @@ struct server_slot {
     // also we cannot split if the pooling would require any past tokens
     // (MTP supports splitting — uses task->need_embd() not need_embd())
     bool can_split() const {
-        GGML_ASSERT(task);
+        LHM_ASSERT(task);
 
         return
             !task->need_embd() ||
@@ -291,13 +292,13 @@ struct server_slot {
     }
 
     bool can_batch_with(server_slot & other_slot) const {
-        GGML_ASSERT(task);
+        LHM_ASSERT(task);
 
         return task->type == other_slot.task->type && are_lora_equal(lora, other_slot.lora);
     }
 
     bool has_budget(const common_params & global_params) {
-        GGML_ASSERT(task);
+        LHM_ASSERT(task);
 
         if (task->params.n_predict == -1 && global_params.n_predict == -1) {
             return true; // limitless
@@ -332,7 +333,7 @@ struct server_slot {
     }
 
     int get_n_draft_max() const {
-        GGML_ASSERT(task);
+        LHM_ASSERT(task);
 
         if (!can_speculate()) {
             return 0;
@@ -365,7 +366,7 @@ struct server_slot {
             SLT_DBG(*this, "generate_draft: id=%d, #tokens=%zu, #draft=%zu, pos_next=%d\n",
                     sampled, prompt.tokens.size(), spec_draft.size(), prompt.tokens.pos_next());
 
-            GGML_ASSERT(spec_i_batch.empty());
+            LHM_ASSERT(spec_i_batch.empty());
 
             spec_i_batch.push_back(batch.n_tokens);
             for (size_t i = 0; i < spec_draft.size(); i++) {
@@ -386,7 +387,7 @@ struct server_slot {
 
     void release() {
         if (is_processing()) {
-            GGML_ASSERT(task);
+            LHM_ASSERT(task);
 
             SLT_INF(*this, "stop processing: n_tokens = %d, truncated = %d\n", prompt.n_tokens(), truncated);
 
@@ -430,7 +431,7 @@ struct server_slot {
     }
 
     size_t find_stopping_strings(const std::string & text, const size_t last_token_size, bool is_full_stop) {
-        GGML_ASSERT(task);
+        LHM_ASSERT(task);
 
         size_t stop_pos = std::string::npos;
 
@@ -574,7 +575,7 @@ struct server_slot {
     }
 
     void copy_state_to(server_slot & other) const {
-        GGML_ASSERT(state == SLOT_STATE_DONE_PROMPT);
+        LHM_ASSERT(state == SLOT_STATE_DONE_PROMPT);
 
         common_context_seq_rm(ctx_tgt, other.id,     -1, -1);
         common_context_seq_cp(ctx_tgt, id, other.id, -1, -1);
@@ -600,7 +601,7 @@ struct server_slot {
     // returns 0 on success
     // caller need to update prompt.tokens after a successful call to keep track of the processing progress
     int process_mtmd_chunk(size_t idx, size_t & n_tokens_out) {
-        GGML_ASSERT(mctx);
+        LHM_ASSERT(mctx);
         const auto & input_tokens = task->tokens;
         const auto & chunk = input_tokens.find_chunk(idx);
         int32_t res = 0;
@@ -656,7 +657,7 @@ struct server_slot {
         // we need to create & encode a new batch
         mbatch.reset(mtmd_batch_init(mctx));
         res = mtmd_batch_add_chunk(mbatch.get(), chunk.get());
-        GGML_ASSERT(res == 0); // we should never have an empty batch
+        LHM_ASSERT(res == 0); // we should never have an empty batch
 
         // try batching as much as possible
         int n_added = 1;
@@ -853,7 +854,7 @@ private:
     }
 
     void handle_sleeping_state(bool new_state) {
-        GGML_ASSERT(sleeping != new_state);
+        LHM_ASSERT(sleeping != new_state);
         if (new_state) {
             SRV_INF("%s", "server is entering sleeping state\n");
             destroy();
@@ -900,7 +901,7 @@ private:
                     total += size;
                 }
                 SRV_INF("[mtmd] estimated worst-case memory usage of mmproj is %.2f MiB\n", total / (1024.0 * 1024.0));
-                GGML_ASSERT(!params_base.fit_params_target.empty());
+                LHM_ASSERT(!params_base.fit_params_target.empty());
                 for (auto & [dev, size] : mmproj_mem) {
                     for (size_t i = 0; i < ggml_backend_dev_count(); i++) {
                         if (ggml_backend_dev_get(i) == dev) {
@@ -961,7 +962,7 @@ private:
                         params_dft.model.path.c_str(), &mparams_dft, &cparams_dft,
                         devs, hp_ngl, hp_nct, hp_nex, GGML_LOG_LEVEL_ERROR);
 
-                    GGML_ASSERT(!params_base.fit_params_target.empty());
+                    LHM_ASSERT(!params_base.fit_params_target.empty());
                     size_t total = 0;
 
                     std::vector<ggml_backend_dev_t> tgt_devices = params.devices;
@@ -1267,10 +1268,10 @@ private:
 
     // unlike load_model(), this is only called once during initialization
     bool init() {
-        GGML_ASSERT(ctx_tgt   != nullptr);
-        GGML_ASSERT(model_tgt != nullptr);
+        LHM_ASSERT(ctx_tgt   != nullptr);
+        LHM_ASSERT(model_tgt != nullptr);
 
-        GGML_ASSERT(!sleeping);
+        LHM_ASSERT(!sleeping);
 
         // wiring up server queues
         queue_tasks.on_new_task([this](server_task && task) {
@@ -1325,7 +1326,7 @@ private:
             try {
                 chat_templates = common_chat_templates_init(model_tgt, params_base.chat_template);
 
-                LOG_INF("%s: chat template, example_format: '%s'\n", __func__,
+                LOG_INFO("%s: chat template, example_format: '%s'\n", __func__,
                     common_chat_format_example(chat_templates.get(), params_base.use_jinja, params_base.default_template_kwargs).c_str());
 
             } catch (const std::exception & e) {
@@ -1852,7 +1853,7 @@ private:
         SRV_ERR("task id = %d, error: %s\n", id_task, error.c_str());
 
         if (type == ERROR_TYPE_EXCEED_CONTEXT_SIZE) {
-            GGML_ASSERT(n_ctx > 0 && n_prompt_tokens > 0);
+            LHM_ASSERT(n_ctx > 0 && n_prompt_tokens > 0);
         }
 
         auto res = std::make_unique<server_task_result_error>();
@@ -2093,9 +2094,9 @@ private:
 
     // launch multiple slots for parent + child tasks
     bool launch_slots_with_parent_task(server_slot & parent_slot, std::vector<server_slot *> & child_slots, server_task && parent_task) {
-        GGML_ASSERT(!parent_slot.is_processing());
-        GGML_ASSERT(parent_task.is_parent());
-        GGML_ASSERT(child_slots.size() == parent_task.child_tasks.size());
+        LHM_ASSERT(!parent_slot.is_processing());
+        LHM_ASSERT(parent_task.is_parent());
+        LHM_ASSERT(child_slots.size() == parent_task.child_tasks.size());
 
         int id_parent = parent_task.id;
 
@@ -2115,7 +2116,7 @@ private:
 
         // launch all child tasks first
         size_t idx = 0;
-        GGML_ASSERT(child_slots.size() == parent_task.child_tasks.size());
+        LHM_ASSERT(child_slots.size() == parent_task.child_tasks.size());
         for (auto * slot : child_slots) {
             int id_child = parent_task.child_tasks[idx].id;
             if (!launch_slot_with_task(*slot, std::move(parent_task.child_tasks[idx]))) {
@@ -2566,7 +2567,7 @@ private:
                 // add generated tokens to cache
                 // ref: https://github.com/ggml-org/llama.cpp/pull/16818#discussion_r2473269481
                 {
-                    GGML_ASSERT(!slot.prompt.tokens.has_mtmd);
+                    LHM_ASSERT(!slot.prompt.tokens.has_mtmd);
 
                     lhm_tokens new_tokens = slot.prompt.tokens.get_tokens(); // copy
                     for (size_t i = n_keep + n_discard; i < new_tokens.size(); i++) {
@@ -2616,15 +2617,15 @@ private:
                 const int n_draft_max = slot.get_n_draft_max();
 
                 if (n_draft_max > 0) {
-                    GGML_ASSERT(slot.can_speculate());
+                    LHM_ASSERT(slot.can_speculate());
 
                     if (!slot.spec_draft.empty()) {
                         // we have a previous (partial) draft to reuse
                         if (use_ckpt_tgt) {
-                            GGML_ASSERT(!slot.spec_ckpt.empty());
+                            LHM_ASSERT(!slot.spec_ckpt.empty());
                         }
                     } else {
-                        GGML_ASSERT(slot.spec_i_batch.empty());
+                        LHM_ASSERT(slot.spec_i_batch.empty());
 
                         slot.spec_ckpt.update_pos(
                                 slot.prompt.n_tokens(),
@@ -2843,7 +2844,7 @@ private:
 
                                 // reuse chunks from the cached prompt by shifting their KV cache in the new position
                                 if (can_cache_reuse && n_cache_reuse > 0) {
-                                    GGML_ASSERT(!slot.prompt.tokens.has_mtmd);
+                                    LHM_ASSERT(!slot.prompt.tokens.has_mtmd);
 
                                     size_t head_c = n_past; // cache
                                     size_t head_p = n_past; // current prompt
@@ -2965,7 +2966,7 @@ private:
                                         slot.prompt.checkpoints.rend(),
                                         [&, func_name = __func__](const auto & cur) {
                                             // guarantee that a checkpoint will result in at least one token being processed [TAG_PROMPT_LOGITS]
-                                            LOG_INF("slot %12.*s: id %2d | task %d | Checking checkpoint with [%d, %d] against %d...\n", 12,
+                                            LOG_INFO("slot %12.*s: id %2d | task %d | Checking checkpoint with [%d, %d] against %d...\n", 12,
                                                 func_name, (slot).id, ((slot).task ? (slot).task->id : -1), cur.pos_min, cur.pos_max, pos_min_thold);
                                             // workaround for [TAG_CHECKPOINTS_FIX_POS_MIN]
                                             if (cur.pos_max > pos_next) {
@@ -3063,7 +3064,7 @@ private:
                     if (lora_all_alora(slot.lora) && slot.alora_invocation_start - 1 > slot.prompt.n_tokens()) {
                         SLT_DBG(slot, "processing pre-alora tokens without the adapter (n_tokens = %d, alora_invocation_start = %d)\n", slot.prompt.n_tokens(), slot.alora_invocation_start);
                         const auto & enabled_loras = lora_get_enabled_ids(slot.lora);
-                        GGML_ASSERT(enabled_loras.size() == 1);
+                        LHM_ASSERT(enabled_loras.size() == 1);
                         alora_scale = slot.lora[enabled_loras[0]].scale;
                         slot.lora[enabled_loras[0]].scale = 0.0f;
                         alora_disabled_id = enabled_loras[0];
@@ -3186,7 +3187,7 @@ private:
                     if (slot.prompt.n_tokens() == slot.task->n_tokens()) {
                         slot.state = SLOT_STATE_DONE_PROMPT;
 
-                        GGML_ASSERT(batch.n_tokens > 0);
+                        LHM_ASSERT(batch.n_tokens > 0);
 
                         // extract the logits only for the last token
                         batch.logits[batch.n_tokens - 1] = true;
@@ -3389,7 +3390,7 @@ private:
                     for (auto & child : children) {
                         SLT_INF(slot, " - copying state to child %d\n", child->id);
 
-                        GGML_ASSERT(child->state == SLOT_STATE_WAIT_OTHER);
+                        LHM_ASSERT(child->state == SLOT_STATE_WAIT_OTHER);
 
                         slot.copy_state_to(*child);
                         child->state = SLOT_STATE_DONE_PROMPT;
@@ -3425,7 +3426,7 @@ private:
                         continue; // continue loop of slots
                     }
 
-                    GGML_ASSERT(slot.task->need_sampling());
+                    LHM_ASSERT(slot.task->need_sampling());
 
                     // prompt evaluated for next-token prediction
                     slot.state = SLOT_STATE_GENERATING;
@@ -3495,18 +3496,18 @@ private:
                 // save the original draft size
                 const size_t n_draft = slot.spec_draft.size();
 
-                GGML_ASSERT(n_draft > 0);
+                LHM_ASSERT(n_draft > 0);
 
                 // verify and try to accept the draft
                 {
                     // save the sampler sampler state in case we need to restore it
                     common_sampler_ptr smpl_save(common_sampler_clone(slot.smpl.get()));
 
-                    GGML_ASSERT(slot.spec_i_batch.size() == n_draft + 1);
+                    LHM_ASSERT(slot.spec_i_batch.size() == n_draft + 1);
                     auto accepted = common_sampler_sample_and_accept_n(slot.smpl.get(), slot.ctx_tgt, slot.spec_i_batch, slot.spec_draft);
                     slot.spec_i_batch.clear();
 
-                    GGML_ASSERT(accepted.size() >= 1);
+                    LHM_ASSERT(accepted.size() >= 1);
 
                     const uint32_t n_rollback = slot.spec_draft.size() + 1 - accepted.size();
 
@@ -3742,7 +3743,7 @@ static int32_t prompt_get_n_before_user(
     }
 
     if (byte_pos >= 0) {
-        GGML_ASSERT((size_t) byte_pos <= prompt.size());
+        LHM_ASSERT((size_t) byte_pos <= prompt.size());
 
         const std::string prefix = prompt.substr(0, (size_t) byte_pos);
 
@@ -3752,7 +3753,7 @@ static int32_t prompt_get_n_before_user(
             n_prefix_media++;
         }
 
-        GGML_ASSERT(n_prefix_media <= files.size());
+        LHM_ASSERT(n_prefix_media <= files.size());
 
         if (mctx != nullptr && n_prefix_media > 0) {
             // TODO: this makes a copy - avoid it
@@ -3781,7 +3782,7 @@ std::unique_ptr<server_res_generator> server_routes::handle_completions_impl(
             const json & data,
             const std::vector<raw_buffer> & files,
             task_response_type res_type) {
-    GGML_ASSERT(type == SERVER_TASK_TYPE_COMPLETION || type == SERVER_TASK_TYPE_INFILL);
+    LHM_ASSERT(type == SERVER_TASK_TYPE_COMPLETION || type == SERVER_TASK_TYPE_INFILL);
 
     auto res = create_response();
     auto completion_id = gen_chatcmplid();
@@ -3879,10 +3880,10 @@ std::unique_ptr<server_res_generator> server_routes::handle_completions_impl(
         } else {
             json arr = json::array();
             for (auto & res : all_results.results) {
-                GGML_ASSERT(dynamic_cast<server_task_result_cmpl_final*>(res.get()) != nullptr);
+                LHM_ASSERT(dynamic_cast<server_task_result_cmpl_final*>(res.get()) != nullptr);
                 arr.push_back(res->to_json());
             }
-            GGML_ASSERT(!arr.empty() && "empty results");
+            LHM_ASSERT(!arr.empty() && "empty results");
             if (arr.size() == 1) {
                 // if single request, return single object instead of array
                 res->ok(arr[0]);
@@ -3904,7 +3905,7 @@ std::unique_ptr<server_res_generator> server_routes::handle_completions_impl(
         // ref: https://github.com/ggml-org/llama.cpp/pull/16486#discussion_r2419657309
         auto first_result = rd.next(req.should_stop);
         if (first_result == nullptr) {
-            GGML_ASSERT(req.should_stop());
+            LHM_ASSERT(req.should_stop());
             return res; // connection is closed
         }
 
@@ -3913,7 +3914,7 @@ std::unique_ptr<server_res_generator> server_routes::handle_completions_impl(
             return res;
         }
 
-        GGML_ASSERT(
+        LHM_ASSERT(
             dynamic_cast<server_task_result_cmpl_partial*>(first_result.get()) != nullptr ||
             dynamic_cast<server_task_result_cmpl_final*>  (first_result.get()) != nullptr
         );
@@ -3998,7 +3999,7 @@ std::unique_ptr<server_res_generator> server_routes::handle_completions_impl(
 
                 if (result == nullptr) {
                     SRV_DBG("%s", "stopping streaming due to should_stop condition\n");
-                    GGML_ASSERT(req.should_stop());
+                    LHM_ASSERT(req.should_stop());
                     return false; // should_stop condition met
                 }
 
@@ -4009,7 +4010,7 @@ std::unique_ptr<server_res_generator> server_routes::handle_completions_impl(
                     SRV_DBG("%s", "error received during streaming, terminating stream\n");
                     return false; // terminate on error
                 } else {
-                    GGML_ASSERT(
+                    LHM_ASSERT(
                         dynamic_cast<server_task_result_cmpl_partial*>(result.get()) != nullptr
                         || dynamic_cast<server_task_result_cmpl_final*>(result.get()) != nullptr
                     );
@@ -4086,7 +4087,7 @@ void server_routes::init_routes() {
         auto result = res->rd.next(req.should_stop);
         if (!result) {
             // connection was closed
-            GGML_ASSERT(req.should_stop());
+            LHM_ASSERT(req.should_stop());
             return res;
         }
 
@@ -4097,7 +4098,7 @@ void server_routes::init_routes() {
 
         // TODO: get rid of this dynamic_cast
         auto res_task = dynamic_cast<server_task_result_metrics*>(result.get());
-        GGML_ASSERT(res_task != nullptr);
+        LHM_ASSERT(res_task != nullptr);
 
         // metrics definition: https://prometheus.io/docs/practices/naming/#metric-names
         json all_metrics_def = json {
@@ -4191,7 +4192,7 @@ void server_routes::init_routes() {
         auto result = res->rd.next(req.should_stop);
         if (!result) {
             // connection was closed
-            GGML_ASSERT(req.should_stop());
+            LHM_ASSERT(req.should_stop());
             return res;
         }
 
@@ -4202,7 +4203,7 @@ void server_routes::init_routes() {
 
         // TODO: get rid of this dynamic_cast
         auto * res_task = dynamic_cast<server_task_result_metrics*>(result.get());
-        GGML_ASSERT(res_task != nullptr);
+        LHM_ASSERT(res_task != nullptr);
 
         // optionally return "fail_on_no_slot" error
         if (!req.get_param("fail_on_no_slot").empty()) {
@@ -4464,7 +4465,7 @@ void server_routes::init_routes() {
 
         auto result = rd.next(req.should_stop);
         if (!result) {
-            GGML_ASSERT(req.should_stop());
+            LHM_ASSERT(req.should_stop());
             return res;
         }
         if (result->is_error()) {
@@ -4726,7 +4727,7 @@ void server_routes::init_routes() {
             return res;
         } else {
             for (auto & res : all_results.results) {
-                GGML_ASSERT(dynamic_cast<server_task_result_rerank*>(res.get()) != nullptr);
+                LHM_ASSERT(dynamic_cast<server_task_result_rerank*>(res.get()) != nullptr);
                 responses.push_back(res->to_json());
             }
         }
@@ -4758,7 +4759,7 @@ void server_routes::init_routes() {
         auto result = rd.next(req.should_stop);
         if (!result) {
             // connection was closed
-            GGML_ASSERT(req.should_stop());
+            LHM_ASSERT(req.should_stop());
             return res;
         }
 
@@ -4767,7 +4768,7 @@ void server_routes::init_routes() {
             return res;
         }
 
-        GGML_ASSERT(dynamic_cast<server_task_result_get_lora*>(result.get()) != nullptr);
+        LHM_ASSERT(dynamic_cast<server_task_result_get_lora*>(result.get()) != nullptr);
         res->ok(result->to_json());
         return res;
     };
@@ -4792,7 +4793,7 @@ void server_routes::init_routes() {
         auto result = rd.next(req.should_stop);
         if (!result) {
             // connection was closed
-            GGML_ASSERT(req.should_stop());
+            LHM_ASSERT(req.should_stop());
             return res;
         }
 
@@ -4801,7 +4802,7 @@ void server_routes::init_routes() {
             return res;
         }
 
-        GGML_ASSERT(dynamic_cast<server_task_result_apply_lora*>(result.get()) != nullptr);
+        LHM_ASSERT(dynamic_cast<server_task_result_apply_lora*>(result.get()) != nullptr);
         res->ok(result->to_json());
         return res;
     };
@@ -4850,7 +4851,7 @@ std::unique_ptr<server_res_generator> server_routes::handle_slots_save(const ser
     auto result = rd.next(req.should_stop);
     if (!result) {
         // connection was closed
-        GGML_ASSERT(req.should_stop());
+        LHM_ASSERT(req.should_stop());
         return res;
     }
 
@@ -4886,7 +4887,7 @@ std::unique_ptr<server_res_generator> server_routes::handle_slots_restore(const 
     auto result = rd.next(req.should_stop);
     if (!result) {
         // connection was closed
-        GGML_ASSERT(req.should_stop());
+        LHM_ASSERT(req.should_stop());
         return res;
     }
 
@@ -4895,7 +4896,7 @@ std::unique_ptr<server_res_generator> server_routes::handle_slots_restore(const 
         return res;
     }
 
-    GGML_ASSERT(dynamic_cast<server_task_result_slot_save_load*>(result.get()) != nullptr);
+    LHM_ASSERT(dynamic_cast<server_task_result_slot_save_load*>(result.get()) != nullptr);
     res->ok(result->to_json());
     return res;
 }
@@ -4913,7 +4914,7 @@ std::unique_ptr<server_res_generator> server_routes::handle_slots_erase(const se
     auto result = rd.next(req.should_stop);
     if (!result) {
         // connection was closed
-        GGML_ASSERT(req.should_stop());
+        LHM_ASSERT(req.should_stop());
         return res;
     }
 
@@ -4922,7 +4923,7 @@ std::unique_ptr<server_res_generator> server_routes::handle_slots_erase(const se
         return res;
     }
 
-    GGML_ASSERT(dynamic_cast<server_task_result_slot_erase*>(result.get()) != nullptr);
+    LHM_ASSERT(dynamic_cast<server_task_result_slot_erase*>(result.get()) != nullptr);
     res->ok(result->to_json());
     return res;
 }
@@ -5012,7 +5013,7 @@ std::unique_ptr<server_res_generator> server_routes::handle_embeddings_impl(cons
         return res;
     } else {
         for (auto & res : all_results.results) {
-            GGML_ASSERT(dynamic_cast<server_task_result_embd*>(res.get()) != nullptr);
+            LHM_ASSERT(dynamic_cast<server_task_result_embd*>(res.get()) != nullptr);
             responses.push_back(res->to_json());
         }
     }

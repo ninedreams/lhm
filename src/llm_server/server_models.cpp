@@ -1,7 +1,7 @@
 #include "server_common.h"
 #include "server_models.h"
 
-#include "preset.h"
+#include "config.h"
 #include "download.h"
 
 #include <cpp-httplib/httplib.h> // TODO: remove this once we use HTTP client from download.h
@@ -56,7 +56,7 @@ struct server_subproc {
     std::atomic<bool> stopped{false}; // set to cancel a download or signal child process exit
 
     subprocess_s & get() {
-        GGML_ASSERT(sproc.has_value() && "subprocess not initialized");
+        LHM_ASSERT(sproc.has_value() && "subprocess not initialized");
         return sproc.value();
     }
 
@@ -122,8 +122,426 @@ static std::filesystem::path get_server_exec_path() {
     return std::filesystem::path(std::string(path, count));
 #endif
 }
+// ============================================================================
+// model_preset method implementations
+// ============================================================================
 
-static void unset_reserved_args(common_preset & preset, bool unset_model_args) {
+// Map from env-style key to CLI flag name
+static const std::map<std::string, std::string> & get_key_to_flag_map() {
+    static const std::map<std::string, std::string> m = {
+        {"LHM_ARG_MODEL",            "--model"},
+        {"LHM_ARG_MODEL_URL",        "--model-url"},
+        {"LHM_ARG_HF_REPO",          "--hf-repo"},
+        {"LHM_ARG_HF_REPO_FILE",     "--hf-file"},
+        {"LHM_ARG_MMPROJ",           "--mmproj"},
+        {"LHM_ARG_MMPROJ_URL",       "--mmproj-url"},
+        {"LHM_ARG_HOST",             "--host"},
+        {"LHM_ARG_PORT",             "--port"},
+        {"LHM_ARG_ALIAS",            "--alias"},
+        {"LHM_ARG_TAGS",             "--tags"},
+        {"LHM_ARG_NGPU",             "--ngl"},
+        {"LHM_ARG_CTX_SIZE",         "--ctx-size"},
+        {"LHM_ARG_BATCH_SIZE",       "--batch-size"},
+        {"LHM_ARG_UBATCH_SIZE",      "--ubatch-size"},
+        {"LHM_ARG_THREADS",          "--threads"},
+        {"LHM_ARG_TEMP",             "--temp"},
+        {"LHM_ARG_TOP_K",            "--top-k"},
+        {"LHM_ARG_TOP_P",            "--top-p"},
+        {"LHM_ARG_MIN_P",            "--min-p"},
+        {"LHM_ARG_REPEAT_PENALTY",   "--repeat-penalty"},
+        {"LHM_ARG_SEED",             "--seed"},
+        {"LHM_ARG_FLASH_ATTN",       "--flash-attn"},
+        {"LHM_ARG_CACHE_TYPE_K",     "--cache-type-k"},
+        {"LHM_ARG_CACHE_TYPE_V",     "--cache-type-v"},
+        {"LHM_ARG_CONT_BATCHING",    "--cont-batching"},
+        {"LHM_ARG_PARALLEL",         "--parallel"},
+        {"LHM_ARG_MOE_OFFLOAD",      "--moe-offload"},
+        {"LHM_ARG_NO_MMAP",          "--no-mmap"},
+        {"LHM_ARG_MLOCK",            "--mlock"},
+        {"LHM_ARG_API_KEY",          "--api-key"},
+        {"LHM_ARG_SSL_KEY_FILE",     "--ssl-key-file"},
+        {"LHM_ARG_SSL_CERT_FILE",    "--ssl-cert-file"},
+        {"LHM_ARG_MODELS_DIR",       "--models-dir"},
+        {"LHM_ARG_MODELS_MAX",       "--models-max"},
+        {"LHM_ARG_MODELS_PRESET",    "--models-preset"},
+        {"LHM_ARG_MODELS_AUTOLOAD",  "--models-autoload"},
+        {"LHM_ARG_CHAT_TEMPLATE",    "--chat-template"},
+        {"LHM_ARG_JINJA",            "--jinja"},
+        {"LHM_ARG_NO_KV_OFFLOAD",    "--no-kv-offload"},
+        {"LHM_ARG_CACHE_PROMPT",     "--cache-prompt"},
+        {"LHM_ARG_REASONING_FORMAT", "--reasoning-format"},
+        {"LHM_ARG_REASONING",        "--reasoning"},
+        {"LHM_ARG_REASONING_BUDGET", "--reasoning-budget"},
+        {"LHM_ARG_SPEC_DRAFT_MODEL", "--spec-draft-model"},
+        {"LHM_ARG_SPEC_DRAFT_NGL",   "--spec-draft-ngl"},
+        {"LHM_ARG_SPEC_TYPE",        "--spec-type"},
+        {"LHM_ARG_LOGIT_BIAS",       "--logit-bias"},
+        {"LHM_ARG_GRAMMAR",          "--grammar"},
+        {"LHM_ARG_GRAMMAR_FILE",     "--grammar-file"},
+        {"LHM_ARG_JSON_SCHEMA",      "--json-schema"},
+        {"LHM_ARG_DRY_MULTIPLIER",   "--dry-multiplier"},
+        {"LHM_ARG_DRY_BASE",         "--dry-base"},
+        {"LHM_ARG_DRY_ALLOWED_LENGTH","--dry-allowed-length"},
+        {"LHM_ARG_DRY_PENALTY_LAST_N","--dry-penalty-last-n"},
+        {"LHM_ARG_DYNATEMP_RANGE",   "--dynatemp-range"},
+        {"LHM_ARG_DYNATEMP_EXP",     "--dynatemp-exp"},
+        {"LHM_ARG_MIROSTAT",         "--mirostat"},
+        {"LHM_ARG_MIROSTAT_LR",      "--mirostat-lr"},
+        {"LHM_ARG_MIROSTAT_ENT",     "--mirostat-ent"},
+        {"LHM_ARG_TYPICAL",          "--typical"},
+        {"LHM_ARG_PRESENCE_PENALTY", "--presence-penalty"},
+        {"LHM_ARG_FREQUENCY_PENALTY","--frequency-penalty"},
+        {"LHM_ARG_XTC_PROBABILITY",  "--xtc-probability"},
+        {"LHM_ARG_XTC_THRESHOLD",    "--xtc-threshold"},
+        {"LHM_ARG_SAMPLERS",         "--samplers"},
+        {"LHM_ARG_IGNORE_EOS",       "--ignore-eos"},
+        {"LHM_ARG_POOLING",          "--pooling"},
+        {"LHM_ARG_ROPE_SCALING",     "--rope-scaling"},
+        {"LHM_ARG_ROPE_SCALE",       "--rope-scale"},
+        {"LHM_ARG_ROPE_FREQ_BASE",   "--rope-freq-base"},
+        {"LHM_ARG_YARN_ORIG_CTX",    "--yarn-orig-ctx"},
+        {"LHM_ARG_DEFrag_THOLD",     "--defrag-thold"},
+        {"LHM_ARG_RPC",              "--rpc"},
+        {"LHM_ARG_DEVICE",           "--device"},
+        {"LHM_ARG_OVERRIDE_TENSOR",  "--override-tensor"},
+        {"LHM_ARG_NUMA",             "--numa"},
+        {"LHM_ARG_TIMEOUT",          "--timeout"},
+        {"LHM_ARG_THREADS_HTTP",     "--threads-http"},
+        {"LHM_ARG_METRICS",          "--metrics"},
+        {"LHM_ARG_SLOTS",            "--slots"},
+        {"LHM_ARG_SLOT_SAVE_PATH",   "--slot-save-path"},
+        {"LHM_ARG_CACHE_REUSE",      "--cache-reuse"},
+        {"LHM_ARG_MMPROJ_AUTO",      "--mmproj-auto"},
+        {"LHM_ARG_MMPROJ_OFFLOAD",   "--mmproj-offload"},
+        {"LHM_ARG_IMAGE",            "--image"},
+        {"LHM_ARG_SIMPLE_IO",        "--simple-io"},
+        {"LHM_ARG_SSE_PING_INTERVAL","--sse-ping-interval"},
+        {"LHM_ARG_SLOT_PROMPT_SIMILARITY","--slot-prompt-similarity"},
+        {"LHM_ARG_NO_CONTEXT_SHIFT", "--no-context-shift"},
+        {"LHM_ARG_PREFILL_ASSISTANT","--prefill-assistant"},
+        {"LHM_ARG_SKIP_CHAT_PARSING","--skip-chat-parsing"},
+        {"LHM_ARG_WEBUI",            "--webui"},
+        {"LHM_ARG_UI",               "--ui"},
+        {"LHM_ARG_SLEEP_IDLE_SECONDS","--sleep-idle-seconds"},
+        {"LHM_ARG_MEDIA_PATH",       "--media-path"},
+        {"LHM_ARG_CHAT_TEMPLATE_FILE","--chat-template-file"},
+        {"LHM_ARG_CHAT_TEMPLATE_KWARGS","--chat-template-kwargs"},
+        {"LHM_ARG_LOG_DISABLE",      "--log-disable"},
+        {"LHM_ARG_LOG_FILE",         "--log-file"},
+        {"LHM_ARG_VERBOSE",          "--verbose"},
+        {"LHM_ARG_OFFLINE",          "--offline"},
+    };
+    return m;
+}
+
+// Boolean flags that are set via --flag / --no-flag pattern
+static bool is_bool_flag(const std::string & key) {
+    static const std::set<std::string> bool_keys = {
+        "LHM_ARG_CONT_BATCHING",
+        "LHM_ARG_MOE_OFFLOAD",
+        "LHM_ARG_NO_MMAP",
+        "LHM_ARG_MLOCK",
+        "LHM_ARG_MODELS_AUTOLOAD",
+        "LHM_ARG_JINJA",
+        "LHM_ARG_NO_KV_OFFLOAD",
+        "LHM_ARG_CACHE_PROMPT",
+        "LHM_ARG_MMPROJ_AUTO",
+        "LHM_ARG_MMPROJ_OFFLOAD",
+        "LHM_ARG_IGNORE_EOS",
+        "LHM_ARG_METRICS",
+        "LHM_ARG_SLOTS",
+        "LHM_ARG_SIMPLE_IO",
+        "LHM_ARG_NO_CONTEXT_SHIFT",
+        "LHM_ARG_PREFILL_ASSISTANT",
+        "LHM_ARG_SKIP_CHAT_PARSING",
+        "LHM_ARG_WEBUI",
+        "LHM_ARG_UI",
+        "LHM_ARG_LOG_DISABLE",
+        "LHM_ARG_VERBOSE",
+        "LHM_ARG_OFFLINE",
+    };
+    return bool_keys.count(key) > 0;
+}
+
+std::vector<std::string> model_preset::to_args(const std::string & bin_path) const {
+    std::vector<std::string> result;
+    if (!bin_path.empty()) {
+        result.push_back(bin_path);
+    }
+    const auto & flag_map = get_key_to_flag_map();
+    for (const auto & [key, value] : options) {
+        auto it = flag_map.find(key);
+        if (it == flag_map.end()) {
+            // Unknown key, skip (or could use --key style)
+            continue;
+        }
+        const std::string & flag = it->second;
+        if (is_bool_flag(key)) {
+            bool is_true = (value == "1" || value == "true" || value == "on" || value == "yes" || value == "enabled");
+            if (is_true) {
+                result.push_back(flag);
+            } else {
+                // Use --no- variant
+                result.push_back("--no-" + flag.substr(2));
+            }
+        } else {
+            result.push_back(flag);
+            result.push_back(value);
+        }
+    }
+    return result;
+}
+
+void model_preset::apply_model_options(common_params & params, const std::set<std::string> & keys) const {
+    for (const auto & [key, value] : options) {
+        if (!keys.empty() && keys.find(key) == keys.end()) {
+            continue;
+        }
+        if (key == "LHM_ARG_MODEL") {
+            params.model.path = value;
+        } else if (key == "LHM_ARG_MODEL_URL") {
+            params.model.url = value;
+        } else if (key == "LHM_ARG_HF_REPO") {
+            params.model.hf_repo = value;
+        } else if (key == "LHM_ARG_HF_REPO_FILE") {
+            params.model.hf_file = value;
+        } else if (key == "LHM_ARG_MMPROJ") {
+            params.mmproj.path = value;
+        } else if (key == "LHM_ARG_MMPROJ_URL") {
+            params.mmproj.url = value;
+        }
+    }
+}
+
+// Convert model_preset options to a simple INI-like string for display
+static std::string preset_to_ini_string(const model_preset & preset) {
+    std::ostringstream ss;
+    ss << "[" << preset.name << "]\n";
+    for (const auto & [key, value] : preset.options) {
+        ss << key << " = " << value << "\n";
+    }
+    ss << "\n";
+    return ss.str();
+}
+
+// Helper: parse CLI args into a model_preset
+static model_preset load_preset_from_args(int argc, char ** argv) {
+    model_preset preset;
+    preset.name = "default";
+    const auto & flag_map = get_key_to_flag_map();
+    // Build reverse map: flag -> key
+    std::map<std::string, std::string> flag_to_key;
+    for (const auto & [key, flag] : flag_map) {
+        flag_to_key[flag] = key;
+        // Also support --no- variants for bool flags
+        if (is_bool_flag(key)) {
+            flag_to_key["--no-" + flag.substr(2)] = key;
+        }
+    }
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        // Normalize underscores to dashes in flag names
+        if (arg.compare(0, 2, "--") == 0) {
+            std::replace(arg.begin(), arg.end(), '_', '-');
+        }
+        auto it = flag_to_key.find(arg);
+        if (it != flag_to_key.end()) {
+            const std::string & key = it->second;
+            if (is_bool_flag(key)) {
+                // Check if it's a --no- variant
+                bool is_neg = arg.compare(0, 5, "--no-") == 0;
+                preset.set_option(key, is_neg ? "0" : "1");
+            } else {
+                // Value arg
+                if (i + 1 < argc) {
+                    preset.set_option(key, argv[++i]);
+                }
+            }
+        }
+        // Skip unknown args (they may be handled elsewhere)
+    }
+    return preset;
+}
+
+// Helper: load presets from HF cache
+static model_presets load_presets_from_cache() {
+    model_presets out;
+    auto cached_models = common_list_cached_models();
+    for (const auto & model : cached_models) {
+        model_preset preset;
+        preset.name = model.to_string();
+        preset.set_option("LHM_ARG_HF_REPO", model.to_string());
+        out[preset.name] = preset;
+    }
+    return out;
+}
+
+// Helper: load presets from a local models directory
+static model_presets load_presets_from_models_dir(const std::string & models_dir) {
+    model_presets out;
+    if (!std::filesystem::exists(models_dir) || !std::filesystem::is_directory(models_dir)) {
+        return out;
+    }
+
+    struct local_model {
+        std::string name;
+        std::string path;
+        std::string path_mmproj;
+    };
+
+    std::vector<local_model> models;
+    auto scan_subdir = [&models](const std::string & subdir_path, const std::string & name) {
+        auto files = fs_list(subdir_path, false);
+        common_file_info model_file;
+        common_file_info first_shard_file;
+        common_file_info mmproj_file;
+        for (const auto & file : files) {
+            if (string_ends_with(file.name, ".gguf")) {
+                if (file.name.find("mmproj") != std::string::npos) {
+                    mmproj_file = file;
+                } else if (file.name.find("-00001-of-") != std::string::npos) {
+                    first_shard_file = file;
+                } else {
+                    model_file = file;
+                }
+            }
+        }
+        local_model model{\ name, first_shard_file.path.empty() ? model_file.path : first_shard_file.path, mmproj_file.path };
+        if (!model.path.empty()) {
+            models.push_back(model);
+        }
+    };
+
+    auto files = fs_list(models_dir, true);
+    for (const auto & file : files) {
+        if (file.is_dir) {
+            scan_subdir(file.path, file.name);
+        } else if (string_ends_with(file.name, ".gguf")) {
+            std::string name = file.name;
+            string_replace_all(name, ".gguf", "");
+            models.push_back({name, file.path, ""});
+        }
+    }
+
+    for (const auto & model : models) {
+        model_preset preset;
+        preset.name = model.name;
+        preset.set_option("LHM_ARG_MODEL", model.path);
+        if (!model.path_mmproj.empty()) {
+            preset.set_option("LHM_ARG_MMPROJ", model.path_mmproj);
+        }
+        out[preset.name] = preset;
+    }
+    return out;
+}
+
+// Helper: parse INI file into presets
+static model_presets load_presets_from_ini(const std::string & path, model_preset & global) {
+    model_presets out;
+    if (!std::filesystem::exists(path)) {
+        return out;
+    }
+
+    std::ifstream file(path);
+    if (!file.good()) {
+        return out;
+    }
+
+    std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+    // Simple INI parser
+    std::string current_section;
+    std::map<std::string, std::string> current_options;
+
+    std::istringstream iss(contents);
+    std::string line;
+    while (std::getline(iss, line)) {
+        // Trim whitespace
+        auto trim = [](std::string & s) {
+            size_t start = s.find_first_not_of(" \t\r\n");
+            size_t end = s.find_last_not_of(" \t\r\n");
+            if (start == std::string::npos) { s.clear(); return; }
+            s = s.substr(start, end - start + 1);
+        };
+        trim(line);
+        if (line.empty() || line[0] == ';' || line[0] == '#') continue;
+
+        if (line[0] == '[') {
+            // Save previous section
+            if (!current_section.empty() || !current_options.empty()) {
+                model_preset preset;
+                preset.name = current_section.empty() ? "default" : current_section;
+                preset.options = current_options;
+                if (preset.name == "*") {
+                    global = preset;
+                } else {
+                    out[preset.name] = preset;
+                }
+            }
+            // Parse new section
+            auto end_bracket = line.find(']');
+            if (end_bracket != std::string::npos) {
+                current_section = line.substr(1, end_bracket - 1);
+                auto trim2 = [](std::string & s) {
+                    size_t start = s.find_first_not_of(" \t");
+                    size_t end = s.find_last_not_of(" \t");
+                    if (start == std::string::npos) { s.clear(); return; }
+                    s = s.substr(start, end - start + 1);
+                };
+                trim2(current_section);
+            }
+            current_options.clear();
+        } else {
+            auto eq_pos = line.find('=');
+            if (eq_pos != std::string::npos) {
+                std::string key = line.substr(0, eq_pos);
+                std::string value = line.substr(eq_pos + 1);
+                auto trim2 = [](std::string & s) {
+                    size_t start = s.find_first_not_of(" \t");
+                    size_t end = s.find_last_not_of(" \t");
+                    if (start == std::string::npos) { s.clear(); return; }
+                    s = s.substr(start, end - start + 1);
+                };
+                trim2(key);
+                trim2(value);
+                if (!key.empty()) {
+                    current_options[key] = value;
+                }
+            }
+        }
+    }
+    // Save last section
+    if (!current_section.empty() || !current_options.empty()) {
+        model_preset preset;
+        preset.name = current_section.empty() ? "default" : current_section;
+        preset.options = current_options;
+        if (preset.name == "*") {
+            global = preset;
+        } else {
+            out[preset.name] = preset;
+        }
+    }
+    return out;
+}
+
+// Helper: cascade (merge) global preset over a map of presets
+static model_presets cascade_presets(const model_preset & global, const model_presets & base) {
+    model_presets out;
+    for (const auto & [name, preset] : base) {
+        model_preset tmp = global;
+        tmp.name = name;
+        tmp.merge(preset);
+        out[name] = std::move(tmp);
+    }
+    return out;
+}
+
+// Helper: check if a string value is truthy
+static bool is_truthy_value(const std::string & val) {
+    return val == "1" || val == "true" || val == "on" || val == "yes" || val == "enabled";
+}
+
+static void unset_reserved_args(model_preset & preset, bool unset_model_args) {
     preset.unset_option("LHM_ARG_SSL_KEY_FILE");
     preset.unset_option("LHM_ARG_SSL_CERT_FILE");
     preset.unset_option("LHM_API_KEY");
@@ -182,13 +600,12 @@ static std::vector<std::string> get_environment() {
     return env;
 }
 
-void server_model_meta::update_args(common_preset_context & ctx_preset, std::string bin_path) {
+void server_model_meta::update_args(std::string bin_path) {
     // update params
     unset_reserved_args(preset, false);
-    preset.set_option(ctx_preset, "LHM_ARG_HOST",  CHILD_ADDR);
-    preset.set_option(ctx_preset, "LHM_ARG_PORT",  std::to_string(port));
-    preset.set_option(ctx_preset, "LHM_ARG_ALIAS", name);
-    // TODO: maybe validate preset before rendering ?
+    preset.set_option("LHM_ARG_HOST",  CHILD_ADDR);
+    preset.set_option("LHM_ARG_PORT",  std::to_string(port));
+    preset.set_option("LHM_ARG_ALIAS", name);
     // render args
     args = preset.to_args(bin_path);
 
@@ -203,7 +620,7 @@ void server_model_meta::update_args(common_preset_context & ctx_preset, std::str
 void server_model_meta::update_caps() {
     try {
         common_params params;
-        preset.apply_to_params(params, {
+        preset.apply_model_options(params, {
             "LHM_ARG_MODEL",
             "LHM_ARG_MODEL_URL",
             "LHM_ARG_MMPROJ",
@@ -212,7 +629,6 @@ void server_model_meta::update_caps() {
             "LHM_ARG_HF_REPO_FILE",
         });
         params.offline = true;
-        // params.skip_download = true; // TODO: ideally, we should validate the model here, but it takes too much time
         common_params_handle_models(params, LHM_EXAMPLE_SERVER);
         if (params.mmproj.path.empty()) {
             multimodal = { false, false };
@@ -233,10 +649,9 @@ server_models::server_models(
         const common_params & params,
         int argc,
         char ** argv)
-            : ctx_preset(LHM_EXAMPLE_SERVER),
-              base_params(params),
+            : base_params(params),
               base_env(get_environment()),
-              base_preset(ctx_preset.load_from_args(argc, argv)) {
+              base_preset(load_preset_from_args(argc, argv)) {
     // clean up base preset
     unset_reserved_args(base_preset, true);
     // set binary path
@@ -299,7 +714,7 @@ void server_models::add_model(server_model_meta && meta) {
         }
     }
 
-    meta.update_args(ctx_preset, bin_path); // render args
+    meta.update_args(bin_path); // render args
     meta.update_caps();
     std::string name = meta.name;
     mapping[name] = instance_t{
@@ -325,29 +740,29 @@ void server_models::notify_sse(const std::string & event, const std::string & mo
 void server_models::load_models() {
     // Phase 1: load presets from all sources — pure I/O, no lock needed
     // 1. cached models
-    common_presets cached_models = ctx_preset.load_from_cache();
+    model_presets cached_models = load_presets_from_cache();
     SRV_INF("Loaded %zu cached model presets\n", cached_models.size());
     // 2. local models from --models-dir
-    common_presets local_models;
+    model_presets local_models;
     if (!base_params.models_dir.empty()) {
-        local_models = ctx_preset.load_from_models_dir(base_params.models_dir);
+        local_models = load_presets_from_models_dir(base_params.models_dir);
         SRV_INF("Loaded %zu local model presets from %s\n", local_models.size(), base_params.models_dir.c_str());
     }
     // 3. custom-path models from presets
-    common_preset global = {};
-    common_presets custom_presets = {};
+    model_preset global = {};
+    model_presets custom_presets = {};
     if (!base_params.models_preset.empty()) {
-        custom_presets = ctx_preset.load_from_ini(base_params.models_preset, global);
+        custom_presets = load_presets_from_ini(base_params.models_preset, global);
         SRV_INF("Loaded %zu custom model presets from %s\n", custom_presets.size(), base_params.models_preset.c_str());
     }
 
     // cascade, apply global preset first
-    cached_models  = ctx_preset.cascade(global, cached_models);
-    local_models   = ctx_preset.cascade(global, local_models);
-    custom_presets = ctx_preset.cascade(global, custom_presets);
+    cached_models  = cascade_presets(global, cached_models);
+    local_models   = cascade_presets(global, local_models);
+    custom_presets = cascade_presets(global, custom_presets);
 
     // note: if a model exists in both cached and local, local takes precedence
-    common_presets final_presets;
+    model_presets final_presets;
     std::unordered_map<std::string, server_model_source> source_map;
     for (const auto & [name, preset] : cached_models) {
         final_presets[name] = preset;
@@ -400,7 +815,7 @@ void server_models::load_models() {
     auto apply_stop_timeout = [&]() {
         for (auto & [name, inst] : mapping) {
             std::string val;
-            if (inst.meta.preset.get_option(COMMON_ARG_PRESET_STOP_TIMEOUT, val)) {
+            if (inst.meta.preset.get_option("LHM_ARG_PRESET_STOP_TIMEOUT", val)) {
                 try {
                     inst.meta.stop_timeout = std::stoi(val);
                 } catch (...) {
@@ -412,7 +827,7 @@ void server_models::load_models() {
         }
     };
     // update_args() injects HOST/PORT/ALIAS, so strip them before comparing presets
-    auto preset_options_for_compare = [](common_preset p) {
+    auto preset_options_for_compare = [](model_preset p) {
         p.unset_option("LHM_ARG_HOST");
         p.unset_option("LHM_ARG_PORT");
         p.unset_option("LHM_ARG_ALIAS");
@@ -455,7 +870,7 @@ void server_models::load_models() {
         std::vector<std::string> models_to_load;
         for (const auto & [name, inst] : mapping) {
             std::string val;
-            if (inst.meta.preset.get_option(COMMON_ARG_PRESET_LOAD_ON_STARTUP, val) && common_arg_utils::is_truthy(val)) {
+            if (inst.meta.preset.get_option("LHM_ARG_PRESET_LOAD_ON_STARTUP", val) && is_truthy_value(val)) {
                 models_to_load.push_back(name);
             }
         }
@@ -539,7 +954,7 @@ void server_models::load_models() {
                 it = mapping.erase(it);
             } else if (final_presets.find(it->first) == final_presets.end()) {
                 SRV_INF("(reload) removing model name=%s (no longer in source)\n", it->first.c_str());
-                GGML_ASSERT(!it->second.th.joinable()); // must have been joined above
+                LHM_ASSERT(!it->second.th.joinable()); // must have been joined above
                 it = mapping.erase(it);
             } else {
                 ++it;
@@ -589,7 +1004,7 @@ void server_models::load_models() {
             }
 
             inst.meta.exit_code = 0; // clear failed state so the model can be reloaded
-            inst.meta.update_args(ctx_preset, bin_path);
+            inst.meta.update_args(bin_path);
             inst.meta.update_caps();
         }
 
@@ -633,7 +1048,7 @@ void server_models::load_models() {
             auto it = mapping.find(name);
             if (it != mapping.end()) {
                 std::string val;
-                if (it->second.meta.preset.get_option(COMMON_ARG_PRESET_LOAD_ON_STARTUP, val) && common_arg_utils::is_truthy(val)) {
+                if (it->second.meta.preset.get_option("LHM_ARG_PRESET_LOAD_ON_STARTUP", val) && is_truthy_value(val)) {
                     to_autoload.push_back(name);
                 }
             }
@@ -861,7 +1276,7 @@ void server_models::load(const std::string & name) {
     {
         SRV_INF("spawning server instance with name=%s on port %d\n", inst.meta.name.c_str(), inst.meta.port);
 
-        inst.meta.update_args(ctx_preset, bin_path); // render args
+        inst.meta.update_args(bin_path); // render args
 
         std::vector<std::string> child_args = inst.meta.args; // copy
         std::vector<std::string> child_env  = base_env; // copy
@@ -1036,7 +1451,7 @@ struct server_models_download_res : public common_download_callback {
 
 void server_models::download(common_params_model && model, common_download_opts && opts) {
     std::string name = model.name;
-    GGML_ASSERT(name == model.hf_repo);
+    LHM_ASSERT(name == model.hf_repo);
 
     std::unique_lock<std::mutex> lk(mutex);
     if (mapping.find(name) != mapping.end()) {
@@ -1538,13 +1953,13 @@ void server_models_routes::init_routes() {
                 {"args",   meta.args},
             };
             if (!meta.preset.name.empty()) {
-                common_preset preset_copy = meta.preset;
+                model_preset preset_copy = meta.preset;
                 unset_reserved_args(preset_copy, false);
                 preset_copy.unset_option("LHM_ARG_HOST");
                 preset_copy.unset_option("LHM_ARG_PORT");
                 preset_copy.unset_option("LHM_ARG_ALIAS");
                 preset_copy.unset_option("LHM_ARG_TAGS");
-                status["preset"] = preset_copy.to_ini();
+                status["preset"] = preset_to_ini_string(preset_copy);
             }
             if (meta.is_failed()) {
                 status["exit_code"] = meta.exit_code;

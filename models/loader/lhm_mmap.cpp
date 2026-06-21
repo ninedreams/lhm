@@ -497,9 +497,9 @@ struct lhm_mmap::impl {
             return;
         }
 
-        GGML_ASSERT(first % page_size == 0);
-        GGML_ASSERT(last % page_size == 0);
-        GGML_ASSERT(last > first);
+        LHM_ASSERT(first % page_size == 0);
+        LHM_ASSERT(last % page_size == 0);
+        LHM_ASSERT(last > first);
 
         void * next_page_start = (uint8_t *) addr + first;
 
@@ -737,12 +737,12 @@ struct lhm_mlock::impl {
     impl() : addr(NULL), size(0), failed_already(false) {}
 
     void init(void * ptr) {
-        GGML_ASSERT(addr == NULL && size == 0);
+        LHM_ASSERT(addr == NULL && size == 0);
         addr = ptr;
     }
 
     void grow_to(size_t target_size) {
-        GGML_ASSERT(addr);
+        LHM_ASSERT(addr);
         if (failed_already) {
             return;
         }

@@ -147,7 +147,7 @@ void common_ngram_cache_draft(
     std::vector<lhm_token> & inp, std::vector<lhm_token> & draft, int n_draft, int ngram_min, int ngram_max,
     common_ngram_cache & nc_context, common_ngram_cache & nc_dynamic, common_ngram_cache & nc_static
 ) {
-    GGML_ASSERT(draft.size() == 1);
+    LHM_ASSERT(draft.size() == 1);
     const int inp_size = inp.size();
 
     if (inp_size < LHM_NGRAM_STATIC) {
@@ -202,16 +202,16 @@ void common_ngram_cache_save(common_ngram_cache & ngram_cache, const std::string
     for (std::pair<common_ngram, common_ngram_cache_part> item : ngram_cache) {
         const common_ngram      ngram        = item.first;
         common_ngram_cache_part token_counts = item.second;
-        GGML_ASSERT(!token_counts.empty());
+        LHM_ASSERT(!token_counts.empty());
         const int32_t ntokens = token_counts.size();
-        GGML_ASSERT(ntokens > 0);
+        LHM_ASSERT(ntokens > 0);
 
         file_out.write(reinterpret_cast<const char *>(&ngram),   sizeof(common_ngram));
         file_out.write(reinterpret_cast<const char *>(&ntokens), sizeof(int32_t));
         for (std::pair<lhm_token, int32_t> item2 : token_counts) {
             const lhm_token token = item2.first;
             const int32_t     count = item2.second;
-            GGML_ASSERT(count > 0);
+            LHM_ASSERT(count > 0);
 
             file_out.write(reinterpret_cast<const char *>(&token), sizeof(lhm_token));
             file_out.write(reinterpret_cast<const char *>(&count), sizeof(int32_t));
@@ -236,23 +236,23 @@ common_ngram_cache common_ngram_cache_load(const std::string & filename) {
     char * tokenc   = reinterpret_cast<char*>(&token);
     char * countc   = reinterpret_cast<char*>(&count);
     while(hashmap_file.read(ngramc, sizeof(common_ngram))) {
-        GGML_ASSERT(!hashmap_file.eof());
-        GGML_ASSERT(hashmap_file.read(ntokensc, sizeof(int32_t)));
-        GGML_ASSERT(ntokens > 0);
+        LHM_ASSERT(!hashmap_file.eof());
+        LHM_ASSERT(hashmap_file.read(ntokensc, sizeof(int32_t)));
+        LHM_ASSERT(ntokens > 0);
         common_ngram_cache_part token_counts;
 
         for (int i = 0; i < ntokens; ++i) {
-            GGML_ASSERT(!hashmap_file.eof());
-            GGML_ASSERT(hashmap_file.read(tokenc, sizeof(lhm_token)));
-            GGML_ASSERT(!hashmap_file.eof());
-            GGML_ASSERT(hashmap_file.read(countc, sizeof(int32_t)));
-            GGML_ASSERT(count > 0);
+            LHM_ASSERT(!hashmap_file.eof());
+            LHM_ASSERT(hashmap_file.read(tokenc, sizeof(lhm_token)));
+            LHM_ASSERT(!hashmap_file.eof());
+            LHM_ASSERT(hashmap_file.read(countc, sizeof(int32_t)));
+            LHM_ASSERT(count > 0);
             token_counts.emplace(token, count);
         }
 
         ngram_cache.emplace(ngram, token_counts);
     }
-    GGML_ASSERT(hashmap_file.eof());
+    LHM_ASSERT(hashmap_file.eof());
 
     return ngram_cache;
 }
@@ -271,7 +271,7 @@ void common_ngram_cache_merge(common_ngram_cache & ngram_cache_target, common_ng
         for (std::pair<lhm_token, int32_t> token_count : part) {
             const lhm_token token = token_count.first;
             const int32_t     count = token_count.second;
-            GGML_ASSERT(count > 0);
+            LHM_ASSERT(count > 0);
 
             common_ngram_cache_part::iterator token_count_merged_it = part_merged_it->second.find(token);
             if (token_count_merged_it == part_merged_it->second.end()) {

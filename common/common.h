@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "lhm_assert.h"
 #include "lhm_cpp.h"
 
 #include "ggml-opt.h"
@@ -187,7 +188,7 @@ struct common_grammar {
 
     // Constructor with type and grammar string
     common_grammar(common_grammar_type t, std::string g) : type(t), grammar(std::move(g)) {
-        GGML_ASSERT(type != COMMON_GRAMMAR_TYPE_NONE || !grammar.empty());
+        LHM_ASSERT(type != COMMON_GRAMMAR_TYPE_NONE || !grammar.empty());
     }
 
     // Check if a grammar is set

@@ -104,7 +104,7 @@ void lhm_backend_init(void) {
 void lhm_numa_init(enum ggml_numa_strategy numa) {
     if (numa != GGML_NUMA_STRATEGY_DISABLED) {
         auto * dev = ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU);
-        GGML_ASSERT(dev && "CPU backend is not loaded");
+        LHM_ASSERT(dev && "CPU backend is not loaded");
         auto * reg = ggml_backend_dev_backend_reg(dev);
         auto * numa_init_fn = (decltype(ggml_numa_init) *) ggml_backend_reg_get_proc_address(reg, "ggml_backend_cpu_numa_init");
         if (numa_init_fn) {
@@ -178,7 +178,7 @@ static bool lhm_prepare_model_devices(const lhm_model_params & params, lhm_model
                 LOG_INFO("%s: - device %zu: %s (%s)\n", __func__, i, ggml_backend_dev_name(devs[i]), ggml_backend_dev_description(devs[i]));
             }
 
-            GGML_ASSERT(!devs.empty());
+            LHM_ASSERT(!devs.empty());
             model->get_split_state_ud.n_devices = devs.size();
             model->get_split_state_ud.model     = model;
             gpus.push_back({
@@ -384,7 +384,7 @@ static struct lhm_model * lhm_model_load_from_file_impl(
     }
 
     const auto [status, model] = lhm_model_load(metadata, set_tensor_data, set_tensor_data_ud, path_model, splits, file, params);
-    GGML_ASSERT(status <= 0);
+    LHM_ASSERT(status <= 0);
     if (status < 0) {
         if (status == -1) {
             LHM_LOG_ERROR("%s: failed to load model\n", __func__);
@@ -406,7 +406,7 @@ struct lhm_model * lhm_model_init_from_user(
         lhm_model_set_tensor_data_t set_tensor_data,
         void * set_tensor_data_ud,
         struct lhm_model_params params) {
-    GGML_ASSERT(metadata != nullptr);
+    LHM_ASSERT(metadata != nullptr);
     std::string path_model;
     std::vector<std::string> splits = {};
     params.use_mmap = false;

@@ -675,7 +675,7 @@ void server_http_context::register_gcp_compat() const {
 
     if (!gcp.path_health.empty()) {
         const auto health_handler = handlers.find("/health");
-        GGML_ASSERT(health_handler != handlers.end());
+        LHM_ASSERT(health_handler != handlers.end());
         get(gcp.path_health, health_handler->second);
     }
 

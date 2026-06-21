@@ -1,8 +1,8 @@
 #pragma once
 
 #include "common.h"
+#include "config.h"
 #include "download.h"
-#include "preset.h"
 #include "server_common.h"
 #include "server_http.h"
 #include "server_queue.h"
@@ -61,9 +61,47 @@ static std::string server_model_source_to_string(server_model_source source) {
     }
 }
 
+// Simple model preset: a name + key-value options map
+// Replaces the old common_preset which depended on arg.h/common_arg
+struct model_preset {
+    std::string name;
+    std::map<std::string, std::string> options; // key (env-style) -> value
+
+    void set_option(const std::string & key, const std::string & value) {
+        options[key] = value;
+    }
+
+    void unset_option(const std::string & key) {
+        options.erase(key);
+    }
+
+    bool get_option(const std::string & key, std::string & value) const {
+        auto it = options.find(key);
+        if (it != options.end()) {
+            value = it->second;
+            return true;
+        }
+        return false;
+    }
+
+    void merge(const model_preset & other) {
+        for (const auto & [k, v] : other.options) {
+            options[k] = v;
+        }
+    }
+
+    // Convert preset options to CLI argument list
+    std::vector<std::string> to_args(const std::string & bin_path = "") const;
+
+    // Apply a subset of options (identified by keys) to common_params for model path resolution
+    void apply_model_options(common_params & params, const std::set<std::string> & keys) const;
+};
+
+using model_presets = std::map<std::string, model_preset>;
+
 struct server_model_meta {
     server_model_source source = SERVER_MODEL_SOURCE_CACHE;
-    common_preset preset;
+    model_preset preset;
     std::string name;
     std::set<std::string> aliases; // additional names that resolve to this model
     std::set<std::string> tags;    // informational tags, not used for routing
@@ -89,10 +127,9 @@ struct server_model_meta {
         return status == SERVER_MODEL_STATUS_UNLOADED && exit_code != 0;
     }
 
-    void update_args(common_preset_context & ctx_presets, std::string bin_path);
+    void update_args(std::string bin_path);
     void update_caps();
 };
-
 struct server_models_routes;
 struct server_subproc; // defined in server_models.cpp
 
@@ -121,12 +158,10 @@ private:
     // if true, the next get_meta() will trigger a reload of model list
     bool need_reload = false;
 
-    common_preset_context ctx_preset;
-
     common_params base_params;
     std::string bin_path;
     std::vector<std::string> base_env;
-    common_preset base_preset; // base preset from lhm_server CLI args
+    model_preset base_preset; // base preset from lhm_server CLI args
 
     void update_meta(const std::string & name, const server_model_meta & meta);
 
@@ -222,7 +257,7 @@ struct server_models_routes {
                 ui_settings = json_settings;
                 webui_settings = json_settings;  // Deprecated: keep in sync
             } catch (const std::exception & e) {
-                LOG_ERR("%s: failed to parse UI config: %s\n", __func__, e.what());
+                LOG_ERROR("%s: failed to parse UI config: %s\n", __func__, e.what());
                 throw;
             }
         }

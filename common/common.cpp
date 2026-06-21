@@ -1,6 +1,7 @@
 #include "ggml.h"
 #include "gguf.h"
 
+#include "lhm_assert.h"
 #include "common.h"
 #include "fit.h"
 #include "log.h"
@@ -290,7 +291,7 @@ void postprocess_cpu_params(common_cpu_params & cpuparams, const common_cpu_para
 bool parse_cpu_range(const std::string & range, bool (&boolmask)[GGML_MAX_N_THREADS]) {
     size_t dash_loc = range.find('-');
     if (dash_loc == std::string::npos) {
-        LOG_ERR("Format of CPU range is invalid! Expected [<start>]-[<end>].\n");
+        LOG_ERROR("Format of CPU range is invalid! Expected [<start>]-[<end>].\n");
         return false;
     }
 
@@ -302,7 +303,7 @@ bool parse_cpu_range(const std::string & range, bool (&boolmask)[GGML_MAX_N_THRE
     } else {
         start_i = std::stoull(range.substr(0, dash_loc));
         if (start_i >= GGML_MAX_N_THREADS) {
-            LOG_ERR("Start index out of bounds!\n");
+            LOG_ERROR("Start index out of bounds!\n");
             return false;
         }
     }
@@ -312,7 +313,7 @@ bool parse_cpu_range(const std::string & range, bool (&boolmask)[GGML_MAX_N_THRE
     } else {
         end_i = std::stoull(range.substr(dash_loc + 1));
         if (end_i >= GGML_MAX_N_THREADS) {
-            LOG_ERR("End index out of bounds!\n");
+            LOG_ERROR("End index out of bounds!\n");
             return false;
         }
     }
@@ -347,7 +348,7 @@ bool parse_cpu_mask(const std::string & mask, bool (&boolmask)[GGML_MAX_N_THREAD
         } else if (c >= 'A' && c <= 'F') {
             id -= 'A' - 10;
         } else {
-            LOG_ERR("Invalid hex character '%c' at position %d\n", c, int32_t(i));
+            LOG_ERROR("Invalid hex character '%c' at position %d\n", c, int32_t(i));
             return false;
         }
 
@@ -378,19 +379,19 @@ void common_params_print_info(const common_params & params, bool print_devices) 
 #else
     const char * build_type = " (debug)";
 #endif
-    LOG_INF("log_info: verbosity = %d (adjust with the `-lv N` CLI arg)\n", common_log_get_verbosity_thold());
+    LOG_INFO("log_info: verbosity = %d (adjust with the `-lv N` CLI arg)\n", common_log_get_verbosity_thold());
 
     // device enumeration creates a primary context on CUDA backends, skip it when the caller does not own any device
     if (print_devices) {
-        LOG_INF("device_info:\n");
+        LOG_INFO("device_info:\n");
         for (size_t i = 0; i < ggml_backend_dev_count(); ++i) {
             auto * dev = ggml_backend_dev_get(i);
             size_t free, total;
             ggml_backend_dev_memory(dev, &free, &total);
-            LOG_INF("  - %-8s: %s (%zu MiB, %zu MiB free)\n", ggml_backend_dev_name(dev), ggml_backend_dev_description(dev), total / 1024 / 1024, free / 1024 / 1024);
+            LOG_INFO("  - %-8s: %s (%zu MiB, %zu MiB free)\n", ggml_backend_dev_name(dev), ggml_backend_dev_description(dev), total / 1024 / 1024, free / 1024 / 1024);
         }
     }
-    LOG_INF("%s\n", common_params_get_system_info(params).c_str());
+    LOG_INFO("%s\n", common_params_get_system_info(params).c_str());
 }
 
 std::string common_params_get_system_info(const common_params & params) {
@@ -421,10 +422,10 @@ std::string string_format(const char * fmt, ...) {
     va_start(ap, fmt);
     va_copy(ap2, ap);
     int size = vsnprintf(NULL, 0, fmt, ap);
-    GGML_ASSERT(size >= 0 && size < INT_MAX); // NOLINT
+    LHM_ASSERT(size >= 0 && size < INT_MAX); // NOLINT
     std::vector<char> buf(size + 1);
     int size2 = vsnprintf(buf.data(), size + 1, fmt, ap2);
-    GGML_ASSERT(size2 == size);
+    LHM_ASSERT(size2 == size);
     va_end(ap2);
     va_end(ap);
     return std::string(buf.data(), size);
@@ -657,7 +658,7 @@ void string_process_escapes(std::string & input) {
 bool string_parse_kv_override(const char * data, std::vector<lhm_model_kv_override> & overrides) {
     const char * sep = strchr(data, '=');
     if (sep == nullptr || sep - data >= 128) {
-        LOG_ERR("%s: malformed KV override '%s'\n", __func__, data);
+        LOG_ERROR("%s: malformed KV override '%s'\n", __func__, data);
         return false;
     }
     lhm_model_kv_override kvo;
@@ -680,20 +681,20 @@ bool string_parse_kv_override(const char * data, std::vector<lhm_model_kv_overri
         } else if (std::strcmp(sep, "false") == 0) {
             kvo.val_bool = false;
         } else {
-            LOG_ERR("%s: invalid boolean value for KV override '%s'\n", __func__, data);
+            LOG_ERROR("%s: invalid boolean value for KV override '%s'\n", __func__, data);
             return false;
         }
     } else if (strncmp(sep, "str:", 4) == 0) {
         sep += 4;
         kvo.tag = LHM_KV_OVERRIDE_TYPE_STR;
         if (strlen(sep) > 127) {
-            LOG_ERR("%s: malformed KV override '%s', value cannot exceed 127 chars\n", __func__, data);
+            LOG_ERROR("%s: malformed KV override '%s', value cannot exceed 127 chars\n", __func__, data);
             return false;
         }
         strncpy(kvo.val_str, sep, 127);
         kvo.val_str[127] = '\0';
     } else {
-        LOG_ERR("%s: invalid type for KV override '%s'\n", __func__, data);
+        LOG_ERROR("%s: invalid type for KV override '%s'\n", __func__, data);
         return false;
     }
     overrides.emplace_back(std::move(kvo));
@@ -1021,7 +1022,7 @@ std::string fs_get_cache_directory() {
 }
 
 std::string fs_get_cache_file(const std::string & filename) {
-    GGML_ASSERT(filename.find(DIRECTORY_SEPARATOR) == std::string::npos);
+    LHM_ASSERT(filename.find(DIRECTORY_SEPARATOR) == std::string::npos);
     std::string cache_directory = fs_get_cache_directory();
     const bool success = fs_create_directory_with_parents(cache_directory);
     if (!success) {
@@ -1184,8 +1185,8 @@ common_init_result::common_init_result(common_params & params, bool model_only) 
     auto cparams = common_context_params_to_llama(params);
 
     if (params.fit_params) {
-        LOG_INF("%s: fitting params to device memory ...\n", __func__);
-        LOG_INF("%s: (for bugs during this step try to reproduce them with -fit off, or provide --verbose logs if the bug only occurs with -fit on)\n", __func__);
+        LOG_INFO("%s: fitting params to device memory ...\n", __func__);
+        LOG_INFO("%s: (for bugs during this step try to reproduce them with -fit off, or provide --verbose logs if the bug only occurs with -fit on)\n", __func__);
         common_fit_params(params.model.path.c_str(), &mparams, &cparams,
             params.tensor_split,
             params.tensor_buft_overrides.data(),
@@ -1212,7 +1213,7 @@ common_init_result::common_init_result(common_params & params, bool model_only) 
         lhm_adapter_lora_ptr lora;
         lora.reset(lhm_adapter_lora_init(model, la.path.c_str()));
         if (lora == nullptr) {
-            LOG_ERR("%s: failed to load lora adapter '%s'\n", __func__, la.path.c_str());
+            LOG_ERROR("%s: failed to load lora adapter '%s'\n", __func__, la.path.c_str());
             pimpl->model.reset(model);
             return;
         }
@@ -1276,7 +1277,7 @@ common_init_result::common_init_result(common_params & params, bool model_only) 
 
     lhm_context * lctx = lhm_init_from_model(model, cparams);
     if (lctx == NULL) {
-        LOG_ERR("%s: failed to create context with model '%s'\n", __func__, params.model.path.c_str());
+        LOG_ERROR("%s: failed to create context with model '%s'\n", __func__, params.model.path.c_str());
         return;
     }
 
@@ -1313,7 +1314,7 @@ common_init_result_ptr common_init_from_params(common_params & params, bool mode
 
     lhm_model * model = res->model();
     if (model == NULL) {
-        LOG_ERR("%s: failed to load model '%s'\n", __func__, params.model.path.c_str());
+        LOG_ERROR("%s: failed to load model '%s'\n", __func__, params.model.path.c_str());
         return res;
     }
 
@@ -1323,7 +1324,7 @@ common_init_result_ptr common_init_from_params(common_params & params, bool mode
 
     lhm_context * lctx = res->context();
     if (lctx == NULL) {
-        LOG_ERR("%s: failed to create context with model '%s'\n", __func__, params.model.path.c_str());
+        LOG_ERROR("%s: failed to create context with model '%s'\n", __func__, params.model.path.c_str());
         return res;
     }
 
@@ -1384,7 +1385,7 @@ common_init_result_ptr common_init_from_params(common_params & params, bool mode
     }
 
     if (params.warmup) {
-        LOG_INF("%s: warming up the model with an empty run - please wait ... (--no-warmup to disable)\n", __func__);
+        LOG_INFO("%s: warming up the model with an empty run - please wait ... (--no-warmup to disable)\n", __func__);
 
         std::vector<lhm_token> tmp;
         lhm_token bos = lhm_vocab_bos(vocab);
@@ -1458,13 +1459,13 @@ common_context_seq_rm_type common_context_can_seq_rm(lhm_context * ctx) {
 
     int ret = lhm_decode(ctx, lhm_batch_get_one(tmp.data(), tmp.size()));
     if (ret != 0) {
-        LOG_ERR("%s: lhm_decode() failed: %d\n", __func__, ret);
+        LOG_ERROR("%s: lhm_decode() failed: %d\n", __func__, ret);
         res = COMMON_CONTEXT_SEQ_RM_TYPE_NO;
         goto done;
     }
 
     if (lhm_n_rs_seq(ctx) > 0) {
-        LOG_INF("%s: the context supports bounded partial sequence removal\n", __func__);
+        LOG_INFO("%s: the context supports bounded partial sequence removal\n", __func__);
         res = COMMON_CONTEXT_SEQ_RM_TYPE_RS;
         goto done;
     }
@@ -1533,14 +1534,14 @@ struct lhm_model_params common_model_params_to_llama(common_params & params) {
     if (params.kv_overrides.empty()) {
         mparams.kv_overrides = NULL;
     } else {
-        GGML_ASSERT(params.kv_overrides.back().key[0] == 0 && "KV overrides not terminated with empty key");
+        LHM_ASSERT(params.kv_overrides.back().key[0] == 0 && "KV overrides not terminated with empty key");
         mparams.kv_overrides = params.kv_overrides.data();
     }
 
     if (params.tensor_buft_overrides.empty()) {
         mparams.tensor_buft_overrides = NULL;
     } else {
-        GGML_ASSERT(params.tensor_buft_overrides.back().pattern == nullptr && "Tensor buffer overrides not terminated with empty pattern");
+        LHM_ASSERT(params.tensor_buft_overrides.back().pattern == nullptr && "Tensor buffer overrides not terminated with empty pattern");
         mparams.tensor_buft_overrides = params.tensor_buft_overrides.data();
     }
 
@@ -1619,7 +1620,7 @@ void common_batch_add(
                           lhm_pos   pos,
     const std::vector<lhm_seq_id> & seq_ids,
                                bool   logits) {
-    GGML_ASSERT(batch.seq_id[batch.n_tokens] && "lhm_batch size exceeded");
+    LHM_ASSERT(batch.seq_id[batch.n_tokens] && "lhm_batch size exceeded");
 
     batch.token   [batch.n_tokens] = id;
     batch.pos     [batch.n_tokens] = pos;
@@ -1661,7 +1662,7 @@ std::vector<lhm_token> common_tokenize(
     if (n_tokens < 0) {
         result.resize(-n_tokens);
         int check = lhm_tokenize(vocab, text.data(), text.length(), result.data(), result.size(), add_special, parse_special);
-        GGML_ASSERT(check == -n_tokens);
+        LHM_ASSERT(check == -n_tokens);
     } else {
         result.resize(n_tokens);
     }
@@ -1681,7 +1682,7 @@ std::string common_token_to_piece(const struct lhm_vocab * vocab, lhm_token toke
     if (n_chars < 0) {
         piece.resize(-n_chars);
         int check = lhm_token_to_piece(vocab, token, &piece[0], piece.size(), 0, special);
-        GGML_ASSERT(check == -n_chars);
+        LHM_ASSERT(check == -n_chars);
     }
     else {
         piece.resize(n_chars);
@@ -1703,7 +1704,7 @@ std::string common_detokenize(const struct lhm_vocab * vocab, const std::vector<
     if (n_chars < 0) {
         text.resize(-n_chars);
         n_chars = lhm_detokenize(vocab, tokens.data(), (int32_t)tokens.size(), &text[0], (int32_t)text.size(), false, special);
-        GGML_ASSERT(n_chars <= (int32_t)text.size());  // whitespace trimming is performed after per-token detokenization
+        LHM_ASSERT(n_chars <= (int32_t)text.size());  // whitespace trimming is performed after per-token detokenization
     }
 
     text.resize(n_chars);
@@ -1788,7 +1789,7 @@ static common_control_vector_data common_control_vector_load_one(const common_co
     };
     struct gguf_context * ctx_gguf = gguf_init_from_file(load_info.fname.c_str(), meta_gguf_params);
     if (!ctx_gguf) {
-        LOG_ERR("%s: failed to load control vector file from %s\n", __func__, load_info.fname.c_str());
+        LOG_ERROR("%s: failed to load control vector file from %s\n", __func__, load_info.fname.c_str());
         return result;
     }
 
@@ -1812,23 +1813,23 @@ static common_control_vector_data common_control_vector_load_one(const common_co
             }
         }
         if (layer_idx < 0) {
-            LOG_ERR("%s: invalid/unparsable direction tensor layer index in %s\n", __func__, load_info.fname.c_str());
+            LOG_ERROR("%s: invalid/unparsable direction tensor layer index in %s\n", __func__, load_info.fname.c_str());
             result.n_embd = -1;
             break;
         } else if (layer_idx == 0) {
-            LOG_ERR("%s: invalid (zero) direction tensor layer index in %s\n", __func__, load_info.fname.c_str());
+            LOG_ERROR("%s: invalid (zero) direction tensor layer index in %s\n", __func__, load_info.fname.c_str());
             result.n_embd = -1;
             break;
         }
 
         struct ggml_tensor * tensor = ggml_get_tensor(ctx, name.c_str());
         if (tensor->type != GGML_TYPE_F32) {
-            LOG_ERR("%s: invalid (non-F32) direction tensor type in %s\n", __func__, load_info.fname.c_str());
+            LOG_ERROR("%s: invalid (non-F32) direction tensor type in %s\n", __func__, load_info.fname.c_str());
             result.n_embd = -1;
             break;
         }
         if (ggml_n_dims(tensor) != 1) {
-            LOG_ERR("%s: invalid (non-1D) direction tensor shape in %s\n", __func__, load_info.fname.c_str());
+            LOG_ERROR("%s: invalid (non-1D) direction tensor shape in %s\n", __func__, load_info.fname.c_str());
             result.n_embd = -1;
             break;
         }
@@ -1836,7 +1837,7 @@ static common_control_vector_data common_control_vector_load_one(const common_co
         if (result.n_embd == -1) {
             result.n_embd = ggml_nelements(tensor);
         } else if (ggml_nelements(tensor) != result.n_embd) {
-            LOG_ERR("%s: direction tensor in %s does not match previous dimensions\n", __func__, load_info.fname.c_str());
+            LOG_ERROR("%s: direction tensor in %s does not match previous dimensions\n", __func__, load_info.fname.c_str());
             result.n_embd = -1;
             break;
         }
@@ -1874,7 +1875,7 @@ common_control_vector_data common_control_vector_load(const std::vector<common_c
             break;
         }
         if (result.n_embd != -1 && result.n_embd != cur.n_embd) {
-            LOG_ERR("%s: control vectors in %s does not match previous dimensions\n", __func__, info.fname.c_str());
+            LOG_ERROR("%s: control vectors in %s does not match previous dimensions\n", __func__, info.fname.c_str());
             result.n_embd = -1;
             break;
         }
@@ -1890,7 +1891,7 @@ common_control_vector_data common_control_vector_load(const std::vector<common_c
     }
 
     if (result.n_embd == -1) {
-        LOG_ERR("%s: no valid control vector files passed\n", __func__);
+        LOG_ERROR("%s: no valid control vector files passed\n", __func__);
         result.data.clear();
     }
 
@@ -1963,7 +1964,7 @@ float lr_opt::get_lr(float epoch) const {
     float r = lr_min <= 0 ? lr0 :
         epoch >= decay_epochs ? lr_min :
         lr0 * std::pow(0.5f, epoch * scale_epoch);
-    LOG_INF("epoch %.2g lr=%.2g\n", epoch, r);
+    LOG_INFO("epoch %.2g lr=%.2g\n", epoch, r);
     return r;
 }
 
@@ -1971,7 +1972,7 @@ bool common_replay_last_token(struct lhm_context * ctx, lhm_token last_token, in
     lhm_batch batch = lhm_batch_get_one(&last_token, 1);
     batch.pos = &pos;
     if (lhm_decode(ctx, batch)) {
-        LOG_ERR("%s: failed to replay last token\n", __func__);
+        LOG_ERROR("%s: failed to replay last token\n", __func__);
         return false;
     }
     return true;
@@ -1993,7 +1994,7 @@ bool common_prompt_batch_decode(
     if (save_state && n_new > 1) {
         const int n_tokens_before_last = n_new - 1;
 
-        GGML_ASSERT(n_new <= n_batch);
+        LHM_ASSERT(n_new <= n_batch);
 
         // Decode all but the last token so we can save the memory state before decoding the last token.
         // This is done so we can restore the session state later and replay the last token.
@@ -2001,13 +2002,13 @@ bool common_prompt_batch_decode(
         // memory, so we can't just remove the last token from the memory and replay the last token which
         // is the reason for this logic.
         if (lhm_decode(ctx, lhm_batch_get_one(const_cast<lhm_token*>(all_tokens.data() + offset), n_tokens_before_last))) {
-            LOG_ERR("%s : failed to eval\n", __func__);
+            LOG_ERROR("%s : failed to eval\n", __func__);
             return false;
         }
         n_past += n_tokens_before_last;
 
         lhm_state_save_file(ctx, state_path.data(), all_tokens.data(), all_tokens.size());
-        LOG_INF("saved session before last token to %s, n_new = %zu\n", state_path.data(), all_tokens.size());
+        LOG_INFO("saved session before last token to %s, n_new = %zu\n", state_path.data(), all_tokens.size());
 
         lhm_token last_token = all_tokens.back();
         lhm_batch batch = lhm_batch_get_one(&last_token, 1);
@@ -2015,13 +2016,13 @@ bool common_prompt_batch_decode(
         batch.pos = &pos;
 
         if (lhm_decode(ctx, batch)) {
-            LOG_ERR("%s : failed to eval last token\n", __func__);
+            LOG_ERROR("%s : failed to eval last token\n", __func__);
             return false;
         }
         n_past++;
     } else {
         if (lhm_decode(ctx, lhm_batch_get_one(const_cast<lhm_token*>(all_tokens.data() + offset), n_new))) {
-            LOG_ERR("%s : failed to eval\n", __func__);
+            LOG_ERROR("%s : failed to eval\n", __func__);
             return false;
         }
         n_past += n_new;

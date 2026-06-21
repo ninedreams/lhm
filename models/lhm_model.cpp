@@ -1,5 +1,6 @@
 #include "lhm_model.h"
 
+#include "lhm_assert.h"
 #include "lhm_arch.h"
 #include "lhm_ext.h"
 #include "lhm_hparams.h"
@@ -136,13 +137,13 @@ struct ggml_backend_meta_split_state lhm_meta_device_get_split_state(const struc
         size_t rotation;
         if (tensor_name.substr(0, 4) == "blk.") {
             const size_t length_prefix = tensor_name.find('.', 4);
-            GGML_ASSERT(length_prefix != std::string::npos);
+            LHM_ASSERT(length_prefix != std::string::npos);
             prefix = tensor_name.substr(0, length_prefix + 1);
             il = std::stoull(tensor_name.substr(4, length_prefix));
             rotation = get_il_eff(il) % ud->n_devices;
         } else if (tensor_name.substr(0, 6) == "cache_") {
             const size_t layer_index_start = tensor_name.find("_l", 6);
-            GGML_ASSERT(layer_index_start != std::string::npos);
+            LHM_ASSERT(layer_index_start != std::string::npos);
             il = std::stoull(tensor_name.substr(layer_index_start + 2));
             prefix = "blk." + std::to_string(il) + ".";
             rotation = get_il_eff(il) % ud->n_devices;
@@ -152,10 +153,10 @@ struct ggml_backend_meta_split_state lhm_meta_device_get_split_state(const struc
         }
         const ggml_tensor * tensor_axis_0 = suffix.empty() ? tensor : ud->model->get_tensor((prefix + suffix).c_str());
         if (tensor_axis_0 == nullptr) {
-            GGML_ASSERT(!suffix_fallback.empty());
+            LHM_ASSERT(!suffix_fallback.empty());
             tensor_axis_0 = ud->model->get_tensor((prefix + suffix_fallback).c_str());
         }
-        GGML_ASSERT(tensor_axis_0 != nullptr);
+        LHM_ASSERT(tensor_axis_0 != nullptr);
         return {axis, tensor_axis_0, il, rotation};
     };
 
@@ -232,7 +233,7 @@ struct ggml_backend_meta_split_state lhm_meta_device_get_split_state(const struc
         }
         if (std::regex_match(tensor_name, pattern_output_bias)) {
             const ggml_tensor * output_weight = ud->model->get_tensor("output.weight");
-            GGML_ASSERT(output_weight != nullptr);
+            LHM_ASSERT(output_weight != nullptr);
             return get_tensor_config_impl(GGML_BACKEND_SPLIT_AXIS_0);
         }
 
@@ -253,7 +254,7 @@ struct ggml_backend_meta_split_state lhm_meta_device_get_split_state(const struc
             {
                 const int64_t head_ratio = n_v_heads / n_k_heads;
                 if (std::regex_match(tensor_name, pattern_qkv_weight) || std::regex_match(tensor_name, pattern_ssm_conv1d)) {
-                    GGML_ASSERT(tensor->ne[axis] == 2*key_dim + value_dim);
+                    LHM_ASSERT(tensor->ne[axis] == 2*key_dim + value_dim);
                     return {{key_dim, 2 + head_ratio}};
                 }
                 if (std::regex_match(tensor_name, pattern_attn_gate_weight) || std::regex_match(tensor_name, pattern_ssm_out_weight)) {
@@ -274,7 +275,7 @@ struct ggml_backend_meta_split_state lhm_meta_device_get_split_state(const struc
             // the FFN is the same for Qwen 3 Next and Qwen 3.5:
             if (std::regex_match(tensor_name, pattern_ffn_gate_up_weight)) {
                 const int64_t n_ff_exp = hparams.n_ff_exp;
-                GGML_ASSERT(tensor->ne[axis] == 2*n_ff_exp);
+                LHM_ASSERT(tensor->ne[axis] == 2*n_ff_exp);
                 return {{n_ff_exp, 2}};
             }
             return {{tensor->ne[axis], 1}};
@@ -283,13 +284,13 @@ struct ggml_backend_meta_split_state lhm_meta_device_get_split_state(const struc
         if (std::regex_match(tensor_name, pattern_qkv_weight) || std::regex_match(tensor_name, pattern_qkv_bias)) {
             const int64_t n_embd      = hparams.n_embd;
             const int64_t n_embd_gqa  = hparams.n_embd_v_gqa(il);
-            GGML_ASSERT(hparams.n_embd_k_gqa() == n_embd_gqa);
-            GGML_ASSERT(tensor->ne[axis] == n_embd + 2*n_embd_gqa);
+            LHM_ASSERT(hparams.n_embd_k_gqa() == n_embd_gqa);
+            LHM_ASSERT(tensor->ne[axis] == n_embd + 2*n_embd_gqa);
             return {{n_embd, 1}, {n_embd_gqa, 2}};
         }
         if (std::regex_match(tensor_name, pattern_ffn_gate_up_weight)) {
             const int64_t n_ff_exp = hparams.n_ff_exp;
-            GGML_ASSERT(tensor->ne[axis] == 2*n_ff_exp);
+            LHM_ASSERT(tensor->ne[axis] == 2*n_ff_exp);
             return {{n_ff_exp, 2}};
         }
         return {{tensor->ne[axis], 1}};
@@ -331,13 +332,13 @@ struct ggml_backend_meta_split_state lhm_meta_device_get_split_state(const struc
             }
 
             if (std::regex_match(tensor_name, pattern_attn_sinks)) {
-                GGML_ASSERT(segments.size() == 1);
+                LHM_ASSERT(segments.size() == 1);
                 return {std::lcm(n_embd_q, blck_size_perf)/n_embd_q * n_gqa};
             }
 
             const int64_t granularity_q = std::lcm(n_embd_q, blck_size_perf);
             if (std::regex_match(tensor_name, pattern_q_weight) || std::regex_match(tensor_name, pattern_q_bias)) {
-                GGML_ASSERT(segments.size() == 1);
+                LHM_ASSERT(segments.size() == 1);
                 // some models have Q gate tensors, for those cases the granularity needs to be doubled:
                 if (ud->model->arch == LLM_ARCH_QWEN35 || ud->model->arch == LLM_ARCH_QWEN35MOE) {
                     return {std::lcm(2*n_embd_q, blck_size_perf)};
@@ -345,7 +346,7 @@ struct ggml_backend_meta_split_state lhm_meta_device_get_split_state(const struc
                 return {granularity_q};
             }
             if (std::regex_match(tensor_name, pattern_attn_out_weight)) {
-                GGML_ASSERT(segments.size() == 1);
+                LHM_ASSERT(segments.size() == 1);
                 return {granularity_q};
             }
 
@@ -353,11 +354,11 @@ struct ggml_backend_meta_split_state lhm_meta_device_get_split_state(const struc
             if (std::regex_match(tensor_name, pattern_kv_weight) ||
                 std::regex_match(tensor_name, pattern_kv_bias) ||
                 std::regex_match(tensor_name, pattern_kv_cache)) {
-                GGML_ASSERT(segments.size() == 1);
+                LHM_ASSERT(segments.size() == 1);
                 return {granularity_kv};
             }
             if (std::regex_match(tensor_name, pattern_qkv_weight) || std::regex_match(tensor_name, pattern_qkv_bias)) {
-                GGML_ASSERT(segments.size() == 2);
+                LHM_ASSERT(segments.size() == 2);
                 return {granularity_q, granularity_kv};
             }
         }
@@ -366,12 +367,12 @@ struct ggml_backend_meta_split_state lhm_meta_device_get_split_state(const struc
         if (std::regex_match(tensor_name, pattern_ffn_up_gate_weight) || std::regex_match(tensor_name, pattern_ffn_up_gate_bias) ||
                 std::regex_match(tensor_name, pattern_ffn_gate_up_weight) || std::regex_match(tensor_name, pattern_ffn_down_weight)) {
             const int64_t blck_size_perf = std::lcm(blck_size, 128);
-            GGML_ASSERT(segments.size() == 1);
+            LHM_ASSERT(segments.size() == 1);
             return {blck_size_perf};
         }
 
         // everything else
-        GGML_ASSERT(segments.size() == 1);
+        LHM_ASSERT(segments.size() == 1);
         return {1};
     };
 
@@ -791,19 +792,19 @@ void lhm_model_base::load_hparams(lhm_model_loader & ml) {
     ml.get_key(LLM_KV_EXPERT_GROUP_COUNT,      hparams.n_expert_groups, false);
     ml.get_key(LLM_KV_EXPERT_GROUP_USED_COUNT, hparams.n_group_used,    false);
 
-    GGML_ASSERT(hparams.n_expert <= LHM_MAX_EXPERTS);
-    GGML_ASSERT(hparams.n_expert_used <= hparams.n_expert);
+    LHM_ASSERT(hparams.n_expert <= LHM_MAX_EXPERTS);
+    LHM_ASSERT(hparams.n_expert_used <= hparams.n_expert);
     if (hparams.n_expert > 0) {
-        GGML_ASSERT(hparams.n_expert_used > 0);
-        GGML_ASSERT(hparams.n_expert_groups < hparams.n_expert);
+        LHM_ASSERT(hparams.n_expert_used > 0);
+        LHM_ASSERT(hparams.n_expert_groups < hparams.n_expert);
         if (hparams.n_expert_groups > 1) {
-            GGML_ASSERT(hparams.n_expert % hparams.n_expert_groups == 0);
-            GGML_ASSERT(hparams.n_group_used > 0);
-            GGML_ASSERT(hparams.n_group_used < hparams.n_expert_groups);
+            LHM_ASSERT(hparams.n_expert % hparams.n_expert_groups == 0);
+            LHM_ASSERT(hparams.n_group_used > 0);
+            LHM_ASSERT(hparams.n_group_used < hparams.n_expert_groups);
         }
     } else {
-        GGML_ASSERT(hparams.n_expert_used == 0);
-        GGML_ASSERT(hparams.n_expert_groups == 0);
+        LHM_ASSERT(hparams.n_expert_used == 0);
+        LHM_ASSERT(hparams.n_expert_groups == 0);
     }
 
     std::fill(hparams.n_head_arr.begin(),    hparams.n_head_arr.end(),    0);
@@ -847,7 +848,7 @@ void lhm_model_base::load_hparams(lhm_model_loader & ml) {
     std::string rope_scaling("linear");
     ml.get_key(LLM_KV_ROPE_SCALING_TYPE, rope_scaling, false);
     hparams.rope_scaling_type_train = lhm_rope_scaling_type_from_string(rope_scaling);
-    GGML_ASSERT(hparams.rope_scaling_type_train != LHM_ROPE_SCALING_TYPE_UNSPECIFIED);
+    LHM_ASSERT(hparams.rope_scaling_type_train != LHM_ROPE_SCALING_TYPE_UNSPECIFIED);
 
     // TODO: Handle SWA metadata similarly when models start implementing it
     // rope_freq_scale (inverse of the kv) is optional
@@ -1184,7 +1185,7 @@ bool lhm_model_base::load_tensors(lhm_model_loader & ml) {
 
     // Tied NVFP4 output is valid when no separate LM-head scale tensors are present.
     // If sidecar scales exist, the output weight must be an actual output tensor.
-    GGML_ASSERT(!(output && tok_embd &&
+    LHM_ASSERT(!(output && tok_embd &&
             strcmp(output->name, tok_embd->name) == 0 &&
             output->type == GGML_TYPE_NVFP4 &&
             (output_s || output_in_s)));
@@ -1233,7 +1234,7 @@ bool lhm_model_base::load_tensors(lhm_model_loader & ml) {
 
         std::vector<ggml_backend_buffer_ptr> bufs;
         if (ml.use_mmap && use_mmap_buffer && buffer_from_host_ptr_supported && is_default_buft) {
-            GGML_ASSERT(!ml.no_alloc);
+            LHM_ASSERT(!ml.no_alloc);
             for (uint32_t idx = 0; idx < ml.files.size(); idx++) {
                 // only the mmap region containing the tensors in the model is mapped to the backend buffer
                 // this is important for metal with apple silicon: if the entire model could be mapped to a metal buffer,
@@ -1381,14 +1382,14 @@ std::map<ggml_backend_buffer_type_t, size_t> lhm_model::memory_breakdown() const
     std::map<ggml_backend_buffer_type_t, size_t> ret;
     for (const auto & [ctx, bufs] : pimpl->ctxs_bufs) {
         if (hparams.no_alloc) {
-            GGML_ASSERT(bufs.size() == 1);
+            LHM_ASSERT(bufs.size() == 1);
             ggml_backend_buffer_t buf = bufs[0].get();
-            GGML_ASSERT(ggml_backend_buffer_get_base(buf) == nullptr);
+            LHM_ASSERT(ggml_backend_buffer_get_base(buf) == nullptr);
             ggml_backend_buffer_type_t buft = ggml_backend_buffer_get_type(buf);
             ret[buft] += ggml_backend_alloc_ctx_tensors_from_buft_size(ctx.get(), buft);
         } else {
             for (const auto & buf : bufs) {
-                // GGML_ASSERT(ggml_backend_buffer_get_base(buf.get()) != nullptr); // multi_buffer does not have a defined base
+                // LHM_ASSERT(ggml_backend_buffer_get_base(buf.get()) != nullptr); // multi_buffer does not have a defined base
                 ret[ggml_backend_buffer_get_type(buf.get())] += ggml_backend_buffer_get_size(buf.get());
             }
         }
@@ -1710,7 +1711,7 @@ lhm_memory_i * lhm_model::create_memory(const lhm_memory_params & params, const 
                     }
 
                     if (hparams.swa_type != LHM_SWA_TYPE_NONE) {
-                        GGML_ASSERT(hparams.is_swa_any());
+                        LHM_ASSERT(hparams.is_swa_any());
 
                         {
                             res = new lhm_kv_cache_iswa(
@@ -1731,7 +1732,7 @@ lhm_memory_i * lhm_model::create_memory(const lhm_memory_params & params, const 
                                     share);
                         }
                     } else {
-                        GGML_ASSERT(!hparams.is_swa_any());
+                        LHM_ASSERT(!hparams.is_swa_any());
 
                         res = new lhm_kv_cache(
                                 *this,
@@ -2058,7 +2059,7 @@ lhm_model_base::lhm_model_base(const struct lhm_model_params & params) : lhm_mod
     TENSOR_SKIP_IF_VIRTUAL(lhm_model_loader::TENSOR_SKIP_IF_VIRTUAL) {}
 
 ggml_tensor * lhm_model_base::create_tensor(const LLM_TN_IMPL & tn, const std::initializer_list<int64_t> & ne, int flags) {
-    GGML_ASSERT(ml != nullptr);
+    LHM_ASSERT(ml != nullptr);
     return create_tensor(*ml, tn, ne, flags);
 }
 

@@ -1,5 +1,6 @@
 #include "lhm_sampler.h"
 
+#include "lhm_assert.h"
 #include "lhm_impl.h"
 #include "lhm_vocab.h"
 #include "lhm_grammar.h"
@@ -287,7 +288,7 @@ static void lhm_sampler_temp_impl(lhm_token_data_array * cur_p, float temp) {
 }
 
 static void lhm_sampler_softmax_impl(lhm_token_data_array * cur_p, bool do_sort) {
-    GGML_ASSERT(cur_p->size > 0);
+    LHM_ASSERT(cur_p->size > 0);
 
     // Sort the logits in descending order if requested
     if (do_sort && !cur_p->sorted) {
@@ -380,7 +381,7 @@ void lhm_sampler_apply(struct lhm_sampler * smpl, struct lhm_token_data_array * 
         return;
     }
 
-    GGML_ASSERT(smpl->iface->apply);
+    LHM_ASSERT(smpl->iface->apply);
     smpl->iface->apply(smpl, cur_p);
 }
 
@@ -541,7 +542,7 @@ struct lhm_sampler_backend {
     }
 
     void init(bool support) {
-        GGML_ASSERT(this->is_init == false);
+        LHM_ASSERT(this->is_init == false);
 
         this->is_init = true;
         this->support = support;
@@ -696,7 +697,7 @@ static bool lhm_sampler_chain_backend_init(
         ggml_backend_buffer_type_t   buft) {
     auto * chain = (lhm_sampler_chain *) smpl->ctx;
 
-    GGML_ASSERT(chain->is_init == false && "lhm_sampler_chain_backend_init() called twice");
+    LHM_ASSERT(chain->is_init == false && "lhm_sampler_chain_backend_init() called twice");
 
     chain->is_init = true;
 
@@ -749,7 +750,7 @@ static void lhm_sampler_chain_backend_apply(
           struct lhm_sampler_data * data) {
     auto * chain = (lhm_sampler_chain *) smpl->ctx;
 
-    GGML_ASSERT(chain->is_init && "lhm_sampler_chain_backend_init() not called");
+    LHM_ASSERT(chain->is_init && "lhm_sampler_chain_backend_init() not called");
 
     for (auto & smpl : chain->samplers) {
         if (!smpl.is_backend) {
@@ -847,7 +848,7 @@ lhm_token lhm_sampler_sample(struct lhm_sampler * smpl, struct lhm_context * ctx
         }
     } else {
         const auto * logits = lhm_get_logits_ith(ctx, idx);
-        GGML_ASSERT(logits != nullptr);
+        LHM_ASSERT(logits != nullptr);
         cur.resize(n_vocab);
         for (lhm_token token_id = 0; token_id < n_vocab; token_id++) {
             cur[token_id] = lhm_token_data{token_id, logits[token_id], 0.0f};
@@ -863,7 +864,7 @@ lhm_token lhm_sampler_sample(struct lhm_sampler * smpl, struct lhm_context * ctx
 
     lhm_sampler_apply(smpl, &cur_p);
 
-    GGML_ASSERT(cur_p.selected >= 0 && cur_p.selected < (int32_t) cur_p.size);
+    LHM_ASSERT(cur_p.selected >= 0 && cur_p.selected < (int32_t) cur_p.size);
 
     auto token = cur_p.data[cur_p.selected].id;
 
@@ -1201,7 +1202,7 @@ static void lhm_sampler_dist_backend_apply(
 static void lhm_sampler_dist_backend_set_input(struct lhm_sampler * smpl) {
     auto * sctx = (lhm_sampler_dist *) smpl->ctx;
 
-    GGML_ASSERT(sctx->inp_uniform != nullptr);
+    LHM_ASSERT(sctx->inp_uniform != nullptr);
 
     // We sample in double precision and cast to float to match rnd numbers of
     // lhm_dampler_dist which uses double precision (sampling from
@@ -1432,7 +1433,7 @@ static void lhm_sampler_top_p_backend_apply(
     auto * sctx = (lhm_sampler_top_p *) smpl->ctx;
 
     auto ggml_sort = [ctx](struct ggml_tensor * a, struct ggml_tensor * b) {
-        GGML_ASSERT(ggml_nrows(a) == 1);
+        LHM_ASSERT(ggml_nrows(a) == 1);
         struct ggml_tensor * a_reshaped = ggml_reshape_2d(ctx, a, 1, a->ne[0]);
         struct ggml_tensor * a_sorted   = ggml_get_rows(ctx, a_reshaped, b);
         return ggml_reshape_1d(ctx, a_sorted, a->ne[0]);
@@ -2489,7 +2490,7 @@ static struct lhm_sampler * lhm_sampler_grammar_clone(const struct lhm_sampler *
     const auto * ctx = (const lhm_sampler_grammar *) smpl->ctx;
 
     auto * result = lhm_sampler_init_grammar_impl(ctx->vocab, nullptr, nullptr, false, nullptr, 0, nullptr, 0, nullptr, 0);
-    GGML_ASSERT(result);
+    LHM_ASSERT(result);
 
     // copy the state
     {
@@ -2547,7 +2548,7 @@ static struct lhm_sampler * lhm_sampler_init_grammar_impl(
         lhm_grammar * grammar = nullptr;
         // TODO: remove trigger_words support.
         if (trigger_words != nullptr && num_trigger_words > 0) {
-            GGML_ASSERT(trigger_patterns == nullptr && num_trigger_patterns == 0);
+            LHM_ASSERT(trigger_patterns == nullptr && num_trigger_patterns == 0);
             trigger_pattern = "[\\s\\S]*?(";
             for (size_t i = 0; i < num_trigger_words; ++i) {
                 static const std::regex special_chars("[.^$|()*+?\\[\\]{}\\\\]");
@@ -3345,8 +3346,8 @@ static void lhm_sampler_adaptive_p_apply(struct lhm_sampler * smpl, lhm_token_da
 static void lhm_sampler_adaptive_p_accept(struct lhm_sampler * smpl, lhm_token token) {
     auto * ctx = (lhm_sampler_adaptive_p *) smpl->ctx;
     if (ctx->pending_token_id == token) {
-        GGML_ASSERT(ctx->pending_token_id != LHM_TOKEN_NULL);
-        GGML_ASSERT(ctx->pending_token_idx != -1);
+        LHM_ASSERT(ctx->pending_token_id != LHM_TOKEN_NULL);
+        LHM_ASSERT(ctx->pending_token_idx != -1);
         // update EMA with the original probability of the selected token
         ctx->weighted_sum = ctx->original_probs[ctx->pending_token_idx] + ctx->decay * ctx->weighted_sum;
         ctx->total_weight = 1.0f + ctx->decay * ctx->total_weight;
@@ -3521,8 +3522,8 @@ static void lhm_sampler_logit_bias_backend_set_input(struct lhm_sampler * smpl) 
         return;
     }
 
-    GGML_ASSERT(sctx->inp_logit_bias != nullptr);
-    GGML_ASSERT(sctx->inp_logit_idxs != nullptr);
+    LHM_ASSERT(sctx->inp_logit_bias != nullptr);
+    LHM_ASSERT(sctx->inp_logit_idxs != nullptr);
 
     const size_t n = sctx->logit_bias.size();
 
@@ -3530,7 +3531,7 @@ static void lhm_sampler_logit_bias_backend_set_input(struct lhm_sampler * smpl) 
     std::vector<int32_t> data_logit_idxs(n, 0);
     for (size_t i = 0; i < n; ++i) {
         const auto & lb = sctx->logit_bias[i];
-        GGML_ASSERT(lb.token >= 0 && lb.token < (int32_t) sctx->n_vocab);
+        LHM_ASSERT(lb.token >= 0 && lb.token < (int32_t) sctx->n_vocab);
         data_logit_bias[i] = lb.bias;
         data_logit_idxs[i] = lb.token;
     }
@@ -3747,7 +3748,7 @@ static void lhm_sampler_infill_apply(struct lhm_sampler * smpl, lhm_token_data_a
         }
         cur_p->data[0].logit = 1.0f;
 
-        GGML_ASSERT(cur_p->data[0].id != LHM_TOKEN_NULL);
+        LHM_ASSERT(cur_p->data[0].id != LHM_TOKEN_NULL);
 
         return;
     }

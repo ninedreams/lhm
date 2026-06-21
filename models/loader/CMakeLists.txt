@@ -3,10 +3,10 @@ lhm_add_compile_flags()
 add_library(lhm_loader STATIC
     lhm_mmap.cpp
     lhm_mmap.h
-    lhm_model-loader.cpp
-    lhm_model-loader.h
-    lhm_model-saver.cpp
-    lhm_model-saver.h
+    lhm_model_loader.cpp
+    lhm_model_loader.h
+    lhm_model_saver.cpp
+    lhm_model_saver.h
 )
 
 target_include_directories(lhm_loader PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

@@ -5,14 +5,14 @@
 
 #include <chrono>
 
-#define QUE_INF(fmt, ...) LOG_INF("que  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
+#define QUE_INF(fmt, ...) LOG_INFO("que  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
 #define QUE_WRN(fmt, ...) LOG_WARN("que  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
-#define QUE_ERR(fmt, ...) LOG_ERR("que  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
+#define QUE_ERR(fmt, ...) LOG_ERROR("que  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
 #define QUE_DBG(fmt, ...) LOG_DEBUG("que  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
 
-#define RES_INF(fmt, ...) LOG_INF("res  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
+#define RES_INF(fmt, ...) LOG_INFO("res  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
 #define RES_WRN(fmt, ...) LOG_WARN("res  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
-#define RES_ERR(fmt, ...) LOG_ERR("res  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
+#define RES_ERR(fmt, ...) LOG_ERROR("res  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
 #define RES_DBG(fmt, ...) LOG_DEBUG("res  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
 
 //
@@ -21,7 +21,7 @@
 
 int server_queue::post(server_task && task, bool front) {
     std::unique_lock<std::mutex> lock(mutex_tasks);
-    GGML_ASSERT(task.id != -1);
+    LHM_ASSERT(task.id != -1);
     // if this is cancel task make sure to clean up pending tasks
     if (task.type == SERVER_TASK_TYPE_CANCEL) {
         cleanup_pending_task(task.id_target);
@@ -352,8 +352,8 @@ void server_response::terminate() {
 //
 
 void server_response_reader::post_task(server_task && task, bool front) {
-    GGML_ASSERT(id_tasks.empty() && "post_task() can only be called once per reader");
-    GGML_ASSERT(!task.is_parent() && "not supported, use post_tasks() instead");
+    LHM_ASSERT(id_tasks.empty() && "post_task() can only be called once per reader");
+    LHM_ASSERT(!task.is_parent() && "not supported, use post_tasks() instead");
     task.index = 0;
     id_tasks.insert(task.id);
     states.push_back(task.create_state());
@@ -362,7 +362,7 @@ void server_response_reader::post_task(server_task && task, bool front) {
 }
 
 void server_response_reader::post_tasks(std::vector<server_task> && tasks, bool front) {
-    GGML_ASSERT(id_tasks.empty() && "post_tasks() can only be called once per reader");
+    LHM_ASSERT(id_tasks.empty() && "post_tasks() can only be called once per reader");
     id_tasks = server_task::get_list_id(tasks);
     states.reserve(tasks.size());
     size_t index = 0;
@@ -375,7 +375,7 @@ void server_response_reader::post_tasks(std::vector<server_task> && tasks, bool 
             states.push_back(child_task.create_state());
         }
     }
-    GGML_ASSERT(states.size() == id_tasks.size());
+    LHM_ASSERT(states.size() == id_tasks.size());
     queue_results.add_waiting_task_ids(id_tasks);
     queue_tasks.post(std::move(tasks), front);
 }
@@ -403,7 +403,7 @@ server_task_result_ptr server_response_reader::next(const std::function<bool()> 
             if (!states.empty()) {
                 // update the generation state if needed
                 const size_t idx = result->index;
-                GGML_ASSERT(idx < states.size());
+                LHM_ASSERT(idx < states.size());
                 result->update(states[idx]);
             }
             if (result->is_stop()) {
@@ -431,8 +431,8 @@ server_response_reader::batch_response server_response_reader::wait_for_all(cons
             return batch_res;
         }
         const size_t idx = res->index;
-        GGML_ASSERT(idx < batch_res.results.size() && "index out of range");
-        GGML_ASSERT(batch_res.results[idx] == nullptr && "duplicate result received");
+        LHM_ASSERT(idx < batch_res.results.size() && "index out of range");
+        LHM_ASSERT(batch_res.results[idx] == nullptr && "duplicate result received");
         batch_res.results[idx] = std::move(res);
     }
     return batch_res;

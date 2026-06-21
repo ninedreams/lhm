@@ -251,7 +251,7 @@ static void lhm_tensor_dequantize_impl(
 
     size_t block_size_bytes = ggml_type_size(tensor->type);
 
-    GGML_ASSERT(nelements % block_size == 0);
+    LHM_ASSERT(nelements % block_size == 0);
     size_t nblocks = nelements / block_size;
     size_t blocks_per_thread = nblocks / nthread;
     size_t spare_blocks = nblocks - (blocks_per_thread * nthread); // if blocks aren't divisible by thread count
@@ -1079,7 +1079,7 @@ static void lhm_model_quantize_impl(const std::string & fname_inp, const std::st
     };
     auto new_ofstream = [&](int index) {
         cur_split = index;
-        GGML_ASSERT(ctx_outs[cur_split] && "Find uninitialized gguf_context");
+        LHM_ASSERT(ctx_outs[cur_split] && "Find uninitialized gguf_context");
         std::string fname = fname_out;
         if (params->keep_split) {
             std::vector<char> split_path(lhm_path_max(), 0);
@@ -1244,7 +1244,7 @@ static void lhm_model_quantize_impl(const std::string & fname_inp, const std::st
 
             // update the gguf meta data as we go
             gguf_set_tensor_type(ctx_outs[cur_split].get(), metadata[i].name.c_str(), new_type);
-            GGML_ASSERT(gguf_get_tensor_size(ctx_outs[cur_split].get(), gguf_find_tensor(ctx_outs[cur_split].get(), metadata[i].name.c_str())) == new_size);
+            LHM_ASSERT(gguf_get_tensor_size(ctx_outs[cur_split].get(), gguf_find_tensor(ctx_outs[cur_split].get(), metadata[i].name.c_str())) == new_size);
             gguf_set_tensor_data(ctx_outs[cur_split].get(), metadata[i].name.c_str(), new_data);
 
             // write tensor data + padding

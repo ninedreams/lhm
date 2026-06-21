@@ -10,14 +10,14 @@
 static bool common_imatrix_load_legacy(const std::string & fname, common_imatrix & imatrix) {
     std::ifstream in(fname, std::ios::binary);
     if (!in) {
-        LOG_ERR("%s: failed to open %s\n", __func__, fname.c_str());
+        LOG_ERROR("%s: failed to open %s\n", __func__, fname.c_str());
         return false;
     }
 
     int n_entries;
     in.read((char *) &n_entries, sizeof(n_entries));
     if (in.fail() || n_entries < 1) {
-        LOG_ERR("%s: no data in file %s\n", __func__, fname.c_str());
+        LOG_ERROR("%s: no data in file %s\n", __func__, fname.c_str());
         return false;
     }
 
@@ -27,7 +27,7 @@ static bool common_imatrix_load_legacy(const std::string & fname, common_imatrix
         std::vector<char> name_as_vec(len + 1);
         in.read((char *) name_as_vec.data(), len);
         if (in.fail()) {
-            LOG_ERR("%s: failed reading name for entry %d from %s\n", __func__, i + 1, fname.c_str());
+            LOG_ERROR("%s: failed reading name for entry %d from %s\n", __func__, i + 1, fname.c_str());
             return false;
         }
         name_as_vec[len] = 0;
@@ -38,7 +38,7 @@ static bool common_imatrix_load_legacy(const std::string & fname, common_imatrix
         int32_t nval = 0;
         in.read((char *) &nval, sizeof(nval));
         if (in.fail() || nval < 1) {
-            LOG_ERR("%s: failed reading number of values for entry %d\n", __func__, i);
+            LOG_ERROR("%s: failed reading number of values for entry %d\n", __func__, i);
             return false;
         }
 
@@ -46,7 +46,7 @@ static bool common_imatrix_load_legacy(const std::string & fname, common_imatrix
         e.sums.resize(nval);
         in.read((char *) e.sums.data(), nval * sizeof(float));
         if (in.fail()) {
-            LOG_ERR("%s: failed reading data for entry %d\n", __func__, i);
+            LOG_ERROR("%s: failed reading data for entry %d\n", __func__, i);
             return false;
         }
 
@@ -92,7 +92,7 @@ bool common_imatrix_load(const std::string & fname, common_imatrix & imatrix) {
 
     const int32_t n_entries = gguf_get_n_tensors(ctx_gguf);
     if (n_entries < 1) {
-        LOG_ERR("%s: no data in file %s\n", __func__, fname.c_str());
+        LOG_ERROR("%s: no data in file %s\n", __func__, fname.c_str());
         gguf_free(ctx_gguf);
         ggml_free(ctx);
         return false;
@@ -137,7 +137,7 @@ bool common_imatrix_load(const std::string & fname, common_imatrix & imatrix) {
         const struct ggml_tensor * counts  = sc.second.second;
 
         if (!in_sum2 || !counts) {
-            LOG_ERR("%s: mismatched sums and counts for %s\n", __func__, name.c_str());
+            LOG_ERROR("%s: mismatched sums and counts for %s\n", __func__, name.c_str());
             gguf_free(ctx_gguf);
             ggml_free(ctx);
             return false;

@@ -1,4 +1,4 @@
-#include "lhm_model-loader.h"
+#include "lhm_model_loader.h"
 
 #include "ggml-alloc.h"
 #include "ggml.h"
@@ -312,10 +312,10 @@ namespace GGUFMeta {
 
         switch (arr_info.gt) {
             case GGUF_TYPE_UINT32:
-            case GGUF_TYPE_INT32:   GGML_ASSERT((std::is_same<T,     int32_t>::value) ||
+            case GGUF_TYPE_INT32:   LHM_ASSERT((std::is_same<T,     int32_t>::value) ||
                                                 (std::is_same<T,    uint32_t>::value)); break;
-            case GGUF_TYPE_FLOAT32: GGML_ASSERT((std::is_same<T,       float>::value)); break;
-            case GGUF_TYPE_STRING:  GGML_ASSERT((std::is_same<T, std::string>::value)); break;
+            case GGUF_TYPE_FLOAT32: LHM_ASSERT((std::is_same<T,       float>::value)); break;
+            case GGUF_TYPE_STRING:  LHM_ASSERT((std::is_same<T, std::string>::value)); break;
             default:
                 throw std::runtime_error(format("%s is not a string/float32/uint32/int32 array", key.c_str()));
         }
@@ -354,10 +354,10 @@ namespace GGUFMeta {
         switch (arr_info.gt) {
             case GGUF_TYPE_BOOL:
             case GGUF_TYPE_UINT32:
-            case GGUF_TYPE_INT32:   GGML_ASSERT((std::is_same<T,     int32_t>::value) ||
+            case GGUF_TYPE_INT32:   LHM_ASSERT((std::is_same<T,     int32_t>::value) ||
                                                 (std::is_same<T,    uint32_t>::value)); break;
-            case GGUF_TYPE_FLOAT32: GGML_ASSERT((std::is_same<T,       float>::value)); break;
-            case GGUF_TYPE_STRING:  GGML_ASSERT((std::is_same<T, std::string>::value)); break;
+            case GGUF_TYPE_FLOAT32: LHM_ASSERT((std::is_same<T,       float>::value)); break;
+            case GGUF_TYPE_STRING:  LHM_ASSERT((std::is_same<T, std::string>::value)); break;
             default:
                 throw std::runtime_error(format("%s is not a string/float32/uint32/int32 array", key.c_str()));
         }
@@ -893,7 +893,7 @@ const struct ggml_tensor * lhm_model_loader::check_tensor_dims(const std::string
 
 // checks if the weight tensor can be used with the specified buffer type and device
 static bool weight_buft_supported(const lhm_hparams & hparams, ggml_tensor * w, ggml_op op, ggml_backend_buffer_type_t buft, ggml_backend_dev_t dev) {
-    GGML_ASSERT(w != nullptr);
+    LHM_ASSERT(w != nullptr);
 
     if (op == GGML_OP_NONE) {
         return true;
@@ -926,7 +926,7 @@ static bool weight_buft_supported(const lhm_hparams & hparams, ggml_tensor * w, 
         case GGML_OP_MUL_MAT_ID:
             {
                 const int n_expert_used = hparams.n_expert_used;
-                GGML_ASSERT(n_expert_used > 0);
+                LHM_ASSERT(n_expert_used > 0);
                 ggml_tensor * b = ggml_new_tensor_3d(ctx, GGML_TYPE_F32, w->ne[0], n_expert_used, 512);
                 ggml_tensor * ids = ggml_new_tensor_2d(ctx, GGML_TYPE_I32, n_expert_used, 512);
                 op_tensor = ggml_mul_mat_id(ctx, w, b, ids);
@@ -939,7 +939,7 @@ static bool weight_buft_supported(const lhm_hparams & hparams, ggml_tensor * w, 
         case GGML_OP_ADD_ID:
             {
                 const int n_expert_used = hparams.n_expert_used;
-                GGML_ASSERT(n_expert_used > 0);
+                LHM_ASSERT(n_expert_used > 0);
                 ggml_tensor * a = ggml_new_tensor_3d(ctx, GGML_TYPE_F32, w->ne[0], n_expert_used, 512);
                 ggml_tensor * c = ggml_new_tensor_2d(ctx, GGML_TYPE_I32, n_expert_used, 512);
                 op_tensor = ggml_add_id(ctx, a, w, c);
@@ -1021,7 +1021,7 @@ static bool weight_buft_supported(const lhm_hparams & hparams, ggml_tensor * w, 
     }
 
     // create a temporary dummy buffer for the weight so that supports_op can check the buffer type
-    GGML_ASSERT(w->buffer == nullptr);
+    LHM_ASSERT(w->buffer == nullptr);
     w->buffer = ggml_backend_buft_alloc_buffer(buft, 0);
     bool op_supported = ggml_backend_dev_supports_op(dev, op_tensor);
     ggml_backend_buffer_free(w->buffer);
@@ -1032,7 +1032,7 @@ static bool weight_buft_supported(const lhm_hparams & hparams, ggml_tensor * w, 
 
 // find the first buffer type in the list that can use the tensor
 static ggml_backend_buffer_type_t select_weight_buft(const lhm_hparams & hparams, ggml_tensor * tensor, ggml_op op, const buft_list_t * buft_list) {
-    GGML_ASSERT(!buft_list->empty());
+    LHM_ASSERT(!buft_list->empty());
     for (const auto & cur : *buft_list) {
         ggml_backend_dev_t cur_dev = cur.first;
         ggml_backend_buffer_type_t cur_buft = cur.second;
@@ -1145,7 +1145,7 @@ struct ggml_tensor * lhm_model_loader::create_tensor(
                 buft_list = buft_list_output;
                 break;
             case LLM_TENSOR_LAYER_REPEATING:
-                GGML_ASSERT(buft_list_layer != nullptr);
+                LHM_ASSERT(buft_list_layer != nullptr);
                 buft_list = buft_list_layer;
                 break;
             default:
@@ -1236,14 +1236,14 @@ struct ggml_tensor * lhm_model_loader::create_tensor(
         t_meta.type = type;
         for (size_t dim = 0; dim < GGML_MAX_DIMS; dim++) {
             t_meta.ne[dim] = dim < ne.size() ? ne.begin()[dim] : 1;
-            GGML_ASSERT(t_meta.ne[dim] >= 1);
+            LHM_ASSERT(t_meta.ne[dim] >= 1);
             t_meta.nb[dim] = dim == 0 ? ggml_type_size(type) : t_meta.ne[dim-1]*t_meta.nb[dim-1];
-            GGML_ASSERT(t_meta.nb[dim] >= 1);
+            LHM_ASSERT(t_meta.nb[dim] >= 1);
         }
         ggml_set_name(&t_meta, tn.str().c_str());
 
         ggml_backend_buffer_type_t buft = buft_for_tensor(&t_meta);
-        GGML_ASSERT(buft != nullptr);
+        LHM_ASSERT(buft != nullptr);
         ggml_context * ctx = ctx_for_buft(buft);
         ggml_tensor * ret = ggml_dup_tensor(ctx, &t_meta);
         ggml_set_name(ret, tn.str().c_str());
@@ -1366,7 +1366,7 @@ void lhm_model_loader::init_mappings(bool prefetch, lhm_mlocks * mlock_mmaps) {
 }
 
 void lhm_model_loader::get_mapping_range(size_t * first, size_t * last, void ** addr, int idx, ggml_context * ctx) const {
-    GGML_ASSERT(!mappings.empty());
+    LHM_ASSERT(!mappings.empty());
     const auto & mapping = mappings.at(idx);
 
     *first = mapping->size();
@@ -1393,8 +1393,8 @@ void lhm_model_loader::load_data_for(struct ggml_tensor * cur) const {
             memcpy(cur->data, (uint8_t *)mapping->addr() + w.offs, ggml_nbytes(cur));
         }
     } else {
-        GGML_ASSERT(cur->data != nullptr);
-        GGML_ASSERT(w.idx < files.size());
+        LHM_ASSERT(cur->data != nullptr);
+        LHM_ASSERT(w.idx < files.size());
         const auto & file = files.at(w.idx);
         file->seek(w.offs, SEEK_SET);
         file->read_raw(cur->data, ggml_nbytes(cur));
@@ -1417,7 +1417,7 @@ bool lhm_model_loader::load_all_data(
         }
         return true;
     }
-    GGML_ASSERT(size_data != 0 && "call init_mappings() first");
+    LHM_ASSERT(size_data != 0 && "call init_mappings() first");
 
     std::vector<no_init<uint8_t>> read_buf;
     std::vector<std::future<std::pair<ggml_tensor *, bool>>> validation_result;
@@ -1549,7 +1549,7 @@ bool lhm_model_loader::load_all_data(
                 }));
             }
 
-            GGML_ASSERT(buf_mmap || cur->data); // either we have a buffer to allocate the tensor in, or it is already allocated
+            LHM_ASSERT(buf_mmap || cur->data); // either we have a buffer to allocate the tensor in, or it is already allocated
             if (buf_mmap && cur->data == nullptr) {
                 ggml_backend_tensor_alloc(buf_mmap, cur, data);
                 if (lmlocks) {

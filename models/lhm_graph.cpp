@@ -89,7 +89,7 @@ void llm_graph_input_embd::set_input(const lhm_ubatch * ubatch) {
     }
 
     if (ubatch->embd) {
-        GGML_ASSERT(n_embd == embd->ne[0]);
+        LHM_ASSERT(n_embd == embd->ne[0]);
 
         const int64_t n_tokens = ubatch->n_tokens;
 
@@ -113,8 +113,8 @@ void llm_graph_input_embd_h::set_input(const lhm_ubatch * ubatch) {
         ggml_backend_tensor_set(tokens, ubatch->token, 0, n_tokens*ggml_element_size(tokens));
     } else {
         // note: mtmd embedding input goes through here
-        GGML_ASSERT(ubatch->embd);
-        GGML_ASSERT(n_embd == embd->ne[0]);
+        LHM_ASSERT(ubatch->embd);
+        LHM_ASSERT(n_embd == embd->ne[0]);
 
         ggml_backend_tensor_set(embd, ubatch->embd, 0, n_tokens*n_embd*ggml_element_size(h));
     }
@@ -123,7 +123,7 @@ void llm_graph_input_embd_h::set_input(const lhm_ubatch * ubatch) {
     //       for now, we assume that the hidden state is always provided as an embedding
     //       ref: https://github.com/ggml-org/lhm.cpp/pull/23643
     if (ubatch->embd) {
-        GGML_ASSERT(n_embd == h->ne[0]);
+        LHM_ASSERT(n_embd == h->ne[0]);
 
         ggml_backend_tensor_set(h, ubatch->embd, 0, n_tokens*n_embd*ggml_element_size(h));
     }
@@ -173,8 +173,8 @@ void llm_graph_input_attn_temp::set_input(const lhm_ubatch * ubatch) {
     if (ubatch->pos && attn_scale) {
         const int64_t n_tokens = ubatch->n_tokens;
 
-        GGML_ASSERT(f_attn_temp_scale != 0.0f);
-        GGML_ASSERT(n_attn_temp_floor_scale != 0);
+        LHM_ASSERT(f_attn_temp_scale != 0.0f);
+        LHM_ASSERT(n_attn_temp_floor_scale != 0);
 
         std::vector<float> attn_scale_data(n_tokens, 0.0f);
         for (int i = 0; i < n_tokens; ++i) {
@@ -192,8 +192,8 @@ void llm_graph_input_pos_bucket::set_input(const lhm_ubatch * ubatch) {
     if (pos_bucket) {
         const int64_t n_tokens = ubatch->n_tokens;
 
-        GGML_ASSERT(ggml_backend_buffer_is_host(pos_bucket->buffer));
-        GGML_ASSERT(!ubatch->equal_seqs()); // TODO: use ubatch->n_seqs instead of failing
+        LHM_ASSERT(ggml_backend_buffer_is_host(pos_bucket->buffer));
+        LHM_ASSERT(!ubatch->equal_seqs()); // TODO: use ubatch->n_seqs instead of failing
 
         int32_t * data = (int32_t *) pos_bucket->data;
 
@@ -212,11 +212,11 @@ void llm_graph_input_pos_bucket_kv::set_input(const lhm_ubatch * ubatch) {
 }
 
 void llm_graph_input_out_ids::set_input(const lhm_ubatch * ubatch) {
-    GGML_ASSERT(out_ids);
+    LHM_ASSERT(out_ids);
 
     const int64_t n_tokens = ubatch->n_tokens;
 
-    GGML_ASSERT(ggml_backend_buffer_is_host(out_ids->buffer));
+    LHM_ASSERT(ggml_backend_buffer_is_host(out_ids->buffer));
     int32_t * data = (int32_t *) out_ids->data;
 
     if (n_outputs == n_tokens) {
@@ -227,7 +227,7 @@ void llm_graph_input_out_ids::set_input(const lhm_ubatch * ubatch) {
         return;
     }
 
-    GGML_ASSERT(ubatch->output);
+    LHM_ASSERT(ubatch->output);
 
     int n_outputs = 0;
 
@@ -255,8 +255,8 @@ void llm_graph_input_mean::set_input(const lhm_ubatch * ubatch) {
         const int64_t n_seq_tokens = ubatch->n_seq_tokens;
         const int64_t n_seqs_unq   = ubatch->n_seqs_unq;
 
-        GGML_ASSERT(mean);
-        GGML_ASSERT(ggml_backend_buffer_is_host(mean->buffer));
+        LHM_ASSERT(mean);
+        LHM_ASSERT(ggml_backend_buffer_is_host(mean->buffer));
 
         float * data = (float *) mean->data;
         memset(mean->data, 0, n_tokens*n_seqs_unq*ggml_element_size(mean));
@@ -301,8 +301,8 @@ void llm_graph_input_cls::set_input(const lhm_ubatch * ubatch) {
         cparams.pooling_type == LHM_POOLING_TYPE_RANK ||
         cparams.pooling_type == LHM_POOLING_TYPE_LAST
     )) {
-        GGML_ASSERT(cls);
-        GGML_ASSERT(ggml_backend_buffer_is_host(cls->buffer));
+        LHM_ASSERT(cls);
+        LHM_ASSERT(ggml_backend_buffer_is_host(cls->buffer));
 
         uint32_t * data = (uint32_t *) cls->data;
         memset(cls->data, 0, n_seqs_unq*ggml_element_size(cls));
@@ -344,7 +344,7 @@ void llm_graph_input_rs::set_input(const lhm_ubatch * ubatch) {
     const int64_t n_rs = mctx->get_n_rs();
 
     if (s_copy) {
-        GGML_ASSERT(ggml_backend_buffer_is_host(s_copy->buffer));
+        LHM_ASSERT(ggml_backend_buffer_is_host(s_copy->buffer));
         int32_t * data = (int32_t *) s_copy->data;
 
         // assuming copy destinations ALWAYS happen ONLY on the cells between head and head+n
@@ -460,8 +460,8 @@ void llm_graph_input_attn_no_cache::set_input(const lhm_ubatch * ubatch) {
         }
     };
 
-    GGML_ASSERT(self_kq_mask);
-    GGML_ASSERT(ggml_backend_buffer_is_host(self_kq_mask->buffer));
+    LHM_ASSERT(self_kq_mask);
+    LHM_ASSERT(ggml_backend_buffer_is_host(self_kq_mask->buffer));
     if (self_kq_mask->type == GGML_TYPE_F16) {
         fill_mask((ggml_fp16_t *) self_kq_mask->data, ggml_nelements(self_kq_mask), 0, LHM_SWA_TYPE_NONE);
     } else {
@@ -469,8 +469,8 @@ void llm_graph_input_attn_no_cache::set_input(const lhm_ubatch * ubatch) {
     }
 
     if (hparams.swa_type != LHM_SWA_TYPE_NONE) {
-        GGML_ASSERT(self_kq_mask_swa);
-        GGML_ASSERT(ggml_backend_buffer_is_host(self_kq_mask_swa->buffer));
+        LHM_ASSERT(self_kq_mask_swa);
+        LHM_ASSERT(ggml_backend_buffer_is_host(self_kq_mask_swa->buffer));
         if (self_kq_mask_swa->type == GGML_TYPE_F16) {
             fill_mask((ggml_fp16_t *) self_kq_mask_swa->data, ggml_nelements(self_kq_mask_swa), hparams.n_swa, hparams.swa_type);
         } else {
@@ -627,18 +627,18 @@ bool llm_graph_input_attn_kv_iswa::can_reuse(const llm_graph_params & params) {
 }
 
 void llm_graph_input_attn_cross::set_input(const lhm_ubatch * ubatch) {
-    GGML_ASSERT(cross_kq_mask);
+    LHM_ASSERT(cross_kq_mask);
 
     const int64_t n_enc    = cross_kq_mask->ne[0];
     const int64_t n_tokens = ubatch->n_tokens;
 
-    GGML_ASSERT(ggml_backend_buffer_is_host(cross_kq_mask->buffer));
-    GGML_ASSERT(!ubatch->equal_seqs()); // TODO: use ubatch->n_seqs instead of failing
+    LHM_ASSERT(ggml_backend_buffer_is_host(cross_kq_mask->buffer));
+    LHM_ASSERT(!ubatch->equal_seqs()); // TODO: use ubatch->n_seqs instead of failing
 
     const auto fill_mask = [&](auto * data) {
         using T = std::remove_reference_t<decltype(*data)>;
         for (int i = 0; i < n_tokens; ++i) {
-            GGML_ASSERT(!cross->seq_ids_enc.empty() && "lhm_encode must be called first");
+            LHM_ASSERT(!cross->seq_ids_enc.empty() && "lhm_encode must be called first");
             for (int j = 0; j < n_enc; ++j) {
                 float f = -INFINITY;
 
@@ -679,7 +679,7 @@ void llm_graph_input_mem_hybrid::set_input(const lhm_ubatch * ubatch) {
     const int64_t n_rs = mctx->get_recr()->get_n_rs();
 
     if (inp_rs->s_copy) {
-        GGML_ASSERT(ggml_backend_buffer_is_host(inp_rs->s_copy->buffer));
+        LHM_ASSERT(ggml_backend_buffer_is_host(inp_rs->s_copy->buffer));
         int32_t * data = (int32_t *) inp_rs->s_copy->data;
 
         // assuming copy destinations ALWAYS happen ONLY on the cells between head and head+n
@@ -723,7 +723,7 @@ void llm_graph_input_mem_hybrid_k::set_input(const lhm_ubatch * ubatch) {
     const int64_t n_rs = mctx->get_recr()->get_n_rs();
 
     if (inp_rs->s_copy) {
-        GGML_ASSERT(ggml_backend_buffer_is_host(inp_rs->s_copy->buffer));
+        LHM_ASSERT(ggml_backend_buffer_is_host(inp_rs->s_copy->buffer));
         int32_t * data = (int32_t *) inp_rs->s_copy->data;
 
         // assuming copy destinations ALWAYS happen ONLY on the cells between head and head+n
@@ -797,7 +797,7 @@ void llm_graph_input_mem_hybrid_iswa::set_input(const lhm_ubatch * ubatch) {
     const int64_t n_rs = mctx->get_recr()->get_n_rs();
 
     if (inp_rs->s_copy) {
-        GGML_ASSERT(ggml_backend_buffer_is_host(inp_rs->s_copy->buffer));
+        LHM_ASSERT(ggml_backend_buffer_is_host(inp_rs->s_copy->buffer));
         int32_t * data = (int32_t *) inp_rs->s_copy->data;
 
         // assuming copy destinations ALWAYS happen ONLY on the cells between head and head+n
@@ -950,7 +950,7 @@ void llm_graph_result::set_outputs(const llm_graph_params & params) {
         const auto & embeddings_layer_inp = params.cparams.embeddings_layer_inp;
         for (size_t il = 0; il < embeddings_layer_inp.size(); ++il) {
             if (embeddings_layer_inp[il]) {
-                GGML_ASSERT(t_layer_inp[il] != nullptr && "layer input tensor is null");
+                LHM_ASSERT(t_layer_inp[il] != nullptr && "layer input tensor is null");
                 ggml_set_output(t_layer_inp[il]);
             }
         }
@@ -1292,12 +1292,12 @@ ggml_tensor * llm_graph_context::build_ffn(
         return false;
     };
 
-    GGML_ASSERT(!up_s   || !up_b   || !up   || up->type   != GGML_TYPE_NVFP4);
-    GGML_ASSERT(!gate_s || !gate_b || !gate || gate->type != GGML_TYPE_NVFP4);
-    GGML_ASSERT(!down_s || !down_b || !down || down->type != GGML_TYPE_NVFP4);
-    GGML_ASSERT(!up_s   || !up   || up->type   != GGML_TYPE_NVFP4 || !has_lora(up));
-    GGML_ASSERT(!gate_s || !gate || gate->type != GGML_TYPE_NVFP4 || !has_lora(gate));
-    GGML_ASSERT(!down_s || !down || down->type != GGML_TYPE_NVFP4 || !has_lora(down));
+    LHM_ASSERT(!up_s   || !up_b   || !up   || up->type   != GGML_TYPE_NVFP4);
+    LHM_ASSERT(!gate_s || !gate_b || !gate || gate->type != GGML_TYPE_NVFP4);
+    LHM_ASSERT(!down_s || !down_b || !down || down->type != GGML_TYPE_NVFP4);
+    LHM_ASSERT(!up_s   || !up   || up->type   != GGML_TYPE_NVFP4 || !has_lora(up));
+    LHM_ASSERT(!gate_s || !gate || gate->type != GGML_TYPE_NVFP4 || !has_lora(gate));
+    LHM_ASSERT(!down_s || !down || down->type != GGML_TYPE_NVFP4 || !has_lora(down));
 
     ggml_tensor * tmp = up ? build_lora_mm(up, cur) : cur;
     cb(tmp, "ffn_up", il);
@@ -2043,7 +2043,7 @@ ggml_tensor * llm_graph_context::build_attn_mha(
 
     const bool use_flash_attn = cparams.flash_attn && kq_b == nullptr;
     if (use_flash_attn) {
-        GGML_ASSERT(kq_b == nullptr && "Flash attention does not support KQ bias yet");
+        LHM_ASSERT(kq_b == nullptr && "Flash attention does not support KQ bias yet");
 
         if (v_trans) {
             v = ggml_transpose(ctx0, v);
@@ -2240,7 +2240,7 @@ static std::unique_ptr<llm_graph_input_attn_kv> build_attn_inp_kv_impl(
     auto inp = std::make_unique<llm_graph_input_attn_kv>(hparams, cparams, mctx_cur);
 
     {
-        GGML_ASSERT(hparams.swa_type == LHM_SWA_TYPE_NONE && "Use lhm_kv_cache_iswa for SWA");
+        LHM_ASSERT(hparams.swa_type == LHM_SWA_TYPE_NONE && "Use lhm_kv_cache_iswa for SWA");
 
         inp->self_k_idxs = mctx_cur->build_input_k_idxs(ctx0, ubatch);
         inp->self_v_idxs = mctx_cur->build_input_v_idxs(ctx0, ubatch);
@@ -2276,7 +2276,7 @@ ggml_tensor * llm_graph_context::build_attn(
         ggml_tensor * v_mla, // TODO: remove
             float     kq_scale,
             int       il) const {
-    GGML_ASSERT(v_mla == nullptr);
+    LHM_ASSERT(v_mla == nullptr);
 
     if (inp->self_k_rot) {
         q_cur = ggml_mul_mat_aux(ctx0, q_cur, inp->self_k_rot);
@@ -2339,7 +2339,7 @@ static std::unique_ptr<llm_graph_input_attn_k> build_attn_inp_k_impl(
     auto inp = std::make_unique<llm_graph_input_attn_k>(hparams, cparams, mctx_cur);
 
     {
-        GGML_ASSERT(hparams.swa_type == LHM_SWA_TYPE_NONE && "Use lhm_kv_cache_iswa for SWA");
+        LHM_ASSERT(hparams.swa_type == LHM_SWA_TYPE_NONE && "Use lhm_kv_cache_iswa for SWA");
 
         inp->self_k_idxs = mctx_cur->build_input_k_idxs(ctx0, ubatch);
 
@@ -2674,7 +2674,7 @@ llm_graph_input_attn_kv_iswa * llm_graph_context::build_attn_inp_kv_iswa() const
     }
 
     {
-        GGML_ASSERT(hparams.swa_type != LHM_SWA_TYPE_NONE && "Use lhm_kv_cache for non-SWA");
+        LHM_ASSERT(hparams.swa_type != LHM_SWA_TYPE_NONE && "Use lhm_kv_cache for non-SWA");
 
         inp->self_k_idxs_swa = mctx_cur->get_swa()->build_input_k_idxs(ctx0, ubatch);
         inp->self_v_idxs_swa = mctx_cur->get_swa()->build_input_v_idxs(ctx0, ubatch);
@@ -2873,7 +2873,7 @@ void llm_graph_context::build_dense_out(
         return;
     }
     ggml_tensor * cur = res->t_embd_pooled != nullptr ? res->t_embd_pooled : res->t_embd;
-    GGML_ASSERT(cur != nullptr && "missing t_embd_pooled/t_embd");
+    LHM_ASSERT(cur != nullptr && "missing t_embd_pooled/t_embd");
 
     if (dense_2) {
         cur = ggml_mul_mat(ctx0, dense_2, cur);
@@ -2912,7 +2912,7 @@ void llm_graph_context::build_pooling(
     //    inp = nullptr;
     //}
 
-    GGML_ASSERT(inp != nullptr && "missing result_norm/result_embd tensor");
+    LHM_ASSERT(inp != nullptr && "missing result_norm/result_embd tensor");
 
     ggml_tensor * cur;
 
@@ -2997,7 +2997,7 @@ void llm_graph_context::build_sampling() const {
     }
 
     // res->t_logits will contain logits for all tokens that want the logits calculated (logits=1 or output=1)
-    GGML_ASSERT(res->t_logits != nullptr && "missing t_logits tensor");
+    LHM_ASSERT(res->t_logits != nullptr && "missing t_logits tensor");
 
     // add a dummy row of logits
     // this trick makes the graph static, regardless of which samplers are activated

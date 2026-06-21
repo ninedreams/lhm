@@ -4,7 +4,6 @@
 #include "log.h"
 #include "http.h"
 
-#define JSON_ASSERT GGML_ASSERT
 #include <nlohmann/json.hpp>
 
 #include <filesystem>
@@ -279,9 +278,9 @@ static std::string get_repo_commit(const std::string & repo_id,
         return commit;
 
     } catch (const nl::json::exception & e) {
-        LOG_ERR("%s: JSON error: %s\n", __func__, e.what());
+        LOG_ERROR("%s: JSON error: %s\n", __func__, e.what());
     } catch (const std::exception & e) {
-        LOG_ERR("%s: error: %s\n", __func__, e.what());
+        LOG_ERROR("%s: error: %s\n", __func__, e.what());
     }
     return {};
 }
@@ -357,9 +356,9 @@ hf_files get_repo_files(const std::string & repo_id,
             files.push_back(file);
         }
     } catch (const nl::json::exception & e) {
-        LOG_ERR("%s: JSON error: %s\n", __func__, e.what());
+        LOG_ERROR("%s: JSON error: %s\n", __func__, e.what());
     } catch (const std::exception & e) {
-        LOG_ERR("%s: error: %s\n", __func__, e.what());
+        LOG_ERROR("%s: error: %s\n", __func__, e.what());
     }
     return files;
 }
@@ -487,7 +486,7 @@ std::string finalize_file(const hf_file & file) {
         LOG_WARN("%s: failed to move file to snapshots: %s\n", __func__, ec.message().c_str());
         fs::copy(local_path, final_path, ec);
         if (ec) {
-            LOG_ERR("%s: failed to copy file to snapshots: %s\n", __func__, ec.message().c_str());
+            LOG_ERROR("%s: failed to copy file to snapshots: %s\n", __func__, ec.message().c_str());
         }
     }
     return file.final_path;
@@ -502,7 +501,7 @@ bool remove_cached_repo(const std::string & repo_id) {
     std::error_code ec;
     auto removed = fs::remove_all(repo_path, ec);
     if (ec) {
-        LOG_ERR("%s: failed to remove repo cache %s: %s\n", __func__, repo_path.string().c_str(), ec.message().c_str());
+        LOG_ERROR("%s: failed to remove repo cache %s: %s\n", __func__, repo_path.string().c_str(), ec.message().c_str());
         return false;
     }
     return removed > 0;

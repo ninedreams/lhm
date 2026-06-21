@@ -466,7 +466,7 @@ void lhm_context::sched_reserve() {
             ggml_backend_dev_t device_fa = ggml_backend_get_device(ggml_backend_sched_get_tensor_backend(sched.get(), n));
 
             // TODO: instead of the tensor names, use a map to keep track of which (FA) tensors belong to which layer
-            GGML_ASSERT(strncmp(n->name, LHM_TENSOR_NAME_FATTN "-", prefix_len) == 0);
+            LHM_ASSERT(strncmp(n->name, LHM_TENSOR_NAME_FATTN "-", prefix_len) == 0);
             const int il = std::stoi(n->name + prefix_len);
             ggml_backend_dev_t device_kv = model.dev_layer(il);
             if (device_fa != device_kv) {
@@ -508,7 +508,7 @@ void lhm_context::sched_reserve() {
                 }
                 ggml_backend_dev_t device_gdn = ggml_backend_get_device(ggml_backend_sched_get_tensor_backend(sched.get(), n));
 
-                GGML_ASSERT(strncmp(n->name, LHM_TENSOR_NAME_FGDN_AR "-", prefix_len) == 0);
+                LHM_ASSERT(strncmp(n->name, LHM_TENSOR_NAME_FGDN_AR "-", prefix_len) == 0);
                 const int il = std::stoi(n->name + prefix_len);
                 ggml_backend_dev_t device_kv = model.dev_layer(il);
                 if (device_gdn != device_kv) {
@@ -549,7 +549,7 @@ void lhm_context::sched_reserve() {
                 }
                 ggml_backend_dev_t device_gdn = ggml_backend_get_device(ggml_backend_sched_get_tensor_backend(sched.get(), n));
 
-                GGML_ASSERT(strncmp(n->name, LHM_TENSOR_NAME_FGDN_CH "-", prefix_len) == 0);
+                LHM_ASSERT(strncmp(n->name, LHM_TENSOR_NAME_FGDN_CH "-", prefix_len) == 0);
                 const int il = std::stoi(n->name + prefix_len);
                 ggml_backend_dev_t device_kv = model.dev_layer(il);
                 if (device_gdn != device_kv) {
@@ -927,7 +927,7 @@ float * lhm_context::get_embeddings_nextn_ith(int32_t i) {
 float * lhm_context::get_embeddings_layer_inp(uint32_t lid) {
     output_reorder();
 
-    GGML_ASSERT(lid < embd_layer_inp.size() && embd_layer_inp[lid].has_data());
+    LHM_ASSERT(lid < embd_layer_inp.size() && embd_layer_inp[lid].has_data());
 
     return embd_layer_inp[lid].data;
 }
@@ -941,7 +941,7 @@ lhm_token lhm_context::get_sampled_token_ith(int32_t idx) {
 
     try {
         const int64_t row = output_resolve_row(idx);
-        GGML_ASSERT(row < (int64_t) sampling.sampled.size);
+        LHM_ASSERT(row < (int64_t) sampling.sampled.size);
         return sampling.sampled.data[row];
     } catch (const std::exception & err) {
         LHM_LOG_ERROR("%s: invalid backend sampled token id %d, reason: %s\n", __func__, idx, err.what());
@@ -1122,7 +1122,7 @@ void lhm_context::set_embeddings_nextn(bool value, bool masked) {
 void lhm_context::set_embeddings_layer_inp(uint32_t lid, bool enable) {
     LOG_DEBUG("%s: lid = %d, enable = %d\n", __func__, lid, enable);
 
-    GGML_ASSERT(lid < model.hparams.n_layer());
+    LHM_ASSERT(lid < model.hparams.n_layer());
 
     cparams.embeddings_layer_inp[lid] = enable;
 
@@ -1346,7 +1346,7 @@ llm_graph_result * lhm_context::process_ubatch(const lhm_ubatch & ubatch, llm_gr
 int lhm_context::encode(const lhm_batch & batch_inp) {
     // MTP hook batches carry both token (next-token id) and embd (h_nextn row),
     // so accept either present rather than requiring exactly one.
-    GGML_ASSERT(batch_inp.token || batch_inp.embd);
+    LHM_ASSERT(batch_inp.token || batch_inp.embd);
 
     if (batch_inp.n_tokens == 0) {
         LHM_LOG_ERROR("%s: n_tokens == 0\n", __func__);
@@ -1372,7 +1372,7 @@ int lhm_context::encode(const lhm_batch & batch_inp) {
     const lhm_ubatch ubatch = balloc->split_simple(n_tokens);
 
     // micro-batching is not possible for non-causal encoding, so we process the batch in a single shot
-    GGML_ASSERT(cparams.n_ubatch >= n_tokens && "encoder requires n_ubatch >= n_tokens");
+    LHM_ASSERT(cparams.n_ubatch >= n_tokens && "encoder requires n_ubatch >= n_tokens");
 
     if (t_compute_start_us == 0) {
         t_compute_start_us = ggml_time_us();
@@ -1425,8 +1425,8 @@ int lhm_context::encode(const lhm_batch & batch_inp) {
     // extract logits
     if (logits.data && t_logits) {
         ggml_backend_t backend_res = ggml_backend_sched_get_tensor_backend(sched.get(), t_logits);
-        GGML_ASSERT(backend_res != nullptr);
-        GGML_ASSERT(logits.data != nullptr);
+        LHM_ASSERT(backend_res != nullptr);
+        LHM_ASSERT(logits.data != nullptr);
 
         ggml_backend_tensor_get_async(backend_res, t_logits, logits.data, 0, n_tokens*n_vocab*sizeof(float));
     }
@@ -1434,16 +1434,16 @@ int lhm_context::encode(const lhm_batch & batch_inp) {
     // extract embeddings
     if (embd.data && t_embd) {
         ggml_backend_t backend_embd = ggml_backend_sched_get_tensor_backend(sched.get(), t_embd);
-        GGML_ASSERT(backend_embd != nullptr);
+        LHM_ASSERT(backend_embd != nullptr);
 
         switch (cparams.pooling_type) {
             case LHM_POOLING_TYPE_NONE:
                 {
                     // extract token embeddings
-                    GGML_ASSERT(embd.data != nullptr);
+                    LHM_ASSERT(embd.data != nullptr);
                     const uint32_t n_embd_out = hparams.n_embd_out();
 
-                    GGML_ASSERT(n_tokens*n_embd_out <= (int64_t) embd.size);
+                    LHM_ASSERT(n_tokens*n_embd_out <= (int64_t) embd.size);
                     ggml_backend_tensor_get_async(backend_embd, t_embd, embd.data, 0, n_tokens*n_embd_out*sizeof(float));
                 } break;
             case LHM_POOLING_TYPE_MEAN:
@@ -1489,10 +1489,10 @@ int lhm_context::encode(const lhm_batch & batch_inp) {
     // extract nextn embeddings (hidden state before the final output norm)
     if (embd_nextn.data && t_h_nextn && cparams.pooling_type == LHM_POOLING_TYPE_NONE) {
         ggml_backend_t backend_h = ggml_backend_sched_get_tensor_backend(sched.get(), t_h_nextn);
-        GGML_ASSERT(backend_h != nullptr);
+        LHM_ASSERT(backend_h != nullptr);
 
         const uint32_t n_embd = hparams.n_embd_out();
-        GGML_ASSERT(n_tokens*n_embd <= (int64_t) embd_nextn.size);
+        LHM_ASSERT(n_tokens*n_embd <= (int64_t) embd_nextn.size);
         ggml_backend_tensor_get_async(backend_h, t_h_nextn, embd_nextn.data, 0, n_tokens*n_embd*sizeof(float));
     }
 
@@ -1533,9 +1533,9 @@ static void copy_tensor_async_ints(
         }
 
         const uint32_t row = it->second;
-        GGML_ASSERT(row < sampled.size);
+        LHM_ASSERT(row < sampled.size);
 
-        GGML_ASSERT(ggml_is_contiguous(tensor) && "sampled tokens tensor must be contiguous for async copy");
+        LHM_ASSERT(ggml_is_contiguous(tensor) && "sampled tokens tensor must be contiguous for async copy");
 
         ggml_backend_t backend = ggml_backend_sched_get_tensor_backend(sched, tensor);
         ggml_backend_tensor_get_async(backend, tensor, sampled.data + row, 0, sizeof(sampled.data[row]));
@@ -1560,9 +1560,9 @@ static void copy_tensor_async_floats(
         }
 
         const uint32_t row = it->second;
-        GGML_ASSERT(row < counts.size());
+        LHM_ASSERT(row < counts.size());
 
-        GGML_ASSERT(ggml_is_contiguous(tensor) && "logits/probs tensor must be contiguous for async copy");
+        LHM_ASSERT(ggml_is_contiguous(tensor) && "logits/probs tensor must be contiguous for async copy");
 
         ggml_backend_t backend = ggml_backend_sched_get_tensor_backend(sched, tensor);
         float * row_ptr = dst.data + (size_t) row * stride;
@@ -1591,9 +1591,9 @@ static void copy_tensor_async_candidates(
         }
 
         const uint32_t row = it->second;
-        GGML_ASSERT(row < counts.size());
+        LHM_ASSERT(row < counts.size());
 
-        GGML_ASSERT(ggml_is_contiguous(tensor) && "candidates tensor must be contiguous for async copy");
+        LHM_ASSERT(ggml_is_contiguous(tensor) && "candidates tensor must be contiguous for async copy");
 
         ggml_backend_t backend = ggml_backend_sched_get_tensor_backend(sched, tensor);
         lhm_token * row_ptr = dst.data + (size_t) row * stride;
@@ -1624,7 +1624,7 @@ static bool needs_raw_logits(const lhm_ubatch & ubatch, const std::map<lhm_seq_i
 int lhm_context::decode(const lhm_batch & batch_inp) {
     // MTP hook batches carry both token (next-token id) and embd (h_nextn row),
     // so accept either present rather than requiring exactly one.
-    GGML_ASSERT(batch_inp.token || batch_inp.embd);
+    LHM_ASSERT(batch_inp.token || batch_inp.embd);
 
     if (!memory) {
         LOG_DEBUG("%s: cannot decode batches with this context (calling encode() instead)\n", __func__);
@@ -1689,9 +1689,9 @@ int lhm_context::decode(const lhm_batch & batch_inp) {
         }
     }
 
-    GGML_ASSERT(n_tokens_all <= cparams.n_batch);
+    LHM_ASSERT(n_tokens_all <= cparams.n_batch);
 
-    GGML_ASSERT((cparams.causal_attn || cparams.n_ubatch >= n_tokens_all) && "non-causal attention requires n_ubatch >= n_tokens");
+    LHM_ASSERT((cparams.causal_attn || cparams.n_ubatch >= n_tokens_all) && "non-causal attention requires n_ubatch >= n_tokens");
 
     if (t_compute_start_us == 0) {
         t_compute_start_us = ggml_time_us();
@@ -1833,14 +1833,14 @@ int lhm_context::decode(const lhm_batch & batch_inp) {
         // extract logits
         if (logits.data && t_logits && n_outputs > 0 && needs_raw_logits(ubatch, sampling.samplers)) {
             ggml_backend_t backend_res = ggml_backend_sched_get_tensor_backend(sched.get(), t_logits);
-            GGML_ASSERT(backend_res != nullptr);
-            GGML_ASSERT(logits.data != nullptr);
+            LHM_ASSERT(backend_res != nullptr);
+            LHM_ASSERT(logits.data != nullptr);
 
             float * logits_out = logits.data + n_outputs_prev*n_vocab;
 
             if (n_outputs) {
-                GGML_ASSERT( n_outputs_prev + n_outputs <= n_outputs_all);
-                GGML_ASSERT((n_outputs_prev + n_outputs)*n_vocab <= (int64_t) logits.size);
+                LHM_ASSERT( n_outputs_prev + n_outputs <= n_outputs_all);
+                LHM_ASSERT((n_outputs_prev + n_outputs)*n_vocab <= (int64_t) logits.size);
                 ggml_backend_tensor_get_async(backend_res, t_logits, logits_out, 0, n_outputs*n_vocab*sizeof(float));
             }
         }
@@ -1848,19 +1848,19 @@ int lhm_context::decode(const lhm_batch & batch_inp) {
         // extract embeddings
         if (embd.data && t_embd && n_outputs > 0) {
             ggml_backend_t backend_embd = ggml_backend_sched_get_tensor_backend(sched.get(), t_embd);
-            GGML_ASSERT(backend_embd != nullptr);
+            LHM_ASSERT(backend_embd != nullptr);
 
             switch (cparams.pooling_type) {
                 case LHM_POOLING_TYPE_NONE:
                     {
                         // extract token embeddings
-                        GGML_ASSERT(embd.data != nullptr);
+                        LHM_ASSERT(embd.data != nullptr);
                         const uint32_t n_embd_out = hparams.n_embd_out();
                         float * embd_out = embd.data + n_outputs_prev*n_embd_out;
 
                         if (n_outputs) {
-                            GGML_ASSERT( n_outputs_prev + n_outputs <= n_outputs_all);
-                            GGML_ASSERT((n_outputs_prev + n_outputs)*n_embd_out <= (int64_t) embd.size);
+                            LHM_ASSERT( n_outputs_prev + n_outputs <= n_outputs_all);
+                            LHM_ASSERT((n_outputs_prev + n_outputs)*n_embd_out <= (int64_t) embd.size);
                             ggml_backend_tensor_get_async(backend_embd, t_embd, embd_out, 0, n_outputs*n_embd_out*sizeof(float));
                         }
                     } break;
@@ -1916,12 +1916,12 @@ int lhm_context::decode(const lhm_batch & batch_inp) {
 
             if (embd_nextn.data && t_h_nextn && n_rows > 0 && cparams.pooling_type == LHM_POOLING_TYPE_NONE) {
                 ggml_backend_t backend_h = ggml_backend_sched_get_tensor_backend(sched.get(), t_h_nextn);
-                GGML_ASSERT(backend_h != nullptr);
+                LHM_ASSERT(backend_h != nullptr);
 
                 const uint32_t n_embd  = hparams.n_embd_out();
                 float * embd_nextn_out = embd_nextn.data + offset*n_embd;
 
-                GGML_ASSERT((offset + n_rows)*n_embd <= (int64_t) embd_nextn.size);
+                LHM_ASSERT((offset + n_rows)*n_embd <= (int64_t) embd_nextn.size);
                 ggml_backend_tensor_get_async(backend_h, t_h_nextn, embd_nextn_out, 0, n_rows*n_embd*sizeof(float));
             }
         }
@@ -1952,7 +1952,7 @@ int lhm_context::decode(const lhm_batch & batch_inp) {
 
         auto & out_ids = balloc->get_out_ids();
 
-        GGML_ASSERT(out_ids.size() == (size_t) n_outputs);
+        LHM_ASSERT(out_ids.size() == (size_t) n_outputs);
 
         for (int64_t i = 0; i < n_outputs; ++i) {
             int64_t out_id = out_ids[i];
@@ -1965,7 +1965,7 @@ int lhm_context::decode(const lhm_batch & batch_inp) {
         // make the outputs have the same order they had in the user-provided batch
         // note: this is mostly relevant for recurrent models atm
         if (!sorted_output && n_outputs > 1) {
-            GGML_ASSERT((size_t) n_outputs == out_ids.size());
+            LHM_ASSERT((size_t) n_outputs == out_ids.size());
 
             // TODO: is there something more efficient which also minimizes swaps?
             // selection sort, to minimize swaps (from https://en.wikipedia.org/wiki/Selection_sort)
@@ -2154,7 +2154,7 @@ uint32_t lhm_context::output_reserve(int32_t n_outputs) {
 
     this->n_outputs = 0;
 
-    GGML_ASSERT(n_outputs_max <= cparams.n_outputs_max);
+    LHM_ASSERT(n_outputs_max <= cparams.n_outputs_max);
 
     return n_outputs_max;
 }
@@ -2174,15 +2174,15 @@ void lhm_context::extract_layer_inputs(const llm_graph_result * res, size_t toke
 
         const size_t nbytes = ggml_nbytes(t);
         const size_t nfloats = nbytes / sizeof(float);
-        GGML_ASSERT(n_tokens > 0);
-        GGML_ASSERT(nfloats % n_tokens == 0);
+        LHM_ASSERT(n_tokens > 0);
+        LHM_ASSERT(nfloats % n_tokens == 0);
 
         const size_t row_floats = nfloats / n_tokens;
         const size_t dst_offset = token_offset * row_floats;
-        GGML_ASSERT(dst_offset + nfloats <= embd_layer_inp[il].size);
+        LHM_ASSERT(dst_offset + nfloats <= embd_layer_inp[il].size);
 
         ggml_backend_t backend = ggml_backend_sched_get_tensor_backend(sched.get(), t);
-        GGML_ASSERT(backend != nullptr);
+        LHM_ASSERT(backend != nullptr);
         ggml_backend_tensor_get_async(backend, t, embd_layer_inp[il].data + dst_offset, 0, nbytes);
     }
 }
@@ -2276,7 +2276,7 @@ llm_graph_result * lhm_context::get_gf_res_reserve() const {
 ggml_cgraph * lhm_context::graph_reserve(
         uint32_t n_tokens, uint32_t n_seqs, uint32_t n_outputs, const lhm_memory_context_i * mctx, bool split_only, size_t * sizes) {
     LOG_DEBUG("%s: reserving a graph for ubatch with n_tokens = %4u, n_seqs = %2u, n_outputs = %4u\n", __func__, n_tokens, n_seqs, n_outputs);
-    GGML_ASSERT(n_outputs >= 1);
+    LHM_ASSERT(n_outputs >= 1);
 
     if (n_tokens % n_seqs != 0) {
         n_tokens = ((n_tokens + (n_seqs - 1)) / n_seqs) * n_seqs; // round to next multiple of n_seqs
@@ -2324,7 +2324,7 @@ ggml_cgraph * lhm_context::graph_reserve(
             ggml_backend_sched_split_graph(sched.get(), gf);
         }
     } else if (!ggml_backend_sched_reserve(sched.get(), gf)) {
-        GGML_ASSERT(!sizes);
+        LHM_ASSERT(!sizes);
         LHM_LOG_ERROR("%s: failed to allocate compute buffers\n", __func__);
         return nullptr;
     }
@@ -2779,7 +2779,7 @@ public:
             }
         }
 
-        GGML_ASSERT(buf_size == 0);
+        LHM_ASSERT(buf_size == 0);
     }
 
     void read(void * dst, size_t size) override {
@@ -2896,7 +2896,7 @@ size_t lhm_context::state_seq_set_data(lhm_seq_id seq_id, const uint8_t * src, s
         lhm_seq_id seq_id_read;
         io->read(&seq_id_read, sizeof(seq_id_read));
 
-        GGML_ASSERT(mem_storage.find(seq_id_read) != mem_storage.end());
+        LHM_ASSERT(mem_storage.find(seq_id_read) != mem_storage.end());
 
         io = std::make_unique<lhm_io_read_device>(src, size, mem_storage[seq_id_read]);
     } else {
@@ -3016,8 +3016,8 @@ size_t lhm_context::state_seq_load_file(lhm_seq_id seq_id, const char * filepath
             LHM_LOG_ERROR("%s: failed to restore sequence state\n", __func__);
             return 0;
         }
-        GGML_ASSERT(nread <= state_size);
-        GGML_ASSERT(nread + sizeof(uint32_t) * 3 + sizeof(lhm_token) * *n_token_count_out == file.tell());
+        LHM_ASSERT(nread <= state_size);
+        LHM_ASSERT(nread + sizeof(uint32_t) * 3 + sizeof(lhm_token) * *n_token_count_out == file.tell());
     }
 
     return file.tell();
@@ -3038,7 +3038,7 @@ size_t lhm_context::state_seq_save_file(lhm_seq_id seq_id, const char * filepath
     state_seq_write_data(io, seq_id, 0);
 
     const size_t res = file.tell();
-    GGML_ASSERT(res == sizeof(uint32_t) * 3 + sizeof(lhm_token) * n_token_count + io.n_bytes());
+    LHM_ASSERT(res == sizeof(uint32_t) * 3 + sizeof(lhm_token) * n_token_count + io.n_bytes());
 
     return res;
 }
@@ -3181,12 +3181,12 @@ static void lhm_set_param(struct ggml_tensor * tensor, lhm_opt_param_filter para
 }
 
 void lhm_context::opt_init(struct lhm_model * model, struct lhm_opt_params lopt_params) {
-    GGML_ASSERT(!opt_ctx);
+    LHM_ASSERT(!opt_ctx);
     model->hparams.n_ctx_train = lopt_params.n_ctx_train > 0 ? lopt_params.n_ctx_train : n_ctx();
     const uint32_t n_batch     = std::min(this->n_batch(),  model->hparams.n_ctx_train);
     const uint32_t n_ubatch    = std::min(this->n_ubatch(), n_batch);
-    GGML_ASSERT(model->hparams.n_ctx_train % n_batch  == 0);
-    GGML_ASSERT(n_batch                    % n_ubatch == 0);
+    LHM_ASSERT(model->hparams.n_ctx_train % n_batch  == 0);
+    LHM_ASSERT(n_batch                    % n_ubatch == 0);
 
     ggml_opt_params opt_params = ggml_opt_default_params(sched.get(), GGML_OPT_LOSS_TYPE_CROSS_ENTROPY);
     opt_params.opt_period      = n_batch / n_ubatch;
@@ -3232,7 +3232,7 @@ void lhm_context::opt_epoch_iter(
         int64_t                          idata_in_loop,
         int64_t                          ndata_in_loop,
         int64_t                          t_loop_start) {
-    GGML_ASSERT(opt_ctx);
+    LHM_ASSERT(opt_ctx);
     const uint32_t n_ctx    = lhm_model_n_ctx_train(&model);
     const uint32_t n_batch  = std::min(this->n_batch(),  n_ctx);
     const uint32_t n_ubatch = std::min(this->n_ubatch(), n_batch);
@@ -3310,12 +3310,12 @@ void lhm_context::opt_epoch_iter(
             res->set_inputs(&ubatch);
             {
                 struct ggml_tensor * labels = ggml_opt_labels(opt_ctx);
-                GGML_ASSERT(labels->ne[1] == n_ubatch);
+                LHM_ASSERT(labels->ne[1] == n_ubatch);
                 ggml_set_zero(labels);
                 const float onef = 1.0f;
                 for (uint32_t pos_ubatch = 0; pos_ubatch < n_ubatch; ++pos_ubatch) {
                     const uint32_t ilabel = pos_ctx + pos_batch + pos_ubatch;
-                    GGML_ASSERT(labels_sparse[ilabel] < labels->ne[0]);
+                    LHM_ASSERT(labels_sparse[ilabel] < labels->ne[0]);
                     ggml_backend_tensor_set(labels, &onef, (pos_ubatch*labels->ne[0] + labels_sparse[ilabel])*sizeof(float), sizeof(float));
                 }
             }
@@ -3342,8 +3342,8 @@ void lhm_context::opt_epoch(
     const uint32_t n_ubatch = std::min(cparams.n_ubatch, n_batch);
     const  int64_t ndata    = ggml_opt_dataset_ndata(dataset);
 
-    GGML_ASSERT(idata_split >= 0);
-    GGML_ASSERT(idata_split <= ndata);
+    LHM_ASSERT(idata_split >= 0);
+    LHM_ASSERT(idata_split <= ndata);
 
     const uint32_t ubatch_per_ctx = n_ctx / n_ubatch;
 
@@ -3729,7 +3729,7 @@ int32_t lhm_set_adapters_lora(
             size_t n_adapters,
             float * scales) {
     if (adapters == nullptr || scales == nullptr) {
-        GGML_ASSERT(n_adapters == 0 && "invalid lhm_set_adapters_lora call");
+        LHM_ASSERT(n_adapters == 0 && "invalid lhm_set_adapters_lora call");
     }
 
     ctx->set_adapters_lora(adapters, n_adapters, scales);

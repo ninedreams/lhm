@@ -1,7 +1,7 @@
 #pragma once
 
 #include "chat.h"
-#include "peg-parser.h"
+#include "peg_parser.h"
 
 #include <map>
 #include <optional>

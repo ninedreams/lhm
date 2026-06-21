@@ -1,3 +1,5 @@
 #pragma once
 
-int llm_server();
+struct common_params;
+
+int llm_server(common_params & params, int argc, char ** argv);

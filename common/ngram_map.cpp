@@ -143,7 +143,7 @@ void common_ngram_map_begin(
             if (count_nonzero == 0) {
                 min_idx = 0;
             }
-            LOG_INF("%s: key_map stats: entries=%zu, min_idx=%u, max_idx=%u, key_map_last_idx=%u\n",
+            LOG_INFO("%s: key_map stats: entries=%zu, min_idx=%u, max_idx=%u, key_map_last_idx=%u\n",
                     __func__, count_nonzero, min_idx, max_idx, map.key_map_last_idx);
         }
 
@@ -203,7 +203,7 @@ void common_ngram_map_begin(
             }
         }
 
-        LOG_INF("%s: refresh map: idx_last_draft=%zu, new begin=%zu, #keys_checked=%zu, #keys_del=%zu, #values_del=%zu, #hashes_upd=%zu\n", __func__,
+        LOG_INFO("%s: refresh map: idx_last_draft=%zu, new begin=%zu, #keys_checked=%zu, #keys_del=%zu, #values_del=%zu, #hashes_upd=%zu\n", __func__,
                 map.idx_last_check, size_begin,
                 count_keys, count_keys_del, count_values_del, count_map_entries_upd);
     }
@@ -479,7 +479,7 @@ void common_ngram_map_draft(common_ngram_map & map,
             curr_key.values[2].value_idx, curr_key.values[2].value_num,
             curr_key.values[3].value_idx, curr_key.values[3].value_num
         );
-    // Print the tokens of the four values (if idx != 0), use LOG_INF
+    // Print the tokens of the four values (if idx != 0), use LOG_INFO
     for (int v = 0; v < COMMON_NGRAM_MAX_VALUES; ++v) {
         if (curr_key.values[v].value_idx != 0) {
             LOG_DEBUG("%s: value[%d] = %s\n", __func__, v, common_tokens_to_str(inp, curr_key.values[v].value_idx, m).c_str());

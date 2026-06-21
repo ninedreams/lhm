@@ -1,8 +1,8 @@
-#include "chat-peg-parser.h"
+#include "chat_peg_parser.h"
 
-#include "chat-auto-parser.h"
+#include "chat_auto_parser.h"
 #include "ggml.h"
-#include "peg-parser.h"
+#include "peg_parser.h"
 
 #include <nlohmann/json.hpp>
 

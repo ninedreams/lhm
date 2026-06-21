@@ -3,7 +3,7 @@
 #include "chat.h"
 #include "common.h"
 #include "jinja/caps.h"
-#include "peg-parser.h"
+#include "peg_parser.h"
 #include "nlohmann/json.hpp"
 
 #include <chrono>

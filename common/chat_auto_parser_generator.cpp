@@ -1,12 +1,12 @@
-#include "chat-auto-parser-helpers.h"
-#include "chat-auto-parser.h"
-#include "chat-peg-parser.h"
+#include "chat_auto_parser_helpers.h"
+#include "chat_auto_parser.h"
+#include "chat_peg_parser.h"
 #include "chat.h"
 #include "common.h"
 #include "json_schema_to_grammar.h"
 #include "log.h"
 #include "nlohmann/json.hpp"
-#include "peg-parser.h"
+#include "peg_parser.h"
 
 #include <stdexcept>
 #include <string>
@@ -202,7 +202,7 @@ common_peg_parser analyze_tools::build_parser(parser_build_context & ctx) const 
         case tool_format::TAG_WITH_TAGGED:
             return build_tool_parser_tag_tagged(ctx);
         default:
-            LOG_ERR("[ERROR] Template seems to support tool calls, but failed to determine tool format. Tool calling will not work properly. "
+            LOG_ERROR("[ERROR] Template seems to support tool calls, but failed to determine tool format. Tool calling will not work properly. "
                 "Check for a fixed template for your model in the models/templates directory of your llama.cpp installation or "
                 "report an issue at https://github.com/ggml-org/llama.cpp/issues\n");
             return ctx.p.eps();

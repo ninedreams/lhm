@@ -6,6 +6,7 @@
 #include "mtmd-helper.h"
 #include "chat.h"
 #include "base64.hpp"
+#include "lhm_assert.h"
 
 #include "server_common.h"
 
@@ -120,7 +121,7 @@ bool lora_should_clear_cache(
     // This should always be called after determining that the two sets are
     // _not_ equal. This assert is therefore some slightly wasted work and
     // should be safe to remove as long as this method is called correctly.
-    GGML_ASSERT(!are_lora_equal(current, next));
+    LHM_ASSERT(!are_lora_equal(current, next));
 
     return (
         !(lora_get_enabled_ids(current).empty() || lora_all_alora(current)) ||
@@ -266,7 +267,7 @@ lhm_pos server_tokens::pos_next(int64_t n_tokens) const {
     int64_t idx = 0;
     lhm_pos pos = 0;
 
-    GGML_ASSERT(n_tokens <= (int64_t)tokens.size());
+    LHM_ASSERT(n_tokens <= (int64_t)tokens.size());
 
     while (idx < n_tokens) {
         const auto media_it = map_idx_to_media.find(idx);
@@ -362,7 +363,7 @@ void server_tokens::push_back(lhm_token tok) {
 void server_tokens::push_back(const mtmd_input_chunk * chunk) {
     auto type = mtmd_input_chunk_get_type(chunk);
     if (type == MTMD_INPUT_CHUNK_TYPE_IMAGE || type == MTMD_INPUT_CHUNK_TYPE_AUDIO) {
-        GGML_ASSERT(has_mtmd);
+        LHM_ASSERT(has_mtmd);
         const size_t n_tokens = mtmd_input_chunk_get_n_tokens(chunk);
         size_t start_idx = tokens.size();
         for (size_t i = 0; i < n_tokens; ++i) {
@@ -389,7 +390,7 @@ void server_tokens::push_back(server_tokens & tokens) {
     if (tokens.has_mtmd) {
         // Assert if we are copying MTMD chunks to a server_tokens that does not have mtmd.
         // We could also just check, but this will prevent silently dropping MTMD data.
-        GGML_ASSERT(has_mtmd);
+        LHM_ASSERT(has_mtmd);
         for (auto it = tokens.map_idx_to_media.begin(); it != tokens.map_idx_to_media.end(); ) {
             auto * chunk = tokens.map_idx_to_media[it->first].get();
             mtmd::input_chunk_ptr new_chunk(mtmd_input_chunk_copy(chunk));
@@ -403,7 +404,7 @@ void server_tokens::insert(const lhm_tokens & inp_tokens) {
 }
 
 const lhm_tokens & server_tokens::get_tokens() const {
-    GGML_ASSERT(!has_mtmd);
+    LHM_ASSERT(!has_mtmd);
     return tokens;
 }
 
@@ -419,12 +420,12 @@ lhm_tokens server_tokens::get_text_tokens() const {
 }
 
 void server_tokens::set_token(lhm_pos pos, lhm_token id) {
-    GGML_ASSERT(!has_mtmd); // only allow this if mtmd is disabled
+    LHM_ASSERT(!has_mtmd); // only allow this if mtmd is disabled
     tokens[pos] = id;
 }
 
 void server_tokens::keep_first(size_t n) {
-    GGML_ASSERT(n <= tokens.size());
+    LHM_ASSERT(n <= tokens.size());
     if (has_mtmd) {
         if (n == tokens.size()) {
             return; // nothing to do
@@ -490,7 +491,7 @@ size_t server_tokens::get_common_prefix(const server_tokens & b) const {
             const auto & a_chunk =   find_chunk(i);
             const auto & b_chunk = b.find_chunk(i);
 
-            GGML_ASSERT(a_chunk && b_chunk);
+            LHM_ASSERT(a_chunk && b_chunk);
 
             const std::string id_ai = mtmd_input_chunk_get_id(a_chunk.get());
             const std::string id_bi = mtmd_input_chunk_get_id(b_chunk.get());
@@ -499,7 +500,7 @@ size_t server_tokens::get_common_prefix(const server_tokens & b) const {
             const size_t n_tok_b = mtmd_input_chunk_get_n_tokens(b_chunk.get());
 
             if (id_ai == id_bi && n_tok_a == n_tok_b) {
-                GGML_ASSERT(n_tok_a > 0 && "Invalid media chunk"); // should never happen
+                LHM_ASSERT(n_tok_a > 0 && "Invalid media chunk"); // should never happen
                 i += n_tok_a - 1; // will be +1 by the for loop
                 continue;
             }

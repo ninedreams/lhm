@@ -24,7 +24,7 @@ static LlgMatcher * lhm_sampler_llg_new(LlgTokenizer * tokenizer, const char * g
     }
     auto c = llg_new_matcher(&cinit, grammar_kind, grammar_data);
     if (llg_matcher_get_error(c)) {
-        LOG_ERR("llg error: %s\n", llg_matcher_get_error(c));
+        LOG_ERROR("llg error: %s\n", llg_matcher_get_error(c));
         llg_free_matcher(c);
         return nullptr;
     }
@@ -51,7 +51,7 @@ static void lhm_sampler_llg_apply(lhm_sampler * smpl, lhm_token_data_array * cur
             if (llg_matcher_compute_mask(ctx->grammar) == 0) {
                 mask = llg_matcher_get_mask(ctx->grammar);
             } else {
-                LOG_ERR("llg error: %s\n", llg_matcher_get_error(ctx->grammar));
+                LOG_ERROR("llg error: %s\n", llg_matcher_get_error(ctx->grammar));
                 llg_free_matcher(ctx->grammar);
                 ctx->grammar = nullptr;
                 return;
@@ -203,7 +203,7 @@ static LlgTokenizer * lhm_sampler_llg_new_tokenizer(const lhm_vocab * vocab) {
     delete[] token_lens;
 
     if (tokenizer == nullptr) {
-        LOG_ERR("llg tokenizer error: %s\n", error_buffer);
+        LOG_ERROR("llg tokenizer error: %s\n", error_buffer);
         return tokenizer;
     }
 
@@ -230,7 +230,7 @@ lhm_sampler * lhm_sampler_init_llg(const lhm_vocab * vocab, const char * grammar
             /* .grammar      = */ lhm_sampler_llg_new(tokenizer, grammar_kind, grammar_data),
         };
         if (ctx->grammar) {
-            GGML_ASSERT(((size_t) lhm_vocab_n_tokens(vocab) + 31) / 32 * 4 ==
+            LHM_ASSERT(((size_t) lhm_vocab_n_tokens(vocab) + 31) / 32 * 4 ==
                         llg_matcher_get_mask_byte_size(ctx->grammar));
         }
     } else {

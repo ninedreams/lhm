@@ -1,17 +1,18 @@
 #include "chat.h"
 
-#include "chat-auto-parser-helpers.h"
-#include "chat-auto-parser.h"
-#include "chat-peg-parser.h"
+#include "chat_auto_parser_helpers.h"
+#include "chat_auto_parser.h"
+#include "chat_peg_parser.h"
 #include "common.h"
 #include "ggml.h"
 #include "json_schema_to_grammar.h"
 #include "log.h"
+#include "lhm_assert.h"
 
 #include "jinja/value.h"
 #include "jinja/runtime.h"
 #include "jinja/caps.h"
-#include "peg-parser.h"
+#include "peg_parser.h"
 
 #include "nlohmann/json.hpp"
 
@@ -253,7 +254,7 @@ std::vector<common_chat_msg_diff> common_chat_msg_diff::compute_diffs(const comm
             // Check if one is a prefix of the other (for incremental parsing where names grow or shrink)
             bool is_prefix = (newf.name.rfind(pref.name, 0) == 0);
             if (!is_prefix) {
-                LOG_ERR("Tool call mismatch: prev='%s' new='%s'\n", pref.name.c_str(), newf.name.c_str());
+                LOG_ERROR("Tool call mismatch: prev='%s' new='%s'\n", pref.name.c_str(), newf.name.c_str());
                 throw std::runtime_error("Invalid diff: tool call mismatch!");
             }
         }
@@ -541,7 +542,7 @@ bool common_chat_verify_template(const std::string & tmpl, bool use_jinja) {
             common_chat_templates_apply(tmpls.get(), inputs);
             return true;
         } catch (const std::exception & e) {
-            LOG_ERR("%s: failed to apply template: %s\n", __func__, e.what());
+            LOG_ERROR("%s: failed to apply template: %s\n", __func__, e.what());
             return false;
         }
     }
@@ -661,7 +662,7 @@ common_chat_templates_ptr common_chat_templates_init(const struct lhm_model * mo
 
     bool has_explicit_template = !chat_template_override.empty();
     if (chat_template_override.empty()) {
-        GGML_ASSERT(model != nullptr);
+        LHM_ASSERT(model != nullptr);
         const auto * str = lhm_model_chat_template(model, /* name */ nullptr);
         if (str) {
             default_template_src  = str;
@@ -737,16 +738,16 @@ common_chat_templates_ptr common_chat_templates_init(const struct lhm_model * mo
     try {
         tmpls->template_default = std::make_unique<common_chat_template>(default_template_src, token_bos, token_eos);
     } catch (const std::exception & e) {
-        LOG_ERR("%s: error: %s\n", __func__, e.what());
-        LOG_ERR("%s: failed to initialize chat template\n", __func__);
-        LOG_ERR("%s: please consider disabling jinja via --no-jinja, or using another chat template\n", __func__);
+        LOG_ERROR("%s: error: %s\n", __func__, e.what());
+        LOG_ERROR("%s: failed to initialize chat template\n", __func__);
+        LOG_ERROR("%s: please consider disabling jinja via --no-jinja, or using another chat template\n", __func__);
         throw e;
     }
     if (!template_tool_use_src.empty()) {
         try {
             tmpls->template_tool_use = std::make_unique<common_chat_template>(template_tool_use_src, token_bos, token_eos);
         } catch (const std::exception & e) {
-            LOG_ERR("%s: failed to parse tool use chat template (ignoring it): %s\n", __func__, e.what());
+            LOG_ERROR("%s: failed to parse tool use chat template (ignoring it): %s\n", __func__, e.what());
         }
     }
     return tmpls;
@@ -801,7 +802,7 @@ common_reasoning_format common_reasoning_format_from_name(const std::string & fo
 static void foreach_function(const json & tools, const std::function<void(const json &)> & fn) {
     for (const auto & tool : tools) {
         if (!tool.contains("type") || tool.at("type") != "function" || !tool.contains("function")) {
-            LOG_INF("Skipping tool without function: %s", tool.dump(2).c_str());
+            LOG_INFO("Skipping tool without function: %s", tool.dump(2).c_str());
             continue;
         }
         fn(tool);
@@ -2150,7 +2151,7 @@ static void system_message_not_supported(json & messages) {
 }
 
 static void requires_non_null_content(json & messages) {
-    GGML_ASSERT(messages.is_array());
+    LHM_ASSERT(messages.is_array());
     for (auto & message : messages) {
         if (message.contains("tool_calls") && !message.contains("content")) {
             message["content"] = "";
@@ -2303,7 +2304,7 @@ static void convert_tool_responses_gemma4(json & messages) {
 }
 
 static void func_args_not_string(json & messages) {
-    GGML_ASSERT(messages.is_array());
+    LHM_ASSERT(messages.is_array());
     for (auto & message : messages) {
         if (message.contains("tool_calls")) {
             for (auto & tool_call : message["tool_calls"]) {
@@ -2620,7 +2621,7 @@ static common_chat_params common_chat_templates_apply_legacy(const struct common
 
 common_chat_params common_chat_templates_apply(const struct common_chat_templates *        tmpls,
                                                const struct common_chat_templates_inputs & inputs) {
-    GGML_ASSERT(tmpls != nullptr);
+    LHM_ASSERT(tmpls != nullptr);
     return inputs.use_jinja ? common_chat_templates_apply_jinja(tmpls, inputs) :
                               common_chat_templates_apply_legacy(tmpls, inputs);
 }
@@ -2706,7 +2707,7 @@ common_chat_msg common_chat_peg_parse(const common_peg_arena &          src_pars
 }
 
 std::map<std::string, bool> common_chat_templates_get_caps(const common_chat_templates * chat_templates) {
-    GGML_ASSERT(chat_templates != nullptr);
-    GGML_ASSERT(chat_templates->template_default != nullptr);
+    LHM_ASSERT(chat_templates != nullptr);
+    LHM_ASSERT(chat_templates->template_default != nullptr);
     return chat_templates->template_default->caps.to_map();
 }

@@ -1,4 +1,4 @@
-#include "peg-parser.h"
+#include "peg_parser.h"
 
 #include "common.h"
 #include "json_schema_to_grammar.h"

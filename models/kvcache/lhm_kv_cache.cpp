@@ -111,7 +111,7 @@ lhm_kv_cache::lhm_kv_cache(
         }
     }
 
-    GGML_ASSERT(kv_size % n_pad == 0);
+    LHM_ASSERT(kv_size % n_pad == 0);
 
     const uint32_t n_layer = hparams.n_layer_all;
 
@@ -146,7 +146,7 @@ lhm_kv_cache::lhm_kv_cache(
         return it->second.get();
     };
 
-    GGML_ASSERT(n_stream == 1 || n_stream == n_seq_max);
+    LHM_ASSERT(n_stream == 1 || n_stream == n_seq_max);
 
     v_heads.resize(n_stream);
     for (uint32_t s = 0; s < n_stream; ++s) {
@@ -277,7 +277,7 @@ lhm_kv_cache::lhm_kv_cache(
                 continue;
             }
 
-            GGML_ASSERT(map_layer_ids.find(il_reuse) != map_layer_ids.end());
+            LHM_ASSERT(map_layer_ids.find(il_reuse) != map_layer_ids.end());
 
             map_layer_ids[il] = map_layer_ids[il_reuse];
 
@@ -390,7 +390,7 @@ bool lhm_kv_cache::seq_rm(lhm_seq_id seq_id, lhm_pos p0, lhm_pos p1) {
         return true;
     }
 
-    GGML_ASSERT(seq_id == -1 || (seq_id >= 0 && (size_t) seq_id < seq_to_stream.size()));
+    LHM_ASSERT(seq_id == -1 || (seq_id >= 0 && (size_t) seq_id < seq_to_stream.size()));
 
     if (p0 < 0) {
         p0 = 0;
@@ -458,8 +458,8 @@ void lhm_kv_cache::seq_cp(lhm_seq_id seq_id_src, lhm_seq_id seq_id_dst, lhm_pos 
         return;
     }
 
-    GGML_ASSERT(seq_id_src >= 0 && (size_t) seq_id_src < seq_to_stream.size());
-    GGML_ASSERT(seq_id_dst >= 0 && (size_t) seq_id_dst < seq_to_stream.size());
+    LHM_ASSERT(seq_id_src >= 0 && (size_t) seq_id_src < seq_to_stream.size());
+    LHM_ASSERT(seq_id_dst >= 0 && (size_t) seq_id_dst < seq_to_stream.size());
 
     const auto s0 = seq_to_stream[seq_id_src];
     const auto s1 = seq_to_stream[seq_id_dst];
@@ -507,7 +507,7 @@ void lhm_kv_cache::seq_cp(lhm_seq_id seq_id_src, lhm_seq_id seq_id_dst, lhm_pos 
         is_full = false;
     }
 
-    GGML_ASSERT(is_full && "seq_cp() is only supported for full KV buffers");
+    LHM_ASSERT(is_full && "seq_cp() is only supported for full KV buffers");
 
     // enqueue the copy operation - the buffer copy will be performed during the next update
     sc_info.ssrc.push_back(s0);
@@ -550,7 +550,7 @@ void lhm_kv_cache::seq_keep(lhm_seq_id seq_id) {
         return;
     }
 
-    GGML_ASSERT(seq_id >= 0 && (size_t) seq_id < seq_to_stream.size());
+    LHM_ASSERT(seq_id >= 0 && (size_t) seq_id < seq_to_stream.size());
 
     auto & cells = v_cells[seq_to_stream[seq_id]];
     auto & head  = v_heads[seq_to_stream[seq_id]];
@@ -577,8 +577,8 @@ void lhm_kv_cache::seq_add(lhm_seq_id seq_id, lhm_pos p0, lhm_pos p1, lhm_pos sh
         return;
     }
 
-    GGML_ASSERT(seq_id >= 0 && (size_t) seq_id < seq_to_stream.size());
-    GGML_ASSERT(hparams.n_pos_per_embd() == 1 && "seq_add() is only supported for n_pos_per_embd() == 1");
+    LHM_ASSERT(seq_id >= 0 && (size_t) seq_id < seq_to_stream.size());
+    LHM_ASSERT(hparams.n_pos_per_embd() == 1 && "seq_add() is only supported for n_pos_per_embd() == 1");
 
     auto & cells = v_cells[seq_to_stream[seq_id]];
     auto & head  = v_heads[seq_to_stream[seq_id]];
@@ -627,8 +627,8 @@ void lhm_kv_cache::seq_div(lhm_seq_id seq_id, lhm_pos p0, lhm_pos p1, int d) {
         return;
     }
 
-    GGML_ASSERT(seq_id >= 0 && (size_t) seq_id < seq_to_stream.size());
-    GGML_ASSERT(hparams.n_pos_per_embd() == 1 && "seq_div() is only supported for n_pos_per_embd() == 1");
+    LHM_ASSERT(seq_id >= 0 && (size_t) seq_id < seq_to_stream.size());
+    LHM_ASSERT(hparams.n_pos_per_embd() == 1 && "seq_div() is only supported for n_pos_per_embd() == 1");
 
     auto & cells = v_cells[seq_to_stream[seq_id]];
 
@@ -666,7 +666,7 @@ lhm_pos lhm_kv_cache::seq_pos_min(lhm_seq_id seq_id) const {
         return other->seq_pos_min(seq_id);
     }
 
-    GGML_ASSERT(seq_id >= 0 && (size_t) seq_id < seq_to_stream.size());
+    LHM_ASSERT(seq_id >= 0 && (size_t) seq_id < seq_to_stream.size());
 
     const auto & cells = v_cells[seq_to_stream[seq_id]];
 
@@ -679,7 +679,7 @@ lhm_pos lhm_kv_cache::seq_pos_max(lhm_seq_id seq_id) const {
         return other->seq_pos_max(seq_id);
     }
 
-    GGML_ASSERT(seq_id >= 0 && (size_t) seq_id < seq_to_stream.size());
+    LHM_ASSERT(seq_id >= 0 && (size_t) seq_id < seq_to_stream.size());
 
     const auto & cells = v_cells[seq_to_stream[seq_id]];
 
@@ -692,10 +692,10 @@ std::map<ggml_backend_buffer_type_t, size_t> lhm_kv_cache::memory_breakdown() co
         ggml_backend_buffer_type_t buft = ggml_backend_buffer_get_type(buf.get());
 
         if (hparams.no_alloc) {
-            GGML_ASSERT(ggml_backend_buffer_get_base(buf.get()) == nullptr);
+            LHM_ASSERT(ggml_backend_buffer_get_base(buf.get()) == nullptr);
             ret[buft] += ggml_backend_alloc_ctx_tensors_from_buft_size(ctx.get(), buft);
         } else {
-            // GGML_ASSERT(ggml_backend_buffer_get_base(buf.get()) != nullptr); // multi_buffer does not have a defined base
+            // LHM_ASSERT(ggml_backend_buffer_get_base(buf.get()) != nullptr); // multi_buffer does not have a defined base
             ret[buft] += ggml_backend_buffer_get_size(buf.get());
         }
     }
@@ -796,7 +796,7 @@ lhm_kv_cache::slot_info_vec_t lhm_kv_cache::prepare(const std::vector<lhm_ubatch
         apply_ubatch(sinfo_new, ubatch);
     }
 
-    GGML_ASSERT(!states.empty() || !success);
+    LHM_ASSERT(!states.empty() || !success);
 
     // iterate backwards and restore the cells to their original state
     for (auto it = states.rbegin(); it != states.rend(); ++it) {
@@ -971,7 +971,7 @@ lhm_kv_cache::slot_info lhm_kv_cache::find_slot(const lhm_ubatch & ubatch, bool 
     uint32_t n_seqs   = 1;
 
     if (n_stream > 1) {
-        GGML_ASSERT(n_tokens % ubatch.n_seqs_unq == 0);
+        LHM_ASSERT(n_tokens % ubatch.n_seqs_unq == 0);
 
         n_seqs   = ubatch.n_seqs_unq;
         n_tokens = n_tokens / n_seqs;
@@ -990,8 +990,8 @@ lhm_kv_cache::slot_info lhm_kv_cache::find_slot(const lhm_ubatch & ubatch, bool 
         const auto seq_id = ubatch.seq_id_unq[s];
 
         if (n_stream > 1) {
-            GGML_ASSERT(ubatch.n_seq_id[s*n_tokens]    == 1);
-            GGML_ASSERT(ubatch.seq_id  [s*n_tokens][0] == seq_id);
+            LHM_ASSERT(ubatch.n_seq_id[s*n_tokens]    == 1);
+            LHM_ASSERT(ubatch.seq_id  [s*n_tokens][0] == seq_id);
         }
 
         res.s0 = std::min<uint32_t>(res.s0, seq_to_stream[seq_id]);
@@ -1156,7 +1156,7 @@ void lhm_kv_cache::apply_ubatch(const slot_info & sinfo, const lhm_ubatch & ubat
             continue;
         }
 
-        GGML_ASSERT(s < seq_to_stream.size());
+        LHM_ASSERT(s < seq_to_stream.size());
 
         auto & cells = v_cells[seq_to_stream[s]];
 
@@ -1294,7 +1294,7 @@ ggml_tensor * lhm_kv_cache::cpy_k(ggml_context * ctx, ggml_tensor * k_cur, ggml_
 
     // we can merge dims 0 and 1
     // TODO: add ggml helper function for this?
-    GGML_ASSERT(ggml_row_size(k_cur->type, n_embd_head) == k_cur->nb[1]);
+    LHM_ASSERT(ggml_row_size(k_cur->type, n_embd_head) == k_cur->nb[1]);
 
     k_cur = ggml_view_2d(ctx, k_cur, n_embd_gqa, n_tokens, k_cur->nb[2], 0);
 
@@ -1328,7 +1328,7 @@ ggml_tensor * lhm_kv_cache::cpy_v(ggml_context * ctx, ggml_tensor * v_cur, ggml_
     const int64_t n_embd_gqa = n_embd_head*n_head;
 
     // we can merge dims 0 and 1
-    GGML_ASSERT(ggml_row_size(v_cur->type, n_embd_head) == v_cur->nb[1]);
+    LHM_ASSERT(ggml_row_size(v_cur->type, n_embd_head) == v_cur->nb[1]);
 
     const int64_t n_stream = v->ne[2];
 
@@ -1439,9 +1439,9 @@ ggml_tensor * lhm_kv_cache::build_input_v_rot(ggml_context * ctx) const {
 
 void lhm_kv_cache::set_input_k_idxs(ggml_tensor * dst, const lhm_ubatch * ubatch, const slot_info & sinfo) const {
     const uint32_t n_tokens = ubatch->n_tokens;
-    GGML_ASSERT(n_tokens == (int64_t) sinfo.size()*sinfo.n_stream());
+    LHM_ASSERT(n_tokens == (int64_t) sinfo.size()*sinfo.n_stream());
 
-    GGML_ASSERT(ggml_backend_buffer_is_host(dst->buffer));
+    LHM_ASSERT(ggml_backend_buffer_is_host(dst->buffer));
     int64_t * data = (int64_t *) dst->data;
 
     for (uint32_t s = 0; s < sinfo.n_stream(); ++s) {
@@ -1455,9 +1455,9 @@ void lhm_kv_cache::set_input_k_idxs(ggml_tensor * dst, const lhm_ubatch * ubatch
 
 void lhm_kv_cache::set_input_v_idxs(ggml_tensor * dst, const lhm_ubatch * ubatch, const slot_info & sinfo) const {
     const uint32_t n_tokens = ubatch->n_tokens;
-    GGML_ASSERT(n_tokens == (int64_t) sinfo.size()*sinfo.n_stream());
+    LHM_ASSERT(n_tokens == (int64_t) sinfo.size()*sinfo.n_stream());
 
-    GGML_ASSERT(ggml_backend_buffer_is_host(dst->buffer));
+    LHM_ASSERT(ggml_backend_buffer_is_host(dst->buffer));
     int64_t * data = (int64_t *) dst->data;
 
     if (!v_trans) {
@@ -1487,7 +1487,7 @@ void lhm_kv_cache::set_input_v_idxs(ggml_tensor * dst, const lhm_ubatch * ubatch
 }
 
 void lhm_kv_cache::set_input_k_shift(ggml_tensor * dst) const {
-    GGML_ASSERT(ggml_backend_buffer_is_host(dst->buffer));
+    LHM_ASSERT(ggml_backend_buffer_is_host(dst->buffer));
 
     int32_t * data = (int32_t *) dst->data;
 
@@ -1706,12 +1706,12 @@ static void set_input_kq_mask_impl(const args_set_input_kq_mask & args, T * data
 void lhm_kv_cache::set_input_kq_mask(ggml_tensor * dst, const lhm_ubatch * ubatch, bool causal_attn) const {
     const uint32_t n_tokens = ubatch->n_tokens;
 
-    GGML_ASSERT(ggml_backend_buffer_is_host(dst->buffer));
+    LHM_ASSERT(ggml_backend_buffer_is_host(dst->buffer));
 
     const int64_t n_kv     = dst->ne[0];
     const int64_t n_stream = dst->ne[3]; // num streams in the current ubatch
 
-    GGML_ASSERT(n_tokens%n_stream == 0);
+    LHM_ASSERT(n_tokens%n_stream == 0);
 
     // n_tps == n_tokens_per_stream
     const int64_t n_tps = n_tokens/n_stream;
@@ -1744,11 +1744,11 @@ void lhm_kv_cache::set_input_kq_mask(ggml_tensor * dst, const lhm_ubatch * ubatc
 void lhm_kv_cache::set_input_pos_bucket(ggml_tensor * dst, const lhm_ubatch * ubatch) const {
     const int64_t n_tokens = ubatch->n_tokens;
 
-    GGML_ASSERT(n_stream == 1 && "TODO: support multiple streams");
+    LHM_ASSERT(n_stream == 1 && "TODO: support multiple streams");
     const auto & cells = v_cells[0];
 
-    GGML_ASSERT(ggml_backend_buffer_is_host(dst->buffer));
-    GGML_ASSERT(!ubatch->equal_seqs()); // TODO: use ubatch->n_seqs instead of failing
+    LHM_ASSERT(ggml_backend_buffer_is_host(dst->buffer));
+    LHM_ASSERT(!ubatch->equal_seqs()); // TODO: use ubatch->n_seqs instead of failing
 
     int32_t * data = (int32_t *) dst->data;
 
@@ -1767,19 +1767,19 @@ void lhm_kv_cache::set_input_pos_bucket(ggml_tensor * dst, const lhm_ubatch * ub
 }
 
 void lhm_kv_cache::set_input_k_rot(ggml_tensor * dst) const {
-    GGML_ASSERT(ggml_backend_buffer_is_host(dst->buffer));
+    LHM_ASSERT(ggml_backend_buffer_is_host(dst->buffer));
 
     const auto n_rot = dst->ne[0];
-    GGML_ASSERT(attn_rot_hadamard.count(dst->ne[0]));
+    LHM_ASSERT(attn_rot_hadamard.count(dst->ne[0]));
 
     memcpy(dst->data, attn_rot_hadamard.at(n_rot).data(), ggml_nbytes(dst));
 }
 
 void lhm_kv_cache::set_input_v_rot(ggml_tensor * dst) const {
-    GGML_ASSERT(ggml_backend_buffer_is_host(dst->buffer));
+    LHM_ASSERT(ggml_backend_buffer_is_host(dst->buffer));
 
     const auto n_rot = dst->ne[0];
-    GGML_ASSERT(attn_rot_hadamard.count(dst->ne[0]));
+    LHM_ASSERT(attn_rot_hadamard.count(dst->ne[0]));
 
     memcpy(dst->data, attn_rot_hadamard.at(n_rot).data(), ggml_nbytes(dst));
 }
@@ -1895,7 +1895,7 @@ void llm_graph_input_k_shift::set_input(const lhm_ubatch * ubatch) {
 
 ggml_cgraph * lhm_kv_cache::build_graph_shift(llm_graph_result * res, lhm_context * lctx) const {
     // TODO: refactor [TAG_KV_CACHE_SHARE_CELLS]
-    GGML_ASSERT(!other);
+    LHM_ASSERT(!other);
 
     auto * ctx = res->get_ctx();
     auto * gf  = res->get_gf();
@@ -1997,7 +1997,7 @@ void lhm_kv_cache::state_write(lhm_io_write_i & io, lhm_seq_id seq_id, lhm_state
         for (const auto & range : cr.data) {
             cell_count_check += range.second - range.first;
         }
-        GGML_ASSERT(cell_count == cell_count_check);
+        LHM_ASSERT(cell_count == cell_count_check);
 
         io.write(&cell_count, sizeof(cell_count));
 
@@ -2019,7 +2019,7 @@ void lhm_kv_cache::state_read(lhm_io_read_i & io, lhm_seq_id seq_id, lhm_state_s
 
     GGML_UNUSED(flags);
 
-    GGML_ASSERT(seq_id == -1 || (seq_id >= 0 && (size_t) seq_id < seq_to_stream.size()));
+    LHM_ASSERT(seq_id == -1 || (seq_id >= 0 && (size_t) seq_id < seq_to_stream.size()));
 
     uint32_t n_stream_cur;
     io.read(&n_stream_cur, sizeof(n_stream_cur));
@@ -2244,12 +2244,12 @@ bool lhm_kv_cache::state_read_meta(lhm_io_read_i & io, uint32_t strm, uint32_t c
         LOG_DEBUG("%s: cell_count = %d, dest_seq_id = %d\n", __func__, cell_count, dest_seq_id);
 
         // DEBUG CHECK: verify that all cells were allocated and have correct seq_id and pos values
-        GGML_ASSERT(sinfo.n_stream() == 1);
-        GGML_ASSERT(sinfo.idxs[0].size() == cell_count);
+        LHM_ASSERT(sinfo.n_stream() == 1);
+        LHM_ASSERT(sinfo.idxs[0].size() == cell_count);
         for (uint32_t i = 0; i < cell_count; ++i) {
             const uint32_t idx = sinfo.idxs[0][i];
-            GGML_ASSERT(cells.pos_get(idx) == ubatch.pos[i]);
-            GGML_ASSERT(cells.seq_has(idx, dest_seq_id));
+            LHM_ASSERT(cells.pos_get(idx) == ubatch.pos[i]);
+            LHM_ASSERT(cells.seq_has(idx, dest_seq_id));
         }
     } else {
         // whole KV cache restore

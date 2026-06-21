@@ -17,7 +17,7 @@ void lhm_model_qwen35moe::load_arch_hparams(lhm_model_loader & ml) {
 
     // NextN/MTP (Qwen3.5/3.6): extra decoder block appended beyond the main stack
     ml.get_key(LLM_KV_NEXTN_PREDICT_LAYERS, hparams.n_layer_nextn, false);
-    GGML_ASSERT(hparams.n_layer_nextn < hparams.n_layer_all && "n_layer_nextn must be < n_layer_impl");
+    LHM_ASSERT(hparams.n_layer_nextn < hparams.n_layer_all && "n_layer_nextn must be < n_layer_impl");
 
     // Mark recurrent layers (linear attention layers). MTP layers are dense
     // attention-only and must be flagged non-recurrent.
@@ -160,7 +160,7 @@ lhm_model_qwen35moe::graph::graph(const lhm_model & model, const llm_graph_param
     llm_build_delta_net_base(params), model(model) {
     const int64_t n_embd_head = hparams.n_embd_head_v();
 
-    GGML_ASSERT(n_embd_head == hparams.n_embd_head_k());
+    LHM_ASSERT(n_embd_head == hparams.n_embd_head_k());
 
     int sections[4];
     std::copy(std::begin(hparams.rope_sections), std::begin(hparams.rope_sections) + 4, sections);
@@ -283,7 +283,7 @@ ggml_tensor * lhm_model_qwen35moe::graph::build_layer_attn(
         int *                     sections,
         int                       il) {
     const int64_t n_embd_head = hparams.n_embd_head_v();
-    GGML_ASSERT(n_embd_head == hparams.n_embd_head_k());
+    LHM_ASSERT(n_embd_head == hparams.n_embd_head_k());
 
     // Order: joint QG projection, QG split, Q norm, KV projection, K norm, RoPE, attention
 
@@ -371,9 +371,9 @@ ggml_tensor * lhm_model_qwen35moe::graph::build_layer_attn_linear(
     const int64_t head_v_dim   = d_inner / num_v_heads;
     const int64_t n_seq_tokens = ubatch.n_seq_tokens;
 
-    GGML_ASSERT(n_seqs != 0);
-    GGML_ASSERT(ubatch.equal_seqs());
-    GGML_ASSERT(ubatch.n_tokens == n_seq_tokens * n_seqs);
+    LHM_ASSERT(n_seqs != 0);
+    LHM_ASSERT(ubatch.equal_seqs());
+    LHM_ASSERT(ubatch.n_tokens == n_seq_tokens * n_seqs);
 
     // Input projections
     auto qkvz = build_qkvz(cur, il);
@@ -460,7 +460,7 @@ ggml_tensor * lhm_model_qwen35moe::graph::build_layer_attn_linear(
     // if head keys and value keys are different, repeat to force tensors into matching shapes
     // note: need explicit repeat only if we are not using the fused GDN.
     if (num_k_heads != num_v_heads && (!cparams.fused_gdn_ar || !cparams.fused_gdn_ch)) {
-        GGML_ASSERT(num_v_heads % num_k_heads == 0);
+        LHM_ASSERT(num_v_heads % num_k_heads == 0);
         q_conv = ggml_repeat_4d(ctx0, q_conv, head_k_dim, num_v_heads, n_seq_tokens, n_seqs);
         k_conv = ggml_repeat_4d(ctx0, k_conv, head_k_dim, num_v_heads, n_seq_tokens, n_seqs);
     }
@@ -493,7 +493,7 @@ ggml_tensor * lhm_model_qwen35moe::graph::build_layer_attn_linear(
 
 ggml_tensor * lhm_model_qwen35moe::graph::build_layer_ffn(ggml_tensor * cur, const int il) {
     // Check if this is an MoE layer
-    GGML_ASSERT(model.layers[il].ffn_gate_inp != nullptr);
+    LHM_ASSERT(model.layers[il].ffn_gate_inp != nullptr);
 
     ggml_tensor * moe_out =
         build_moe_ffn(cur,
@@ -550,19 +550,19 @@ ggml_tensor * lhm_model_qwen35moe::graph::build_layer_ffn(ggml_tensor * cur, con
 // LLM_GRAPH_TYPE_DECODER_MTP draft head for Qwen3.5/3.6 MoE
 lhm_model_qwen35moe::graph_mtp::graph_mtp(const lhm_model & model, const llm_graph_params & params)
     : llm_graph_context(params) {
-    GGML_ASSERT(hparams.n_layer_nextn > 0 && "QWEN35MOE MTP requires n_layer_nextn > 0");
-    GGML_ASSERT(hparams.n_layer_nextn == 1 && "QWEN35MOE MTP currently only supports a single MTP block");
+    LHM_ASSERT(hparams.n_layer_nextn > 0 && "QWEN35MOE MTP requires n_layer_nextn > 0");
+    LHM_ASSERT(hparams.n_layer_nextn == 1 && "QWEN35MOE MTP currently only supports a single MTP block");
 
     const int64_t n_embd_head = hparams.n_embd_head_v();
-    GGML_ASSERT(n_embd_head == hparams.n_embd_head_k());
+    LHM_ASSERT(n_embd_head == hparams.n_embd_head_k());
 
     const int il = hparams.n_layer();
     const auto & layer = model.layers[il];
 
-    GGML_ASSERT(layer.nextn.eh_proj    && "MTP block missing nextn.eh_proj");
-    GGML_ASSERT(layer.nextn.enorm      && "MTP block missing nextn.enorm");
-    GGML_ASSERT(layer.nextn.hnorm      && "MTP block missing nextn.hnorm");
-    GGML_ASSERT(layer.ffn_gate_inp     && "MTP block missing ffn_gate_inp");
+    LHM_ASSERT(layer.nextn.eh_proj    && "MTP block missing nextn.eh_proj");
+    LHM_ASSERT(layer.nextn.enorm      && "MTP block missing nextn.enorm");
+    LHM_ASSERT(layer.nextn.hnorm      && "MTP block missing nextn.hnorm");
+    LHM_ASSERT(layer.ffn_gate_inp     && "MTP block missing ffn_gate_inp");
 
     int sections[4];
     std::copy(std::begin(hparams.rope_sections), std::begin(hparams.rope_sections) + 4, sections);
@@ -719,7 +719,7 @@ lhm_model_qwen35moe::graph_mtp::graph_mtp(const lhm_model & model, const llm_gra
     ggml_tensor * head_norm_w = layer.nextn.shared_head_norm
             ? layer.nextn.shared_head_norm
             : model.output_norm;
-    GGML_ASSERT(head_norm_w && "QWEN35MOE MTP: missing both nextn.shared_head_norm and output_norm");
+    LHM_ASSERT(head_norm_w && "QWEN35MOE MTP: missing both nextn.shared_head_norm and output_norm");
     cur = build_norm(cur, head_norm_w, nullptr, LLM_NORM_RMS, -1);
 
     cb(cur, "h_nextn", -1);
@@ -730,7 +730,7 @@ lhm_model_qwen35moe::graph_mtp::graph_mtp(const lhm_model & model, const llm_gra
 
     ggml_tensor * head_w = layer.nextn.shared_head_head ? layer.nextn.shared_head_head : model.output;
     ggml_tensor * head_s = layer.nextn.shared_head_head ? layer.nextn.shared_head_head_s : model.output_s;
-    GGML_ASSERT(head_w && "QWEN35MOE MTP: missing LM head (nextn.shared_head_head or model.output)");
+    LHM_ASSERT(head_w && "QWEN35MOE MTP: missing LM head (nextn.shared_head_head or model.output)");
     cur = build_lora_mm(head_w, cur, head_s);
     cb(cur, "result_output", -1);
 

@@ -4,8 +4,8 @@
 #include "server_cors-proxy.h"
 #include "server_tools.h"
 
-#include "arg.h"
 #include "common.h"
+#include "config.h"
 #include "fit.h"
 #include "lhm.h"
 #include "log.h"
@@ -70,17 +70,10 @@ static server_http_context::handler_t ex_wrapper(server_http_context::handler_t 
     };
 }
 
-int llm_server() {
+int llm_server(common_params & params, int argc, char ** argv) {
     std::setlocale(LC_NUMERIC, "C");
 
-    // own arguments required by this example
-    common_params params;
-
     common_init();
-
-    if (!common_params_parse(argc, argv, params, LHM_EXAMPLE_SERVER)) {
-        return 1;
-    }
 
     llm_backend_init();
     llm_numa_init(params.numa);

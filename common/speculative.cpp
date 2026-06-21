@@ -1,5 +1,6 @@
 #include "speculative.h"
 
+#include "lhm_assert.h"
 #include "common.h"
 #include "ggml.h"
 #include "lhm.h"
@@ -182,9 +183,9 @@ struct common_speculative_impl_draft_simple : public common_speculative_impl {
         auto * ctx_dft = this->params.ctx_dft;
         auto * ctx_tgt = this->params.ctx_tgt;
 
-        LOG_INF("%s: adding speculative implementation 'draft-simple'\n", __func__);
-        LOG_INF("%s: - n_max=%d, n_min=%d, p_min=%f\n", __func__, this->params.n_max, this->params.n_min, this->params.p_min);
-        LOG_INF("%s: - gpu_layers=%d, cache_k=%s, cache_v=%s, ctx_tgt=%s, ctx_dft=%s, devices=[%s]\n", __func__,
+        LOG_INFO("%s: adding speculative implementation 'draft-simple'\n", __func__);
+        LOG_INFO("%s: - n_max=%d, n_min=%d, p_min=%f\n", __func__, this->params.n_max, this->params.n_min, this->params.p_min);
+        LOG_INFO("%s: - gpu_layers=%d, cache_k=%s, cache_v=%s, ctx_tgt=%s, ctx_dft=%s, devices=[%s]\n", __func__,
                 this->params.n_gpu_layers,
                 ggml_type_name(this->params.cache_type_k),
                 ggml_type_name(this->params.cache_type_v),
@@ -227,13 +228,13 @@ struct common_speculative_impl_draft_simple : public common_speculative_impl {
         LOG_DEBUG("%s: vocab_cmpt = %d\n", __func__, vocab_cmpt);
 
         if (!vocab_cmpt) {
-            LOG_ERR("%s: the target and draft vocabs are not compatible\n", __func__);
+            LOG_ERROR("%s: the target and draft vocabs are not compatible\n", __func__);
 
             throw std::runtime_error("draft model vocab type must match target model to use speculation");
         }
 
         if (n_seq != lhm_n_seq_max(ctx_dft)) {
-            LOG_ERR("%s: n_seq mismatch: %d != %d\n", __func__, n_seq, lhm_n_seq_max(ctx_dft));
+            LOG_ERROR("%s: n_seq mismatch: %d != %d\n", __func__, n_seq, lhm_n_seq_max(ctx_dft));
 
             throw std::runtime_error("the draft model number of sequences is incompatible with the speculative n_seq");
         }
@@ -253,7 +254,7 @@ struct common_speculative_impl_draft_simple : public common_speculative_impl {
         const int ret = lhm_decode(ctx_dft, batch);
 
         if (ret != 0) {
-            LOG_ERR("%s: failed to decode draft batch, ret = %d\n", __func__, ret);
+            LOG_ERROR("%s: failed to decode draft batch, ret = %d\n", __func__, ret);
 
             return false;
         }
@@ -445,12 +446,12 @@ struct common_speculative_impl_draft_eagle3 : public common_speculative_impl {
         : common_speculative_impl(COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE3, n_seq)
         , params(params.draft)
     {
-        LOG_INF("%s: adding speculative implementation 'draft-eagle3'\n", __func__);
-        LOG_INF("%s: - n_max=%d, n_min=%d, p_min=%f, backend_sampling=%d\n", __func__, params.draft.n_max, params.draft.n_min, params.draft.p_min, (int) params.draft.backend_sampling);
+        LOG_INFO("%s: adding speculative implementation 'draft-eagle3'\n", __func__);
+        LOG_INFO("%s: - n_max=%d, n_min=%d, p_min=%f, backend_sampling=%d\n", __func__, params.draft.n_max, params.draft.n_min, params.draft.p_min, (int) params.draft.backend_sampling);
 
         auto * ctx_tgt = this->params.ctx_tgt;
         auto * ctx_dft = this->params.ctx_dft;
-        GGML_ASSERT(ctx_tgt && ctx_dft && "EAGLE3 requires ctx_tgt and ctx_dft to be set");
+        LHM_ASSERT(ctx_tgt && ctx_dft && "EAGLE3 requires ctx_tgt and ctx_dft to be set");
 
         const lhm_model * model_dft = lhm_get_model(ctx_dft);
         const lhm_model * model_tgt = lhm_get_model(ctx_tgt);
@@ -567,7 +568,7 @@ struct common_speculative_impl_draft_eagle3 : public common_speculative_impl {
         std::vector<int32_t> i_batch_beg(n_seq, -1);
         std::vector<int32_t> i_batch_end(n_seq, -1);
         for (int k = 0; k < n_tokens; ++k) {
-            GGML_ASSERT(batch_in.n_seq_id[k] == 1);
+            LHM_ASSERT(batch_in.n_seq_id[k] == 1);
             const lhm_seq_id seq_id = batch_in.seq_id[k][0];
             if (seq_id < 0 || seq_id >= (lhm_seq_id) n_seq) {
                 continue;
@@ -617,14 +618,14 @@ struct common_speculative_impl_draft_eagle3 : public common_speculative_impl {
             };
             const int32_t rc = lhm_encode(ctx_dft, enc_batch);
             if (rc != 0) {
-                LOG_ERR("%s: lhm_encode(ctx_dft) failed rc=%d (n_tokens=%d, offset=%d)\n",
+                LOG_ERROR("%s: lhm_encode(ctx_dft) failed rc=%d (n_tokens=%d, offset=%d)\n",
                         __func__, rc, (int) n_chunk, (int) i);
                 return false;
             }
 
             // g_embd has shape [n_chunk, n_embd_dec] in ctx_dft's pre-norm embeddings buffer.
             const float * g_embd_chunk = lhm_get_embeddings_nextn(ctx_dft);
-            GGML_ASSERT(g_embd_chunk && "EAGLE3 encoder produced no output.");
+            LHM_ASSERT(g_embd_chunk && "EAGLE3 encoder produced no output.");
             std::memcpy(g_embd_buf.data() + (size_t) i * n_embd_dec,
                         g_embd_chunk,
                         (size_t) n_chunk * n_embd_dec * sizeof(float));
@@ -688,7 +689,7 @@ struct common_speculative_impl_draft_eagle3 : public common_speculative_impl {
         if (batch.n_tokens > 0) {
             const int32_t rc = lhm_decode(ctx_dft, batch);
             if (rc != 0) {
-                LOG_ERR("%s: lhm_decode(ctx_dft) failed rc=%d (n_tokens=%d, ubatch_pos[0]=%d)\n",
+                LOG_ERROR("%s: lhm_decode(ctx_dft) failed rc=%d (n_tokens=%d, ubatch_pos[0]=%d)\n",
                         __func__, rc, (int) batch.n_tokens, (int) batch_in.pos[0]);
                 return false;
             }
@@ -884,15 +885,15 @@ struct common_speculative_impl_draft_mtp : public common_speculative_impl {
     {
         auto * ctx_tgt = this->params.ctx_tgt;
         auto * ctx_dft = this->params.ctx_dft;
-        GGML_ASSERT(ctx_tgt && ctx_dft && "MTP requires ctx_tgt and ctx_dft to be set");
+        LHM_ASSERT(ctx_tgt && ctx_dft && "MTP requires ctx_tgt and ctx_dft to be set");
 
         n_embd = lhm_model_n_embd_out(lhm_get_model(ctx_dft));
-        GGML_ASSERT(n_embd == lhm_model_n_embd(lhm_get_model(ctx_tgt)) &&
+        LHM_ASSERT(n_embd == lhm_model_n_embd(lhm_get_model(ctx_tgt)) &&
                 "MTP input row width must match the target h_nextn width");
 
-        LOG_INF("%s: adding speculative implementation 'draft-mtp'\n", __func__);
-        LOG_INF("%s: - n_max=%d, n_min=%d, p_min=%.2f, n_embd=%d, backend_sampling=%d\n", __func__, this->params.n_max, this->params.n_min, this->params.p_min, n_embd, (int) this->params.backend_sampling);
-        LOG_INF("%s: - gpu_layers=%d, cache_k=%s, cache_v=%s, ctx_tgt=%s, ctx_dft=%s, devices=[%s]\n", __func__,
+        LOG_INFO("%s: adding speculative implementation 'draft-mtp'\n", __func__);
+        LOG_INFO("%s: - n_max=%d, n_min=%d, p_min=%.2f, n_embd=%d, backend_sampling=%d\n", __func__, this->params.n_max, this->params.n_min, this->params.p_min, n_embd, (int) this->params.backend_sampling);
+        LOG_INFO("%s: - gpu_layers=%d, cache_k=%s, cache_v=%s, ctx_tgt=%s, ctx_dft=%s, devices=[%s]\n", __func__,
                 this->params.n_gpu_layers,
                 ggml_type_name(this->params.cache_type_k),
                 ggml_type_name(this->params.cache_type_v),
@@ -1003,7 +1004,7 @@ struct common_speculative_impl_draft_mtp : public common_speculative_impl {
 
         for (int k = 0; k < n_tokens; ++k) {
             for (lhm_seq_id seq_id = 0; seq_id < (lhm_seq_id) n_seq; ++seq_id) {
-                GGML_ASSERT(batch_in.n_seq_id[k] == 1);
+                LHM_ASSERT(batch_in.n_seq_id[k] == 1);
 
                 if (batch_in.seq_id[k][0] == seq_id) {
                     i_batch_end[seq_id] = k;
@@ -1052,7 +1053,7 @@ struct common_speculative_impl_draft_mtp : public common_speculative_impl {
 
             const int32_t rc = lhm_decode(ctx_dft, batch);
             if (rc != 0) {
-                LOG_ERR("%s: lhm_decode(ctx_dft) failed rc=%d (pos=%d)\n", __func__, (int) rc, (int) batch_in.pos[0]);
+                LOG_ERROR("%s: lhm_decode(ctx_dft) failed rc=%d (pos=%d)\n", __func__, (int) rc, (int) batch_in.pos[0]);
                 return false;
             }
         }
@@ -1239,8 +1240,8 @@ struct common_speculative_impl_ngram_simple : public common_speculative_impl {
         , params(params.ngram_simple)
         , config(config)
     {
-        LOG_INF("%s: adding speculative implementation 'ngram-simple'\n", __func__);
-        LOG_INF("%s: - size_n=%d, size_m=%d, min_hits=%d\n", __func__,
+        LOG_INFO("%s: adding speculative implementation 'ngram-simple'\n", __func__);
+        LOG_INFO("%s: - size_n=%d, size_m=%d, min_hits=%d\n", __func__,
                 this->params.size_n, this->params.size_m, this->params.min_hits);
     }
 
@@ -1289,13 +1290,13 @@ struct common_speculative_impl_ngram_map_k : public common_speculative_impl {
             this->config.push_back(config);
         }
 
-        LOG_INF("%s: adding speculative implementation '%s'\n", __func__, common_speculative_type_to_str(this->type).c_str());
-        LOG_INF("%s: - size_key=%d, size_value=%d, key_only=%d, min_hits=%d\n", __func__,
+        LOG_INFO("%s: adding speculative implementation '%s'\n", __func__, common_speculative_type_to_str(this->type).c_str());
+        LOG_INFO("%s: - size_key=%d, size_value=%d, key_only=%d, min_hits=%d\n", __func__,
                 config.size_key, config.size_value, config.key_only, config.min_hits);
     }
 
     void begin(lhm_seq_id seq_id, const lhm_tokens & prompt) override {
-        GGML_ASSERT(seq_id < (lhm_seq_id) n_seq);
+        LHM_ASSERT(seq_id < (lhm_seq_id) n_seq);
 
         common_ngram_map_begin(config[seq_id], prompt);
     }
@@ -1319,7 +1320,7 @@ struct common_speculative_impl_ngram_map_k : public common_speculative_impl {
     }
 
     void accept(lhm_seq_id seq_id, uint16_t n_accepted, bool is_other) override {
-        GGML_ASSERT((seq_id < (lhm_seq_id) config.size()));
+        LHM_ASSERT((seq_id < (lhm_seq_id) config.size()));
 
         if (is_other) {
             return;
@@ -1364,10 +1365,10 @@ struct common_speculative_impl_ngram_mod : public common_speculative_impl {
         , verbose(std::getenv("LHM_TRACE") != nullptr) {
         static_assert(sizeof(lhm_token) == sizeof(common_ngram_mod::entry_t));
 
-        LOG_INF("%s: adding speculative implementation 'ngram-mod'\n", __func__);
-        LOG_INF("%s: - n_match=%d, n_max=%d, n_min=%d\n", __func__,
+        LOG_INFO("%s: adding speculative implementation 'ngram-mod'\n", __func__);
+        LOG_INFO("%s: - n_match=%d, n_max=%d, n_min=%d\n", __func__,
                 this->params.n_match, this->params.n_max, this->params.n_min);
-        LOG_INF("%s: - mod size=%zu (%.3f MB)\n", __func__,
+        LOG_INFO("%s: - mod size=%zu (%.3f MB)\n", __func__,
                 mod.size(), (float)(mod.size_bytes())/1024/1024);
 
         if (this->params.n_match < 16) {
@@ -1396,7 +1397,7 @@ struct common_speculative_impl_ngram_mod : public common_speculative_impl {
         sinfo.i_last = prompt.size() - n;
 
         const double f = (double)mod.get_used() / (double)mod.size();
-        LOG_INF("%s: ngram_mod occupancy = %zu/%zu (%.2f)\n", __func__, mod.get_used(), mod.size(), f);
+        LOG_INFO("%s: ngram_mod occupancy = %zu/%zu (%.2f)\n", __func__, mod.get_used(), mod.size(), f);
 
         constexpr double f_thold = 0.25;
         if (f > f_thold) {
@@ -1544,8 +1545,8 @@ struct common_speculative_impl_ngram_cache : public common_speculative_impl {
         , save_dynamic(save_dynamic)
         , save_static(save_static)
     {
-        LOG_INF("%s: adding speculative implementation 'ngram-cache'\n", __func__);
-        LOG_INF("%s: - n_draft=%d, cache_static=%s, cache_dynamic=%s\n", __func__,
+        LOG_INFO("%s: adding speculative implementation 'ngram-cache'\n", __func__);
+        LOG_INFO("%s: - n_draft=%d, cache_static=%s, cache_dynamic=%s\n", __func__,
                 n_draft,
                 path_static.empty() ? "none" : path_static.c_str(),
                 path_dynamic.empty() ? "none" : path_dynamic.c_str());
@@ -1560,7 +1561,7 @@ struct common_speculative_impl_ngram_cache : public common_speculative_impl {
                     sinfo.ngram_cache_static = ngram_cache_static;
                 }
             } catch (...) {
-                LOG_ERR("failed to open static lookup cache: %s", path_static.c_str());
+                LOG_ERROR("failed to open static lookup cache: %s", path_static.c_str());
                 GGML_ABORT("Couldn't read static lookup cache");
             }
         }
@@ -1573,7 +1574,7 @@ struct common_speculative_impl_ngram_cache : public common_speculative_impl {
                     sinfo.ngram_cache_dynamic = ngram_cache_dynamic;
                 }
             } catch (...) {
-                LOG_ERR("failed to open dynamic lookup cache: %s", path_dynamic.c_str());
+                LOG_ERROR("failed to open dynamic lookup cache: %s", path_dynamic.c_str());
                 GGML_ABORT("Couldn't read dynamic lookup cache");
             }
         }
@@ -1944,8 +1945,8 @@ void common_speculative_free(common_speculative * spec) {
 common_speculative_draft_params & common_speculative_get_draft_params(
         common_speculative * spec,
         lhm_seq_id seq_id) {
-    GGML_ASSERT(spec);
-    GGML_ASSERT(seq_id < (lhm_seq_id) spec->dparams.size());
+    LHM_ASSERT(spec);
+    LHM_ASSERT(seq_id < (lhm_seq_id) spec->dparams.size());
 
     return spec->dparams[seq_id];
 }
@@ -2015,7 +2016,7 @@ void common_speculative_draft(common_speculative * spec) {
         int n_drafting = 0;
 
         for (auto & dp : dparams) {
-            GGML_ASSERT(!dp.drafting || dp.result->empty());
+            LHM_ASSERT(!dp.drafting || dp.result->empty());
 
             if (dp.drafting) {
                 n_drafting++;
@@ -2088,7 +2089,7 @@ void common_speculative_draft(common_speculative * spec) {
 void common_speculative_accept(common_speculative * spec, lhm_seq_id seq_id, uint16_t n_accepted) {
     common_speculative_impl * impl = spec->impl_last[seq_id];
 
-    GGML_ASSERT(impl);
+    LHM_ASSERT(impl);
 
     {
         common_time_meas tm(impl->t_accept_us, !impl->gen_perf);
@@ -2152,7 +2153,7 @@ void common_speculative_print_stats(const common_speculative * spec) {
             str_stats = ", #mean acc len = " + oss.str() + ", #acc rate/pos = (" + tmp.str() + ")";
         }
 
-        LOG_INF("statistics %16s: #calls(b,g,a) = %4zu %6zu %6zu, #gen drafts = %6zu, #acc drafts = %5zu, #gen tokens = %6zu, #acc tokens = %5zu%s%s\n",
+        LOG_INFO("statistics %16s: #calls(b,g,a) = %4zu %6zu %6zu, #gen drafts = %6zu, #acc drafts = %5zu, #gen tokens = %6zu, #acc tokens = %5zu%s%s\n",
                 common_speculative_type_to_str(impl->type).c_str(),
                 impl->n_call_begin, impl->n_call_draft, impl->n_call_accept,
                 impl->n_gen_drafts,

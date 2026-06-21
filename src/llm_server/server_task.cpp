@@ -1,5 +1,5 @@
 #include "server_task.h"
-
+#include "lhm_assert.h"
 #include "server_chat.h"
 #include "chat.h"
 #include "common.h"
@@ -341,7 +341,7 @@ std::vector<unsigned char> completion_token_output::str_to_bytes(const std::stri
 // server_task_result_cmpl_final
 //
 json server_task_result_cmpl_final::to_json() {
-    GGML_ASSERT(is_updated && "update() must be called before to_json()");
+    LHM_ASSERT(is_updated && "update() must be called before to_json()");
     switch (res_type) {
         case TASK_RESPONSE_TYPE_NONE:
             return to_json_non_oaicompat();
@@ -356,7 +356,7 @@ json server_task_result_cmpl_final::to_json() {
         case TASK_RESPONSE_TYPE_ANTHROPIC:
             return stream ? to_json_anthropic_stream() : to_json_anthropic();
         default:
-            GGML_ASSERT(false && "Invalid task_response_type");
+            LHM_ASSERT(false && "Invalid task_response_type");
     }
 }
 
@@ -1031,7 +1031,7 @@ void server_task_result_cmpl_partial::update(task_result_state & state) {
 }
 
 json server_task_result_cmpl_partial::to_json() {
-    GGML_ASSERT(is_updated && "update() must be called before to_json()");
+    LHM_ASSERT(is_updated && "update() must be called before to_json()");
     if (is_begin) {
         return nullptr; // simply signal to HTTP handler to send the headers and status code
     }
@@ -1049,7 +1049,7 @@ json server_task_result_cmpl_partial::to_json() {
         case TASK_RESPONSE_TYPE_ANTHROPIC:
             return to_json_anthropic();
         default:
-            GGML_ASSERT(false && "Invalid task_response_type");
+            LHM_ASSERT(false && "Invalid task_response_type");
     }
 }
 
@@ -1149,7 +1149,7 @@ json server_task_result_cmpl_partial::to_json_oaicompat_chat() {
 
     if (!deltas.empty()) {
         auto & last_json = deltas[deltas.size() - 1];
-        GGML_ASSERT(last_json.at("choices").size() >= 1);
+        LHM_ASSERT(last_json.at("choices").size() >= 1);
 
         if (prob_output.probs.size() > 0) {
             last_json.at("choices").at(0)["logprobs"] = json {
@@ -1716,7 +1716,7 @@ bool server_prompt_cache::load(server_prompt & prompt, const server_tokens & tok
             auto & data = it_best->data.drft;
 
             if (!data.empty()) {
-                GGML_ASSERT(ctx_dft);
+                LHM_ASSERT(ctx_dft);
 
                 const size_t size = data.size();
                 const size_t n = lhm_state_seq_set_data_ext(ctx_dft, data.data(), size, id_slot, 0);

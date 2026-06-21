@@ -31,9 +31,9 @@ ggml_tensor * lhm_adapter_cvec::apply_to(ggml_context * ctx, ggml_tensor * cur, 
 bool lhm_adapter_cvec::init(const lhm_model & model) {
     const auto & hparams = model.hparams;
 
-    GGML_ASSERT(tensors.empty());
-    GGML_ASSERT(ctxs.empty());
-    GGML_ASSERT(bufs.empty());
+    LHM_ASSERT(tensors.empty());
+    LHM_ASSERT(ctxs.empty());
+    LHM_ASSERT(bufs.empty());
 
     // create a context for each buffer type
     std::map<ggml_backend_buffer_type_t, ggml_context *> ctx_map;
@@ -492,6 +492,6 @@ uint64_t lhm_adapter_get_alora_n_invocation_tokens(const struct lhm_adapter_lora
 }
 
 const lhm_token * lhm_adapter_get_alora_invocation_tokens(const lhm_adapter_lora * adapter) {
-    GGML_ASSERT(adapter);
+    LHM_ASSERT(adapter);
     return adapter->alora_invocation_tokens.data();
 }

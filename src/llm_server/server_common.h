@@ -6,7 +6,6 @@
 #include "chat.h"
 #include "mtmd.h"
 
-#define JSON_ASSERT GGML_ASSERT
 #include <nlohmann/json.hpp>
 
 #include <string>
@@ -19,14 +18,14 @@ using json = nlohmann::ordered_json;
 #define SLT_TRC(slot, fmt, ...) LOG_TRACE("slot %12.*s: id %2d | task %d | " fmt, 12, __func__, (slot).id, ((slot).task ? (slot).task->id : -1), __VA_ARGS__)
 #define SLT_INF(slot, fmt, ...) LOG_INFO("slot %12.*s: id %2d | task %d | " fmt, 12, __func__, (slot).id, ((slot).task ? (slot).task->id : -1), __VA_ARGS__)
 #define SLT_WRN(slot, fmt, ...) LOG_WARN("slot %12.*s: id %2d | task %d | " fmt, 12, __func__, (slot).id, ((slot).task ? (slot).task->id : -1), __VA_ARGS__)
-#define SLT_ERR(slot, fmt, ...) LOG_ERROR("slot %12.*s: id %2d | task %d | " fmt, 12, __func__, (slot).id, ((slot).task ? (slot).task->id : -1), __VA_ARGS__)
+#define SLT_ERR(slot, fmt, ...) LOG_ERROROR("slot %12.*s: id %2d | task %d | " fmt, 12, __func__, (slot).id, ((slot).task ? (slot).task->id : -1), __VA_ARGS__)
 #define SLT_CNT(slot, fmt, ...) LOG_INFO(""                                 fmt,                                                                __VA_ARGS__)
 
 #define SRV_DBG(fmt, ...) LOG_DEBUG("srv  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
 #define SRV_TRC(fmt, ...) LOG_TRACE("srv  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
 #define SRV_INF(fmt, ...) LOG_INFO("srv  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
 #define SRV_WRN(fmt, ...) LOG_WARN("srv  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
-#define SRV_ERR(fmt, ...) LOG_ERROR("srv  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
+#define SRV_ERR(fmt, ...) LOG_ERROROR("srv  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
 #define SRV_CNT(fmt, ...) LOG_INFO(""              fmt,               __VA_ARGS__)
 
 using raw_buffer = std::vector<uint8_t>;

@@ -8,9 +8,7 @@ lhm_add_compile_flags()
 set(TARGET lhm_common)
 
 add_library(${TARGET}
-    arg.cpp
-    arg.h
-    assert.h
+    lhm_assert.h
     base64.hpp
     chat_auto_parser_generator.cpp
     chat_auto_parser_helpers.cpp
@@ -49,8 +47,6 @@ add_library(${TARGET}
     ngram_mod.h
     peg_parser.cpp
     peg_parser.h
-    preset.cpp
-    preset.h
     regex_partial.cpp
     reasoning_budget.cpp
     reasoning_budget.h
