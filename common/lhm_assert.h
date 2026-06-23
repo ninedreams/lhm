@@ -11,14 +11,11 @@
 
 namespace lhm {
 
-[[noreturn]] static void abort(const char * file, int line, const char * fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    std::string content = fmt::vformat(fmt, fmt::make_format_args(args));
-    va_end(args);
-
+template<typename... Args>
+[[noreturn]] static void abort(const char* file, int line, 
+                               fmt::format_string<Args...> fmt, Args&&... args) {
+    std::string content = fmt::format(fmt, std::forward<Args>(args)...);
     LOG_CRIT("{}:{}: {}", file, line, content);
-
     std::abort();
 }
 
@@ -35,3 +32,4 @@ namespace lhm {
             LHM_ABORT("LHM_ASSERT(%s) failed", #x);                     \
         }                                                               \
     } while (0)
+
