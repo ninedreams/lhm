@@ -1,6 +1,6 @@
 #pragma once
 //
-// ngram-map.h: structures used to manage a map from n-grams to a list of m-grams
+// ngram_map.h: structures used to manage a map from n-grams to a list of m-grams
 //
 // These structures are used to do a lookup of n-grams followed by m-grams in token history.
 //

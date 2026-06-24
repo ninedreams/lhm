@@ -934,11 +934,11 @@ void common_memory_breakdown_print(const struct lhm_context * ctx) {
             td[j].insert(j == 1 ? td[j].length() : 0, max_len - td[j].length(), ' ');
         }
     }
-    for (const auto & td : table_data) {
-        LOG_TRACE(td[0].c_str(),
-            __func__, td[1].c_str(), td[2].c_str(), td[3].c_str(), td[4].c_str(), td[5].c_str(),
-            td[6].c_str(), td[7].c_str(), td[8].c_str());
-    }
+    // for (const auto & td : table_data) {
+    //     LOG_TRACE(td[0].c_str(),
+    //         __func__, td[1].c_str(), td[2].c_str(), td[3].c_str(), td[4].c_str(), td[5].c_str(),
+    //         td[6].c_str(), td[7].c_str(), td[8].c_str());
+    // }
 }
 
 void common_fit_print(

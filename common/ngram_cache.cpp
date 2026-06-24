@@ -1,4 +1,4 @@
-#include "ngram-cache.h"
+#include "ngram_cache.h"
 #include "common.h"
 #include "log.h"
 

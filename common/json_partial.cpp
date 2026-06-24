@@ -1,6 +1,7 @@
-#include "json-partial.h"
+#include "json_partial.h"
 
 #include "log.h"
+#include "lhm_assert.h"
 
 #include <nlohmann/json.hpp>
 

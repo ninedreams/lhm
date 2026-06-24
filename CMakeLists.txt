@@ -103,6 +103,9 @@ else()
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+set(HTTPLIB_COMPILE ON CACHE BOOL "")
+add_subdirectory(thirdparty/cpp-httplib)
+
 add_subdirectory(thirdparty/fmt)
 
 set(SPDLOG_FMT_EXTERNAL ON CACHE BOOL "Use external fmt instead bundled")
@@ -118,7 +121,6 @@ option(RAPIDJSON_BUILD_TESTS OFF)
 option(RAPIDJSON_BUILD_EXAMPLES OFF)
 add_subdirectory(thirdparty/rapidjson)
 
-add_subdirectory(thirdparty/cpp-httplib)
 add_subdirectory(thirdparty/llama.cpp/ggml)
 
 # Project include dirs

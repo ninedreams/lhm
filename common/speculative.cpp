@@ -5,9 +5,9 @@
 #include "ggml.h"
 #include "lhm.h"
 #include "log.h"
-#include "ngram-cache.h"
-#include "ngram-map.h"
-#include "ngram-mod.h"
+#include "ngram_cache.h"
+#include "ngram_map.h"
+#include "ngram_mod.h"
 #include "sampling.h"
 
 #include "lhm_ext.h" // staging API: lhm_set_embeddings_nextn / lhm_get_embeddings_nextn_ith (used by MTP)
@@ -61,20 +61,20 @@ static bool common_speculative_are_compatible(
     const lhm_vocab * vocab_dft = lhm_model_get_vocab(model_dft);
 
     const auto vocab_type_tgt = lhm_vocab_type(vocab_tgt);
-    LOG_DEBUG("%s: vocab_type tgt: %d\n", __func__, vocab_type_tgt);
+    LOG_DEBUG("{}: vocab_type tgt: {}\n", __func__, int(vocab_type_tgt));
 
     const auto vocab_type_dft = lhm_vocab_type(vocab_dft);
-    LOG_DEBUG("%s: vocab_type dft: %d\n", __func__, vocab_type_dft);
+    LOG_DEBUG("{}: vocab_type dft: {}\n", __func__, int(vocab_type_dft));
 
     if (vocab_type_tgt != vocab_type_dft) {
-        LOG_WARN("%s: draft model vocab type must match target model to use speculation but "
-                "vocab_type_dft = %d while vocab_type_tgt = %d\n", __func__, vocab_type_dft, vocab_type_tgt);
+        LOG_WARN("{}: draft model vocab type must match target model to use speculation but "
+                "vocab_type_dft = {} while vocab_type_tgt = {}\n", __func__, int(vocab_type_dft), int(vocab_type_tgt));
         return false;
     }
 
     if (lhm_vocab_get_add_bos(vocab_tgt) != lhm_vocab_get_add_bos(vocab_dft) ||
         (lhm_vocab_get_add_bos(vocab_tgt) && lhm_vocab_bos(vocab_tgt) != lhm_vocab_bos(vocab_dft))) {
-        LOG_WARN("%s: draft model bos tokens must match target model to use speculation. add: %d - %d, id: %d - %d)\n",
+        LOG_WARN("{}: draft model bos tokens must match target model to use speculation. add: {} - {}, id: {} - {})\n",
                 __func__,
                 lhm_vocab_get_add_bos(vocab_tgt), lhm_vocab_get_add_bos(vocab_dft),
                 lhm_vocab_bos(vocab_tgt), lhm_vocab_bos(vocab_dft));
@@ -83,7 +83,7 @@ static bool common_speculative_are_compatible(
 
     if (lhm_vocab_get_add_eos(vocab_tgt) != lhm_vocab_get_add_eos(vocab_dft) ||
         (lhm_vocab_get_add_eos(vocab_tgt) && lhm_vocab_eos(vocab_tgt) != lhm_vocab_eos(vocab_dft))) {
-        LOG_WARN("%s: draft model eos tokens must match target model to use speculation. add: %d - %d, id: %d - %d)\n",
+        LOG_WARN("{}: draft model eos tokens must match target model to use speculation. add: {} - {}, id: {} - {})\n",
                 __func__,
                 lhm_vocab_get_add_eos(vocab_tgt), lhm_vocab_get_add_eos(vocab_dft),
                 lhm_vocab_eos(vocab_tgt), lhm_vocab_eos(vocab_dft));
@@ -98,8 +98,8 @@ static bool common_speculative_are_compatible(
             : n_vocab_dft - n_vocab_tgt;
 
         if (vocab_diff > SPEC_VOCAB_MAX_SIZE_DIFFERENCE) {
-            LOG_DEBUG("%s: draft model vocab must closely match target model to use speculation but ", __func__);
-            LOG_DEBUG("target vocab size %d does not match draft vocab size %d - difference %d, max allowed %d\n",
+            LOG_DEBUG("{}: draft model vocab must closely match target model to use speculation but ", __func__);
+            LOG_DEBUG("target vocab size {} does not match draft vocab size {} - difference {}, max allowed {}\n",
                     n_vocab_tgt, lhm_vocab_n_tokens(vocab_dft), vocab_diff, SPEC_VOCAB_MAX_SIZE_DIFFERENCE);
             return false;
         }
@@ -109,8 +109,8 @@ static bool common_speculative_are_compatible(
             const char * token_text_dft = lhm_vocab_get_text(vocab_dft, i);
 
             if (std::strcmp(token_text_tgt, token_text_dft) != 0) {
-                LOG_DEBUG("%s: draft model vocab must match target model to use speculation but ", __func__);
-                LOG_DEBUG("token %d content differs - target '%s', draft '%s'\n", i,
+                LOG_DEBUG("{}: draft model vocab must match target model to use speculation but ", __func__);
+                LOG_DEBUG("token {} content differs - target '{}', draft '{}'\n", i,
                         common_token_to_piece(vocab_tgt, i).c_str(),
                         common_token_to_piece(vocab_dft, i).c_str());
                 return false;
@@ -225,16 +225,16 @@ struct common_speculative_impl_draft_simple : public common_speculative_impl {
         }
 
         const bool vocab_cmpt = common_speculative_are_compatible(lhm_get_model(ctx_tgt), lhm_get_model(ctx_dft));
-        LOG_DEBUG("%s: vocab_cmpt = %d\n", __func__, vocab_cmpt);
+        LOG_DEBUG("{}: vocab_cmpt = {}\n", __func__, vocab_cmpt);
 
         if (!vocab_cmpt) {
-            LOG_ERROR("%s: the target and draft vocabs are not compatible\n", __func__);
+            LOG_ERROR("{}: the target and draft vocabs are not compatible\n", __func__);
 
             throw std::runtime_error("draft model vocab type must match target model to use speculation");
         }
 
         if (n_seq != lhm_n_seq_max(ctx_dft)) {
-            LOG_ERROR("%s: n_seq mismatch: %d != %d\n", __func__, n_seq, lhm_n_seq_max(ctx_dft));
+            LOG_ERROR("{}: n_seq mismatch: {} != {}\n", __func__, n_seq, lhm_n_seq_max(ctx_dft));
 
             throw std::runtime_error("the draft model number of sequences is incompatible with the speculative n_seq");
         }
@@ -311,7 +311,7 @@ struct common_speculative_impl_draft_simple : public common_speculative_impl {
                 const auto * cur_p = common_sampler_get_candidates(smpl, true);
 
                 for (int k = 0; k < std::min(3, (int) cur_p->size); ++k) {
-                    LOG_DEBUG(" - seq_id %d, draft candidate %3d, pos %3d: %6d (%8.3f) '%s'\n",
+                    LOG_DEBUG(" - seq_id {}, draft candidate {:3}, pos {:3}: {:6} ({:8.3f}) '{}'\n",
                             seq_id, k, i, cur_p->data[k].id, cur_p->data[k].p,
                             common_token_to_piece(ctx_dft, cur_p->data[k].id).c_str());
                 }
@@ -767,7 +767,7 @@ struct common_speculative_impl_draft_eagle3 : public common_speculative_impl {
                 const auto * cur_p = common_sampler_get_candidates(smpl, true);
 
                 for (int k = 0; k < std::min(3, (int) cur_p->size); ++k) {
-                    LOG_DEBUG(" - seq_id %d, draft candidate %3d, pos %3d: %6d (%8.3f) '%s'\n",
+                    LOG_DEBUG(" - seq_id {}, draft candidate {:3}, pos {:3}: {:6} ({:8.3f}) '{}'\n",
                             seq_id, k, i, cur_p->data[k].id, cur_p->data[k].p,
                             common_token_to_piece(ctx_dft, cur_p->data[k].id).c_str());
                 }
@@ -1135,7 +1135,7 @@ struct common_speculative_impl_draft_mtp : public common_speculative_impl {
                 const auto * cur_p = common_sampler_get_candidates(smpl, true);
 
                 for (int k = 0; k < std::min(3, (int) cur_p->size); ++k) {
-                    LOG_DEBUG(" - seq_id %d, draft candidate %3d, pos %3d: %6d (%8.3f) '%s'\n",
+                    LOG_DEBUG(" - seq_id {}, draft candidate {:3}, pos {:3}: {:6} ({:8.3f}) '{}'\n",
                             seq_id, k, i, cur_p->data[k].id, cur_p->data[k].p,
                             common_token_to_piece(ctx_dft, cur_p->data[k].id).c_str());
                 }
@@ -2048,13 +2048,13 @@ void common_speculative_draft(common_speculative * spec) {
 
                 if (dp.n_max > 0) {
                     if (!result.empty() && (int) result.size() > dp.n_max) {
-                        LOG_DEBUG("%s: truncating draft to %d tokens\n", __func__, dp.n_max);
+                        LOG_DEBUG("{}: truncating draft to {} tokens\n", __func__, dp.n_max);
                         result.resize(dp.n_max);
                     }
                 }
 
                 if (!result.empty()) {
-                    LOG_DEBUG("%s: called impl %s, hist size = %zu, call_count = %zu, gen = %zu\n", __func__,
+                    LOG_DEBUG("{}: called impl {}, hist size = {}, call_count = {}, gen = {}\n", __func__,
                             common_speculative_type_to_str(impl.get()->type).c_str(), dp.prompt->size(),
                             impl.get()->n_call_draft, result.size());
 

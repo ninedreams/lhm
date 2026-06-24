@@ -1,6 +1,6 @@
 #include "common.h"
 #include "log.h"
-#include "ngram-map.h"
+#include "ngram_map.h"
 
 #include <cinttypes>
 #include <cstdint>

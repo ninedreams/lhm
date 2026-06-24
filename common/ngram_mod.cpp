@@ -1,4 +1,4 @@
-#include "ngram-mod.h"
+#include "ngram_mod.h"
 
 #include <algorithm>
 

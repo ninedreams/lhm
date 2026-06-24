@@ -4,7 +4,7 @@
 #include "common.h"
 #include "fit.h"
 #include "log.h"
-#include "reasoning-budget.h"
+#include "reasoning_budget.h"
 
 #include "ggml.h"
 

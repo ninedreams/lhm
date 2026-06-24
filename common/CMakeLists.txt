@@ -71,9 +71,8 @@ add_library(${TARGET}
 target_include_directories(${TARGET} PRIVATE .)
 target_include_directories(${TARGET} PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/fmt/include)
 target_include_directories(${TARGET} PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/spdlog/include)
-target_compile_features(${TARGET} PUBLIC cxx_std_17)
 
-target_link_libraries(${TARGET} PRIVATE cpp-httplib gflags::gflags fmt::fmt spdlog::spdlog rapidjson)
+target_link_libraries(${TARGET} PRIVATE httplib::httplib gflags::gflags fmt::fmt spdlog::spdlog RapidJSON)
 
 if(LHM_LLGUIDANCE)
     message("Not support LHM_LLGUIDANCE")
