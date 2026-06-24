@@ -51,6 +51,8 @@ static spdlog::level::level_enum get_log_level(const std::string & level_str) {
     return default_log_level;
 }
 
+void flush_logger();
+
 }
 
 template<spdlog::level::level_enum Lvl, typename... Args>

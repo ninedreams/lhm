@@ -2,7 +2,6 @@
 
 #include "common.h"
 #include "config.h"
-#include "download.h"
 #include "server_common.h"
 #include "server_http.h"
 #include "server_queue.h"
@@ -16,8 +15,6 @@
 /**
  * state diagram:
  *
- * DOWNLOADING ──► DOWNLOADED ──► (replaced by new instance)
- *
  * UNLOADED ──► LOADING ──► LOADED ◄──── SLEEPING
  *  ▲            │            │               ▲
  *  └───failed───┘            │               │
@@ -25,9 +22,6 @@
  *  └────────unloaded─────────┘
  */
 enum server_model_status {
-    // TODO: also add downloading state when the logic is added
-    SERVER_MODEL_STATUS_DOWNLOADING,
-    SERVER_MODEL_STATUS_DOWNLOADED,
     SERVER_MODEL_STATUS_UNLOADED,
     SERVER_MODEL_STATUS_LOADING,
     SERVER_MODEL_STATUS_LOADED,
@@ -37,13 +31,10 @@ enum server_model_status {
 enum server_model_source {
     SERVER_MODEL_SOURCE_PRESET,
     SERVER_MODEL_SOURCE_MODELS_DIR,
-    SERVER_MODEL_SOURCE_CACHE,
 };
 
 static std::string server_model_status_to_string(server_model_status status) {
     switch (status) {
-        case SERVER_MODEL_STATUS_DOWNLOADING: return "downloading";
-        case SERVER_MODEL_STATUS_DOWNLOADED:  return "downloaded";
         case SERVER_MODEL_STATUS_UNLOADED:    return "unloaded";
         case SERVER_MODEL_STATUS_LOADING:     return "loading";
         case SERVER_MODEL_STATUS_LOADED:      return "loaded";
@@ -56,7 +47,6 @@ static std::string server_model_source_to_string(server_model_source source) {
     switch (source) {
         case SERVER_MODEL_SOURCE_PRESET:     return "preset";
         case SERVER_MODEL_SOURCE_MODELS_DIR: return "models_dir";
-        case SERVER_MODEL_SOURCE_CACHE:      return "cache";
         default:                             return "unknown";
     }
 }
@@ -100,7 +90,7 @@ struct model_preset {
 using model_presets = std::map<std::string, model_preset>;
 
 struct server_model_meta {
-    server_model_source source = SERVER_MODEL_SOURCE_CACHE;
+    server_model_source source = SERVER_MODEL_SOURCE_PRESET;
     model_preset preset;
     std::string name;
     std::set<std::string> aliases; // additional names that resolve to this model
@@ -109,11 +99,10 @@ struct server_model_meta {
     server_model_status status = SERVER_MODEL_STATUS_UNLOADED;
     int64_t last_used = 0; // for LRU unloading
     std::vector<std::string> args; // args passed to the model instance, will be populated by render_args()
-    json loaded_info; // info to be reflected via /v1/models endpoint ; if in DOWNLOADING state, it should contain download progress info
+    json loaded_info; // info to be reflected via /v1/models endpoint
     int exit_code = 0; // exit code of the model instance process (only valid if status == FAILED)
     int stop_timeout = 0; // seconds to wait before force-killing the model instance during shutdown
     mtmd_caps multimodal; // multimodal capabilities
-    // bool need_download = false; // whether the model needs to be downloaded before loading // TODO @ngxson: implement this
 
     bool is_ready() const {
         return status == SERVER_MODEL_STATUS_LOADED;
@@ -201,17 +190,12 @@ public:
     void unload(const std::string & name);
     void unload_all();
 
-    // download a new model, progress is reported via SSE
-    // to stop the download, call unload()
-    void download(common_params_model && model, common_download_opts && opts);
-
     // update the status of a model instance (thread-safe)
     void update_status(const std::string & name, server_model_status status, int exit_code);
     void update_loaded_info(const std::string & name, std::string & raw_info);
-    void update_download_progress(const std::string & name, const common_download_progress & progress, bool done, bool ok = true);
 
-    // remove a cache model from disk and update the list (thread-safe)
-    // note: only cache models can be removed; returns false if the model doesn't exist or is not a cache model
+    // remove a model from the list (thread-safe)
+    // returns false if the model doesn't exist
     bool remove(const std::string & name);
 
     // wait until the model instance is fully loaded (thread-safe)

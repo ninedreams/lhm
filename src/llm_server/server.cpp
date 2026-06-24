@@ -319,7 +319,7 @@ int llm_server(common_params & params, int argc, char ** argv) {
         };
     }
 
-    // TODO: refactor in common/console
+    // TODO: refactor in console
 #if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
     struct sigaction sigint_action;
     sigint_action.sa_handler = signal_handler;

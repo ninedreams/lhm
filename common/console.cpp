@@ -33,7 +33,7 @@
 #include <termios.h>
 #endif
 
-#include "common/console.h"
+#include "console.h"
 #include "log.h"
 
 #define ANSI_COLOR_RED     "\x1b[31m"
@@ -176,7 +176,7 @@ namespace console {
     // Keep track of current display and only emit ANSI code if it changes
     void set_display(display_type display) {
         if (advanced_display && current_display != display) {
-            common_log_flush(common_log_main());
+            lhm::flush_logger();
             switch(display) {
                 case DISPLAY_TYPE_RESET:
                     fprintf(out, ANSI_COLOR_RESET);
@@ -1114,7 +1114,7 @@ namespace console {
             if (simple_io || running) {
                 return;
             }
-            common_log_flush(common_log_main());
+            lhm::flush_logger();
             fprintf(out, "%c", LOADING_CHARS[0]);
             fflush(out);
             frame = 1;

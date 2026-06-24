@@ -28,7 +28,6 @@ add_library(${TARGET}
     lhm_chat.h
     lhm_context.cpp
     lhm_context.h
-    lhm_ext.h
     lhm_grammar.cpp
     lhm_grammar.h
     lhm_graph.cpp

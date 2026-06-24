@@ -1469,12 +1469,6 @@ extern "C" {
     // Print system information
     const char * lhm_print_system_info(void);
 
-    // Set callback for all future logging events.
-    // If this is not called, or NULL is supplied, everything is output on stderr.
-    // The logger state is global so these functions are NOT thread safe.
-    void lhm_log_get(ggml_log_callback * log_callback, void ** user_data);
-    void lhm_log_set(ggml_log_callback   log_callback, void *  user_data);
-
     //
     // Performance utils
     //

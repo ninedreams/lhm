@@ -2,6 +2,7 @@
 #include "gguf.h"
 
 #include "lhm_assert.h"
+#include "config.h"
 #include "common.h"
 #include "fit.h"
 #include "log.h"
@@ -251,7 +252,7 @@ bool set_process_priority(enum ggml_sched_priority prio) {
     }
 
     if (setpriority(PRIO_PROCESS, 0, p) != 0) {
-        LOG_WARN("failed to set process priority %d : %s (%d)\n", prio, strerror(errno), errno);
+        LOG_WARN("failed to set process priority {} : {} ({})\n", int(prio), strerror(errno), errno);
         return false;
     }
     return true;
@@ -366,20 +367,10 @@ void common_init() {
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
 #endif
-
-    common_log_set_prefix(common_log_main(), true);
-    common_log_set_timestamps(common_log_main(), true);
-
-    lhm_log_set(common_log_default_callback, NULL);
 }
 
 void common_params_print_info(const common_params & params, bool print_devices) {
-#ifdef NDEBUG
-    const char * build_type = "";
-#else
-    const char * build_type = " (debug)";
-#endif
-    LOG_INFO("log_info: verbosity = %d (adjust with the `-lv N` CLI arg)\n", common_log_get_verbosity_thold());
+    LOG_INFO("log_info: log level = %s (adjust with the `-lv N` CLI arg)\n", FLAGS_log_level);
 
     // device enumeration creates a primary context on CUDA backends, skip it when the caller does not own any device
     if (print_devices) {
@@ -1103,7 +1094,7 @@ bool tty_can_use_colors() {
 // Model utils
 //
 
-// TODO: move to common/sampling
+// TODO: move to sampling
 static void common_init_sampler_from_model(
     const lhm_model * model,
     common_params_sampling & sparams) {
@@ -1192,7 +1183,7 @@ common_init_result::common_init_result(common_params & params, bool model_only) 
             params.tensor_buft_overrides.data(),
             params.fit_params_target.data(),
             params.fit_params_min_ctx,
-            params.verbosity >= LOG_LEVEL_DEBUG ? GGML_LOG_LEVEL_DEBUG : GGML_LOG_LEVEL_ERROR);
+            GGML_LOG_LEVEL_INFO);
     }
 
     lhm_model * model = lhm_model_load_from_file(params.model.path.c_str(), mparams);

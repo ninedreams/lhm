@@ -9,6 +9,7 @@ set(TARGET lhm_common)
 
 add_library(${TARGET}
     lhm_assert.h
+    lhm_ext.h
     base64.hpp
     chat_auto_parser_generator.cpp
     chat_auto_parser_helpers.cpp
@@ -24,12 +25,8 @@ add_library(${TARGET}
     console.h
     debug.cpp
     debug.h
-    download.cpp
-    download.h
     fit.cpp
     fit.h
-    hf_cache.cpp
-    hf_cache.h
     http.h
     imatrix_loader.cpp
     imatrix_loader.h

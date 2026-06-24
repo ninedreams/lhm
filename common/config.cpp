@@ -1772,31 +1772,7 @@ static handle_model_result common_params_handle_model(struct common_params_model
         if (model.hf_file.empty() && !model.path.empty()) {
             model.hf_file = model.path;
             model.path = "";
-        }
-        common_download_opts hf_opts = opts;
-        auto download_result = common_download_model(model, hf_opts);
-
-        if (!download_result.preset_path.empty()) {
-            result.found_preset = true;
-            result.preset_path = download_result.preset_path;
-            return result; // skip everything else if preset.ini is used
-        }
-
-        if (download_result.model_path.empty()) {
-            throw std::runtime_error("failed to download model from Hugging Face");
-        }
-
-        model.name = model.hf_repo;
-        model.path = download_result.model_path;
-
-        if (!download_result.mmproj_path.empty()) {
-            result.found_mmproj = true;
-            result.mmproj.path  = download_result.mmproj_path;
-        }
-
-        if (!download_result.mtp_path.empty()) {
-            result.found_mtp = true;
-            result.mtp.path  = download_result.mtp_path;
+            throw std::exception("hf_file must be specified when using -hf with -m");
         }
     } else if (!model.url.empty()) {
         if (model.path.empty()) {
@@ -1805,10 +1781,6 @@ static handle_model_result common_params_handle_model(struct common_params_model
             model.path = fs_get_cache_file(string_split<std::string>(f, '/').back());
         }
 
-        auto download_result = common_download_model(model, opts);
-        if (download_result.model_path.empty()) {
-            throw std::runtime_error("failed to download model from " + model.url);
-        }
     }
 
     return result;

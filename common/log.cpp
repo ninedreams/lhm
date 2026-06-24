@@ -21,4 +21,10 @@ void init_logger() {
     g_logger->info("Lhm logger initialized with level: %s", FLAGS_log_level.c_str());
 }
 
+void flush_logger() {
+    if (g_logger) {
+        g_logger->flush();
+    }
+}
+
 }

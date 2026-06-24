@@ -1,4 +1,4 @@
-#include "common/config.h"
+#include "config.h"
 #include "common.h"
 #include "log.h"
 #include "server.h"

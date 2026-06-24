@@ -2,7 +2,7 @@
 
 A Jinja template engine implementation in C++, originally inspired by [huggingface.js's jinja package](https://github.com/huggingface/huggingface.js). The engine was introduced in [PR#18462](https://github.com/ggml-org/llama.cpp/pull/18462).
 
-The implementation can be found in the `common/jinja` directory.
+The implementation can be found in the `jinja` directory.
 
 ## Key Features
 
@@ -10,7 +10,7 @@ The implementation can be found in the `common/jinja` directory.
 - Decoupled from `nlohmann::json`: this dependency is only used for JSON-to-internal type translation and is completely optional
 - Minimal primitive types: int, float, bool, string, array, object, none, undefined
 - Detailed logging: allow source tracing on error
-- Clean architecture: workarounds are applied to input data before entering the runtime (see `common/chat.cpp`)
+- Clean architecture: workarounds are applied to input data before entering the runtime (see `chat.cpp`)
 
 ## Architecture
 

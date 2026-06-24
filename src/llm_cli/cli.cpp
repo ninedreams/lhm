@@ -7,8 +7,8 @@
 #include <signal.h>
 
 #include "chat.h"
-#include "common/common.h"
-#include "common/config.h"
+#include "common.h"
+#include "config.h"
 #include "console.h"
 #include "fit.h"
 #include "log.h"

@@ -501,7 +501,7 @@ void common_perf_print(const struct lhm_context * ctx, const struct common_sampl
 
         data = lhm_perf_sampler(gsmpl->chain);
 
-        // note: the sampling time includes the samplers time + extra time spent in common/sampling
+        // note: the sampling time includes the samplers time + extra time spent in sampling
         LOG_INFO("%s:    sampling time = %10.2f ms\n", __func__, t_sampling_ms);
         LOG_INFO("%s:    samplers time = %10.2f ms / %5d tokens\n", __func__, data.t_sample_ms, data.n_sample);
     }

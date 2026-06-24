@@ -1,8 +1,9 @@
 #include "fit.h"
 
 #include "log.h"
+#include "lhm_assert.h"
 
-#include "../src/lhm_ext.h"
+#include "lhm_ext.h"
 
 #include <array>
 #include <cassert>
@@ -43,14 +44,7 @@ static std::vector<lhm_device_memory_data> common_get_device_memory_data_impl(
         ggml_log_level min_level; // prints below this log level go to debug log
     };
     user_data_t ud;
-    lhm_log_get(&ud.original_logger.callback, &ud.original_logger.user_data);
     ud.min_level = log_level;
-
-    lhm_log_set([](ggml_log_level level, const char * text, void * user_data) {
-        const user_data_t * ud = (const user_data_t *) user_data;
-        const ggml_log_level level_eff = level >= ud->min_level ? level : GGML_LOG_LEVEL_DEBUG;
-        ud->original_logger.callback(level_eff, text, ud->original_logger.user_data);
-    }, &ud);
 
     lhm_model_params mparams_copy = *mparams;
     mparams_copy.no_alloc  = true;
@@ -59,14 +53,12 @@ static std::vector<lhm_device_memory_data> common_get_device_memory_data_impl(
 
     lhm_model * model = lhm_model_load_from_file(path_model, mparams_copy);
     if (model == nullptr) {
-        lhm_log_set(ud.original_logger.callback, ud.original_logger.user_data);
         throw std::runtime_error("failed to load model");
     }
 
     lhm_context * ctx = lhm_init_from_model(model, *cparams);
     if (ctx == nullptr) {
         lhm_model_free(model);
-        lhm_log_set(ud.original_logger.callback, ud.original_logger.user_data);
         throw std::runtime_error("failed to create lhm_context from model");
     }
 
@@ -145,7 +137,6 @@ static std::vector<lhm_device_memory_data> common_get_device_memory_data_impl(
 
     lhm_free(ctx);
     lhm_model_free(model);
-    lhm_log_set(ud.original_logger.callback, ud.original_logger.user_data);
 
     return ret;
 }
@@ -191,7 +182,7 @@ static void common_params_fit_impl(
 
     // step 1: get data for default parameters and check whether any changes are necessary in the first place
 
-    LOG_TRACE("%s: getting device memory data for initial parameters:\n", __func__);
+    LOG_TRACE("{}: getting device memory data for initial parameters:\n", __func__);
     const dmds_t dmds_full = common_get_device_memory_data_impl(path_model, mparams, cparams, devs, hp_ngl, hp_nct, hp_nex, log_level);
     const size_t nd = devs.size(); // number of devices
 
@@ -233,16 +224,16 @@ static void common_params_fit_impl(
         sum_projected_used = dmds_full.back().mb.total();
         sum_free           = dmds_full.back().total;
         sum_projected_free = sum_free - sum_projected_used;
-        LOG_INFO("%s: projected to use %" PRId64 " MiB of host memory vs. %" PRId64 " MiB of total host memory\n",
+        LOG_INFO("{}: projected to use {} MiB of host memory vs. {} MiB of total host memory\n",
             __func__, sum_projected_used/MiB, sum_free/MiB);
         if (sum_projected_free >= margins[0]) {
-            LOG_TRACE("%s: will leave %" PRId64 " >= %" PRId64 " MiB of system memory, no changes needed\n",
+            LOG_TRACE("{}: will leave {} >= {} MiB of system memory, no changes needed\n",
                 __func__, sum_projected_free/MiB, margins[0]/MiB);
             return;
         }
     } else {
         if (nd > 1) {
-            LOG_TRACE("%s: projected memory use with initial parameters [MiB]:\n", __func__);
+            LOG_TRACE("{}: projected memory use with initial parameters [MiB]:\n", __func__);
         }
         for (size_t id = 0; id < nd; id++) {
             const lhm_device_memory_data & dmd = dmds_full[id];
@@ -257,16 +248,16 @@ static void common_params_fit_impl(
             sum_projected_model += dmd.mb.model;
 
             if (nd > 1) {
-                LOG_TRACE("%s:   - %s: %6" PRId64 " total, %6" PRId64 " used, %6" PRId64 " free vs. target of %6" PRId64 "\n",
+                LOG_TRACE("{}:   - {}: %6" PRId64 " total, %6" PRId64 " used, %6" PRId64 " free vs. target of %6" PRId64 "\n",
                     __func__, dev_names[id].c_str(), dmd.total/MiB, projected_used/MiB, projected_free/MiB, margins[id]/MiB);
             }
         }
         assert(sum_free >= 0 && sum_projected_used >= 0);
-        LOG_TRACE("%s: projected to use %" PRId64 " MiB of device memory vs. %" PRId64 " MiB of free device memory\n",
+        LOG_TRACE("{}: projected to use {} MiB of device memory vs. {} MiB of free device memory\n",
             __func__, sum_projected_used/MiB, sum_free/MiB);
         if (nd == 1) {
             if (projected_free_per_device[0] >= margins[0]) {
-                LOG_TRACE("%s: will leave %" PRId64 " >= %" PRId64 " MiB of free device memory, no changes needed\n",
+                LOG_TRACE("{}: will leave {} >= {} MiB of free device memory, no changes needed\n",
                     __func__, projected_free_per_device[0]/MiB, margins[0]/MiB);
                 return;
             }
@@ -279,7 +270,7 @@ static void common_params_fit_impl(
                 }
             }
             if (!changes_needed) {
-                LOG_TRACE("%s: targets for free memory can be met on all devices, no changes needed\n", __func__);
+                LOG_TRACE("{}: targets for free memory can be met on all devices, no changes needed\n", __func__);
                 return;
             }
         }
@@ -298,11 +289,11 @@ static void common_params_fit_impl(
         }
         if (global_surplus < 0) {
             if (nd <= 1) {
-                LOG_TRACE("%s: cannot meet free memory target of %" PRId64 " MiB, need to reduce device memory by %" PRId64 " MiB\n",
+                LOG_TRACE("{}: cannot meet free memory target of {} MiB, need to reduce device memory by {} MiB\n",
                     __func__, margins[0]/MiB, -global_surplus/MiB);
             } else {
                 LOG_TRACE(
-                    "%s: cannot meet free memory targets on all devices, need to use %" PRId64 " MiB less in total\n",
+                    "{}: cannot meet free memory targets on all devices, need to use {} MiB less in total\n",
                     __func__, -global_surplus/MiB);
             }
             if (cparams->n_ctx == 0) {
@@ -343,28 +334,24 @@ static void common_params_fit_impl(
 
                         const int64_t bytes_per_ctx = (sum_projected_used - sum_projected_used_min_ctx) / (hp_nct - n_ctx_min);
                         const int64_t memory_reduction = (hp_nct - cparams->n_ctx) * bytes_per_ctx;
-                        LOG_TRACE("%s: context size reduced from %" PRIu32 " to %" PRIu32 " -> need %" PRId64 " MiB less memory in total\n",
+                        LOG_TRACE("{}: context size reduced from {} to {} -> need {} MiB less memory in total\n",
                             __func__, hp_nct, cparams->n_ctx, memory_reduction/MiB);
                         if (nd <= 1) {
-                            LOG_TRACE("%s: entire model can be fit by reducing context\n", __func__);
+                            LOG_TRACE("{}: entire model can be fit by reducing context\n", __func__);
                             return;
                         }
-                        LOG_TRACE("%s: entire model should be fit across devices by reducing context\n", __func__);
-                    } else {
-                        const int64_t memory_reduction = sum_projected_used - sum_projected_used_min_ctx;
-                        LOG_TRACE("%s: context size reduced from %" PRIu32 " to %" PRIu32 " -> need %" PRId64 " MiB less memory in total\n",
-                            __func__, hp_nct, cparams->n_ctx, memory_reduction/MiB);
+                        LOG_TRACE("{}: entire model should be fit across devices by reducing context\n", __func__);
                     }
                 } else {
                     if (n_ctx_min == UINT32_MAX) {
-                        LOG_TRACE("%s: user has requested full context size of %" PRIu32 " -> no change\n", __func__, hp_nct);
+                        LOG_TRACE("{}: user has requested full context size of {} -> no change\n", __func__, hp_nct);
                     } else {
-                        LOG_TRACE("%s: default model context size is %" PRIu32 " which is <= the min. context size of %" PRIu32 " -> no change\n",
+                        LOG_TRACE("{}: default model context size is {} which is <= the min. context size of {} -> no change\n",
                             __func__, hp_nct, n_ctx_min);
                     }
                 }
             } else {
-                LOG_TRACE("%s: context size set by user to %" PRIu32 " -> no change\n", __func__, cparams->n_ctx);
+                LOG_TRACE("{}: context size set by user to {} -> no change\n", __func__, cparams->n_ctx);
             }
         }
     }
@@ -542,10 +529,10 @@ static void common_params_fit_impl(
         }
 
         if (global_surplus_cpu_moe > 0) {
-            LOG_TRACE("%s: with only dense weights in device memory there is a total surplus of %" PRId64 " MiB\n",
+            LOG_TRACE("%s: with only dense weights in device memory there is a total surplus of {} MiB\n",
                 __func__, global_surplus_cpu_moe/MiB);
         } else {
-            LOG_TRACE("%s: with only dense weights in device memory there is still a total deficit of %" PRId64 " MiB\n",
+            LOG_TRACE("%s: with only dense weights in device memory there is still a total deficit of {} MiB\n",
                 __func__, -global_surplus_cpu_moe/MiB);
         }
 
@@ -558,7 +545,7 @@ static void common_params_fit_impl(
     targets.reserve(nd);
     for (size_t id = 0; id < nd; id++) {
         targets.push_back(dmds_full[id].free - margins[id]);
-        LOG_TRACE("%s: id=%zu, target=%" PRId64 " MiB\n", __func__, id, targets[id]/MiB);
+        LOG_TRACE("%s: id=%zu, target={} MiB\n", __func__, id, targets[id]/MiB);
     }
 
     std::vector<ggml_backend_buffer_type_t> overflow_bufts; // which bufts the first partial layer of a device overflows to:
@@ -599,7 +586,7 @@ static void common_params_fit_impl(
             if (mem_high[id] > targets[id]) {
                 assert(ngl_per_device_high[id].n_layer > ngl_per_device[id].n_layer);
                 uint32_t delta = ngl_per_device_high[id].n_layer - ngl_per_device[id].n_layer;
-                LOG_TRACE("%s: start filling device %" PRIu32 ", delta=%" PRIu32 "\n", __func__, id, delta);
+                LOG_TRACE("%s: start filling device {}, delta={}\n", __func__, id, delta);
                 while (delta > 1) {
                     uint32_t step_size = int64_t(delta) * (targets[id] - mem[id]) / (mem_high[id] - mem[id]);
                     step_size = std::max(step_size, uint32_t(1));
@@ -616,11 +603,11 @@ static void common_params_fit_impl(
                     if (mem_test[id] <= targets[id]) {
                         ngl_per_device = ngl_per_device_test;
                         mem            = mem_test;
-                        LOG_TRACE("%s: set ngl_per_device[%d].n_layer=%" PRIu32 "\n", __func__, id, ngl_per_device[id].n_layer);
+                        LOG_TRACE("%s: set ngl_per_device[%d].n_layer={}\n", __func__, id, ngl_per_device[id].n_layer);
                     } else {
                         ngl_per_device_high = ngl_per_device_test;
                         mem_high            = mem_test;
-                        LOG_TRACE("%s: set ngl_per_device_high[%d].n_layer=%" PRIu32 "\n", __func__, id, ngl_per_device_high[id].n_layer);
+                        LOG_TRACE("%s: set ngl_per_device_high[%d].n_layer={}\n", __func__, id, ngl_per_device_high[id].n_layer);
                     }
                     delta = ngl_per_device_high[id].n_layer - ngl_per_device[id].n_layer;
                 }
@@ -628,7 +615,7 @@ static void common_params_fit_impl(
                 assert(ngl_per_device_high[id].n_layer == n_unassigned);
                 ngl_per_device = ngl_per_device_high;
                 mem            = mem_high;
-                LOG_TRACE("%s: set ngl_per_device[%d].n_layer=%" PRIu32 "\n", __func__, id, ngl_per_device[id].n_layer);
+                LOG_TRACE("%s: set ngl_per_device[%d].n_layer={}\n", __func__, id, ngl_per_device[id].n_layer);
             }
         }
 
@@ -697,13 +684,13 @@ static void common_params_fit_impl(
                     ngl_per_device = ngl_per_device_test;
                     mem            = mem_test;
                     id_dense_start = id_dense_start_test;
-                    LOG_TRACE("%s: set ngl_per_device[%zu].(n_layer, n_part)=(%" PRIu32 ", %" PRIu32 "), id_dense_start=%zu\n",
+                    LOG_TRACE("%s: set ngl_per_device[%zu].(n_layer, n_part)=({}, {}), id_dense_start=%zu\n",
                         __func__, id, ngl_per_device[id].n_layer, ngl_per_device[id].n_part, id_dense_start);
                 } else {
                     ngl_per_device_high = ngl_per_device_test;
                     mem_high            = mem_test;
                     id_dense_start_high = id_dense_start_test;
-                    LOG_TRACE("%s: set ngl_per_device_high[%zu].(n_layer, n_part)=(%" PRIu32 ", %" PRIu32 "), id_dense_start_high=%zu\n",
+                    LOG_TRACE("%s: set ngl_per_device_high[%zu].(n_layer, n_part)=({}, {}), id_dense_start_high=%zu\n",
                         __func__, id, ngl_per_device_high[id].n_layer, ngl_per_device_high[id].n_part, id_dense_start_high);
                 }
                 assert(ngl_per_device_high[id].n_full() >= ngl_per_device[id].n_full());
@@ -713,7 +700,7 @@ static void common_params_fit_impl(
             ngl_per_device = ngl_per_device_high;
             mem            = mem_high;
             id_dense_start = id_dense_start_high;
-            LOG_TRACE("%s: set ngl_per_device[%zu].(n_layer, n_part)=(%" PRIu32 ", %" PRIu32 "), id_dense_start=%zu\n",
+            LOG_TRACE("%s: set ngl_per_device[%zu].(n_layer, n_part)=({}, {}), id_dense_start=%zu\n",
                 __func__, id, ngl_per_device[id].n_layer, ngl_per_device[id].n_part, id_dense_start);
         }
 
@@ -740,7 +727,7 @@ static void common_params_fit_impl(
                 overflow_bufts = overflow_bufts_test;
                 mem            = mem_test;
                 id_dense_start = id_dense_start_test;
-                LOG_TRACE("%s: set ngl_per_device[%zu].(n_layer, n_part, overflow_type)=(%" PRIu32 ", %" PRIu32 ", UP), id_dense_start=%zu\n",
+                LOG_TRACE("%s: set ngl_per_device[%zu].(n_layer, n_part, overflow_type)=({}, {}, UP), id_dense_start=%zu\n",
                     __func__, id, ngl_per_device[id].n_layer, ngl_per_device[id].n_part, id_dense_start);
 
                 ngl_per_device_test[id].overflow_type = LAYER_FRACTION_GATE;
@@ -751,7 +738,7 @@ static void common_params_fit_impl(
                     overflow_bufts = overflow_bufts_test;
                     mem            = mem_test;
                     id_dense_start = id_dense_start_test;
-                    LOG_TRACE("%s: set ngl_per_device[%zu].(n_layer, n_part, overflow_type)=(%" PRIu32 ", %" PRIu32 ", GATE), id_dense_start=%zu\n",
+                    LOG_TRACE("%s: set ngl_per_device[%zu].(n_layer, n_part, overflow_type)=({}, {}, GATE), id_dense_start=%zu\n",
                         __func__, id, ngl_per_device[id].n_layer, ngl_per_device[id].n_part, id_dense_start);
                 }
             } else {
@@ -763,7 +750,7 @@ static void common_params_fit_impl(
                     overflow_bufts = overflow_bufts_test;
                     mem            = mem_test;
                     id_dense_start = id_dense_start_test;
-                    LOG_TRACE("%s: set ngl_per_device[%zu].(n_layer, n_part, overflow_type)=(%" PRIu32 ", %" PRIu32 ", ATTN), id_dense_start=%zu\n",
+                    LOG_TRACE("%s: set ngl_per_device[%zu].(n_layer, n_part, overflow_type)=({}, {}, ATTN), id_dense_start=%zu\n",
                         __func__, id, ngl_per_device[id].n_layer, ngl_per_device[id].n_part, id_dense_start);
                 }
             }
@@ -825,9 +812,9 @@ void common_memory_breakdown_print(const struct lhm_context * ctx) {
 
     std::vector<std::array<std::string, 9>> table_data;
     table_data.reserve(devices.size());
-    const std::string template_header = "%s: | %s | %s   %s    %s   %s   %s   %s    %s |\n";
-    const std::string template_gpu    = "%s: | %s | %s = %s + (%s = %s + %s + %s) + %s |\n";
-    const std::string template_other  = "%s: | %s | %s   %s    %s = %s + %s + %s    %s |\n";
+    const std::string template_header = "{}: | {} | {}   {}    {}   {}   {}   {}    {} |\n";
+    const std::string template_gpu    = "{}: | {} | {} = {} + ({} = {} + {} + {}) + {} |\n";
+    const std::string template_other  = "{}: | {} | {}   {}    {} = {} + {} + {}    {} |\n";
 
     table_data.push_back({template_header, "memory breakdown [MiB]", "total", "free", "self", "model", "context", "compute", "unaccounted"});
 

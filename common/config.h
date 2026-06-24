@@ -2,9 +2,7 @@
 
 #include <gflags/gflags.h>
 
-// Forward declarations
-enum lhm_example;
-struct common_params;
+#include "common.h"
 
 namespace lhm {
 

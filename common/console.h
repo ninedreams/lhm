@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "common/common.h"
+#include "common.h"
 
 enum display_type {
     DISPLAY_TYPE_RESET = 0,
@@ -35,10 +35,8 @@ namespace console {
     // only use in in a dedicated CLI thread
     // for logging in inference thread, use log.h instead
 
-    LLM_COMMON_ATTRIBUTE_FORMAT(1, 2)
     void log(const char * fmt, ...);
 
-    LLM_COMMON_ATTRIBUTE_FORMAT(1, 2)
     void error(const char * fmt, ...);
 
     void flush();

@@ -10,7 +10,7 @@
 #include "ngram-mod.h"
 #include "sampling.h"
 
-#include "../src/lhm_ext.h" // staging API: lhm_set_embeddings_nextn / lhm_get_embeddings_nextn_ith (used by MTP)
+#include "lhm_ext.h" // staging API: lhm_set_embeddings_nextn / lhm_get_embeddings_nextn_ith (used by MTP)
 
 #include <algorithm>
 #include <cassert>
@@ -1684,7 +1684,7 @@ static common_speculative_impl_ngram_cache create_state_ngram_cache(
         const std::string & path_dynamic) {
     uint16_t n_draft = 8; // TODO get from config?
 
-    // TODO bool param in common/common.h to set save_static/save_dynamic?
+    // TODO bool param in common.h to set save_static/save_dynamic?
     bool save_static = false;
     bool save_dynamic = false;
 

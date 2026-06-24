@@ -1012,7 +1012,7 @@ private:
         add_bos_token = lhm_vocab_get_add_bos(vocab);
 
         if (params_base.speculative.has_dft()) {
-            // TODO speculative: move to common/speculative.cpp?
+            // TODO speculative: move to speculative.cpp?
             const auto & params_spec = params_base.speculative.draft;
 
             SRV_INF("loading draft model '%s'\n", params_spec.mparams.path.c_str());

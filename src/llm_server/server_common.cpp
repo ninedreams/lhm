@@ -1,5 +1,4 @@
 #include "common.h"
-#include "download.h"
 #include "log.h"
 #include "lhm.h"
 #include "mtmd.h"
@@ -824,22 +823,7 @@ static void handle_media(
         const std::string & media_path) {
     std::string url = json_value(media_obj, "url", std::string());
     if (string_starts_with(url, "http")) {
-        // download remote image
-        // TODO @ngxson : maybe make these params configurable
-        common_remote_params params;
-        params.max_size = 1024 * 1024 * 10; // 10MB
-        params.timeout  = 10; // seconds
-        SRV_INF("downloading image from '%s'\n", url.c_str());
-        auto res = common_remote_get_content(url, params);
-        if (200 <= res.first && res.first < 300) {
-            SRV_INF("downloaded %zu bytes\n", res.second.size());
-            raw_buffer data;
-            data.insert(data.end(), res.second.begin(), res.second.end());
-            out_files.push_back(data);
-        } else {
-            throw std::runtime_error("Failed to download image");
-        }
-
+        throw std::runtime_error("Remote image download is not supported; only local files are allowed");
     } else if (string_starts_with(url, "file://")) {
         if (media_path.empty()) {
             throw std::invalid_argument("file:// URLs are not allowed unless --media-path is specified");

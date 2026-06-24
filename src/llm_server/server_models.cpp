@@ -2,11 +2,9 @@
 #include "server_models.h"
 
 #include "config.h"
-#include "download.h"
 
-#include <cpp-httplib/httplib.h> // TODO: remove this once we use HTTP client from download.h
+#include <cpp-httplib/httplib.h>
 #include <sheredom/subprocess.h>
-
 #include <functional>
 #include <optional>
 #include <algorithm>
@@ -52,8 +50,8 @@ extern char **environ;
 #define CHILD_ADDR "127.0.0.1"
 
 struct server_subproc {
-    std::optional<subprocess_s> sproc; // empty while in DOWNLOADING state
-    std::atomic<bool> stopped{false}; // set to cancel a download or signal child process exit
+    std::optional<subprocess_s> sproc;
+    std::atomic<bool> stopped{false}; // signal child process exit
 
     subprocess_s & get() {
         LHM_ASSERT(sproc.has_value() && "subprocess not initialized");
@@ -364,18 +362,6 @@ static model_preset load_preset_from_args(int argc, char ** argv) {
 }
 
 // Helper: load presets from HF cache
-static model_presets load_presets_from_cache() {
-    model_presets out;
-    auto cached_models = common_list_cached_models();
-    for (const auto & model : cached_models) {
-        model_preset preset;
-        preset.name = model.to_string();
-        preset.set_option("LHM_ARG_HF_REPO", model.to_string());
-        out[preset.name] = preset;
-    }
-    return out;
-}
-
 // Helper: load presets from a local models directory
 static model_presets load_presets_from_models_dir(const std::string & models_dir) {
     model_presets out;
@@ -739,16 +725,13 @@ void server_models::notify_sse(const std::string & event, const std::string & mo
 
 void server_models::load_models() {
     // Phase 1: load presets from all sources — pure I/O, no lock needed
-    // 1. cached models
-    model_presets cached_models = load_presets_from_cache();
-    SRV_INF("Loaded %zu cached model presets\n", cached_models.size());
-    // 2. local models from --models-dir
+    // 1. local models from --models-dir
     model_presets local_models;
     if (!base_params.models_dir.empty()) {
         local_models = load_presets_from_models_dir(base_params.models_dir);
         SRV_INF("Loaded %zu local model presets from %s\n", local_models.size(), base_params.models_dir.c_str());
     }
-    // 3. custom-path models from presets
+    // 2. custom-path models from presets
     model_preset global = {};
     model_presets custom_presets = {};
     if (!base_params.models_preset.empty()) {
@@ -757,17 +740,12 @@ void server_models::load_models() {
     }
 
     // cascade, apply global preset first
-    cached_models  = cascade_presets(global, cached_models);
     local_models   = cascade_presets(global, local_models);
     custom_presets = cascade_presets(global, custom_presets);
 
-    // note: if a model exists in both cached and local, local takes precedence
+    // note: if a model exists in both local and custom, custom takes precedence
     model_presets final_presets;
     std::unordered_map<std::string, server_model_source> source_map;
-    for (const auto & [name, preset] : cached_models) {
-        final_presets[name] = preset;
-        source_map[name] = SERVER_MODEL_SOURCE_CACHE;
-    }
     for (const auto & [name, preset] : local_models)  {
         final_presets[name] = preset;
         source_map[name] = SERVER_MODEL_SOURCE_MODELS_DIR;
@@ -929,9 +907,6 @@ void server_models::load_models() {
             }
         }
         for (auto & [name, inst] : mapping) {
-            if (inst.meta.status == SERVER_MODEL_STATUS_DOWNLOADING) {
-                continue; // downloading models are not from config sources, leave them alone
-            }
             if (final_presets.find(name) == final_presets.end() && !inst.meta.is_running() && inst.th.joinable()) {
                 threads_to_join.push_back(std::move(inst.th));
             }
@@ -944,15 +919,7 @@ void server_models::load_models() {
 
         // erase models no longer in any source
         for (auto it = mapping.begin(); it != mapping.end(); ) {
-            if (it->second.meta.status == SERVER_MODEL_STATUS_DOWNLOADING) {
-                ++it; // download thread is still busy, skip
-            } else if (it->second.meta.status == SERVER_MODEL_STATUS_DOWNLOADED) {
-                // download finished, safe to erase
-                if (it->second.th.joinable()) {
-                    it->second.th.join();
-                }
-                it = mapping.erase(it);
-            } else if (final_presets.find(it->first) == final_presets.end()) {
+            if (final_presets.find(it->first) == final_presets.end()) {
                 SRV_INF("(reload) removing model name=%s (no longer in source)\n", it->first.c_str());
                 LHM_ASSERT(!it->second.th.joinable()); // must have been joined above
                 it = mapping.erase(it);
@@ -1415,95 +1382,11 @@ void server_models::load(const std::string & name) {
     cv.notify_all();
 }
 
-// callback for model downloading functionality
-struct server_models_download_res : public common_download_callback {
-    common_params_model model;
-    common_download_opts opts;
-
-    std::function<bool()> should_stop;
-    std::function<void(const common_download_progress & p)> on_progress;
-
-    bool is_ok = false;
-
-    bool run() {
-        try {
-            common_download_model(model, opts);
-            is_ok = true;
-        } catch (const std::exception & e) {
-            SRV_ERR("download failed for model name=%s: %s\n", model.name.c_str(), e.what());
-            is_ok = false;
-        }
-        return is_ok;
-    }
-    void on_start(const common_download_progress & p) override {
-        on_progress(p);
-    }
-    void on_update(const common_download_progress & p) override {
-        on_progress(p);
-    }
-    void on_done(const common_download_progress &, bool ok) override {
-        is_ok = ok;
-    }
-    bool is_cancelled() const override {
-        return should_stop();
-    }
-};
-
-void server_models::download(common_params_model && model, common_download_opts && opts) {
-    std::string name = model.name;
-    LHM_ASSERT(name == model.hf_repo);
-
-    std::unique_lock<std::mutex> lk(mutex);
-    if (mapping.find(name) != mapping.end()) {
-        throw std::runtime_error("model name=" + name + " already exists");
-    }
-
-    instance_t inst;
-    inst.meta.name   = name;
-    inst.meta.status = SERVER_MODEL_STATUS_DOWNLOADING;
-    inst.subproc     = std::make_shared<server_subproc>();
-
-    auto dl = std::make_unique<server_models_download_res>();
-    dl->model = model; // copy
-    dl->opts  = opts;  // copy
-
-    dl->should_stop = [sp = inst.subproc]() {
-        return sp->stopped.load(std::memory_order_relaxed);
-    };
-
-    dl->on_progress = [this, name](const common_download_progress & p) {
-        update_download_progress(name, p, false);
-    };
-
-    inst.th = std::thread([this, dl = std::move(dl)]() {
-        dl->opts.callback = dl.get();
-        bool ok = dl->run();
-        SRV_INF("download finished for model name=%s with status=%s\n",
-                    dl->model.name.c_str(), ok ? "success" : "failure");
-        update_download_progress(dl->model.name, {}, true, ok);
-        // need_reload is set inside update_download_progress under the mutex;
-        // the next load_models() call will clean up this instance
-    });
-
-    mapping[name] = std::move(inst);
-    notify_sse("status_update", name, {
-        {"status", server_model_status_to_string(SERVER_MODEL_STATUS_DOWNLOADING)},
-    });
-    cv.notify_all();
-}
-
 void server_models::unload(const std::string & name) {
     std::unique_lock<std::mutex> lk(mutex);
     auto it = mapping.find(name);
     if (it != mapping.end()) {
-        if (it->second.meta.status == SERVER_MODEL_STATUS_DOWNLOADING) {
-            SRV_INF("cancelling download for model name=%s\n", name.c_str());
-            it->second.subproc->stopped.store(true, std::memory_order_relaxed);
-            // for convenience, we wait the status change here
-            wait(lk, name, [](const server_model_meta & new_meta) {
-                return new_meta.status != SERVER_MODEL_STATUS_DOWNLOADING;
-            });
-        } else if (it->second.meta.is_running()) {
+        if (it->second.meta.is_running()) {
             SRV_INF("stopping model instance name=%s\n", name.c_str());
             stopping_models.insert(name);
             if (it->second.meta.status == SERVER_MODEL_STATUS_LOADING) {
@@ -1524,10 +1407,7 @@ void server_models::unload_all() {
     {
         std::lock_guard<std::mutex> lk(mutex);
         for (auto & [name, inst] : mapping) {
-            if (inst.meta.status == SERVER_MODEL_STATUS_DOWNLOADING) {
-                SRV_INF("cancelling download for model name=%s\n", name.c_str());
-                inst.subproc->stopped.store(true, std::memory_order_relaxed);
-            } else if (inst.meta.is_running()) {
+            if (inst.meta.is_running()) {
                 SRV_INF("stopping model instance name=%s\n", name.c_str());
                 stopping_models.insert(name);
                 cv_stop.notify_all();
@@ -1589,68 +1469,29 @@ void server_models::update_loaded_info(const std::string & name, std::string & r
     cv.notify_all();
 }
 
-void server_models::update_download_progress(const std::string & name, const common_download_progress & progress, bool done, bool ok) {
-    json curr;
-    {
-        std::lock_guard<std::mutex> lk(mutex);
-        auto it = mapping.find(name);
-        if (it != mapping.end()) {
-            if (done) {
-                // mark the instance to be erased on next load_models() call
-                it->second.meta.status = SERVER_MODEL_STATUS_DOWNLOADED;
-                need_reload = true;
-            } else {
-                json & info = it->second.meta.loaded_info;
-                if (!info.contains("progress")) {
-                    info["progress"] = json{};
-                }
-                info["progress"][progress.url] = {
-                    {"done",  progress.downloaded},
-                    {"total", progress.total},
-                };
-                curr = it->second.meta.loaded_info; // copy
-            }
-        }
-    }
-    if (done) {
-        cv.notify_all(); // notify in case unload() is waiting for download to be cancelled
-        notify_sse(ok ? "download_finished" : "download_failed", name, {});
-    } else {
-        notify_sse("download_progress", name, curr);
-    }
-}
-
 bool server_models::remove(const std::string & name) {
     auto meta = get_meta(name);
 
     if (!meta.has_value()) {
         throw std::runtime_error("model name=" + name + " is not found");
     }
-    if (meta->source != SERVER_MODEL_SOURCE_CACHE) {
-        throw std::runtime_error("model name=" + name + " is not removable (not from cache)");
-    }
 
-    unload(name); // cancel download or stop running instance
+    unload(name); // stop running instance
     {
         std::unique_lock<std::mutex> lk(mutex);
-        // a cancelled download lands on DOWNLOADED; a stopped instance lands on UNLOADED
+        // a stopped instance lands on UNLOADED
         wait(lk, name, [](const server_model_meta & new_meta) {
-            return new_meta.status == SERVER_MODEL_STATUS_UNLOADED
-                || new_meta.status == SERVER_MODEL_STATUS_DOWNLOADED;
+            return new_meta.status == SERVER_MODEL_STATUS_UNLOADED;
         });
-        // join before erasing - after status reaches UNLOADED/DOWNLOADED the thread no
+        // join before erasing - after status reaches UNLOADED the thread no
         // longer acquires this mutex, so joining while holding it is safe
         if (mapping[name].th.joinable()) {
             mapping[name].th.join();
         }
-        // remove the model from disk (hold lock to prevent concurrent load)
-        bool ok = common_download_remove(name);
-        if (ok) {
-            mapping.erase(name);
-        }
-        SRV_INF("removing model name=%s from cache (%s)\n", name.c_str(), ok ? "succeeded" : "failed");
+        mapping.erase(name);
+        SRV_INF("removing model name=%s from list\n", name.c_str());
         notify_sse("model_remove", name, {});
-        return ok;
+        return true;
     }
 }
 
@@ -1989,8 +1830,7 @@ void server_models_routes::init_routes() {
                 {"status",        status},
                 {"architecture",  architecture},
                 {"source",        server_model_source_to_string(meta.source)},
-                {"can_remove",    meta.source == SERVER_MODEL_SOURCE_CACHE},
-                // {"need_download", meta.need_download},
+                {"can_remove",    false},
                 // TODO: add other fields, may require reading GGUF metadata
             };
 
@@ -2049,47 +1889,7 @@ void server_models_routes::init_routes() {
 
     this->post_router_models = [this](const server_http_req & req) {
         auto res = std::make_unique<server_http_res>();
-
-        json body = json::parse(req.body);
-        std::string name = json_value(body, "model", std::string());
-        if (name.empty()) {
-            throw std::invalid_argument("model must be a non-empty string");
-        }
-
-        common_params_model model;
-        common_download_opts opts;
-
-        model.name           = name;
-        model.hf_repo        = name;
-        opts.bearer_token    = params.hf_token;
-        opts.download_mmproj = true;
-        opts.download_mtp    = true;
-
-        // first, only check if the model is valid and can be downloaded
-        opts.skip_download = true;
-        bool ok = false;
-        try {
-            auto validation = common_download_model(model, opts);
-            ok = !validation.model_path.empty();
-        } catch (const common_skip_download_exception &) {
-            // model is valid and will be downloaded
-            ok = true;
-        } catch (...) {
-            SRV_ERR("unknown error while validating model '%s'\n", name.c_str());
-            // other exceptions will be handled by the outer ex_wrapper()
-            throw;
-        }
-
-        if (!ok) {
-            throw std::invalid_argument("model validation failed, unable to download");
-        }
-
-        // then, proceed with the actual download
-        opts.skip_download = false;
-        SRV_INF("starting download for model '%s'\n", name.c_str());
-        models.download(std::move(model), std::move(opts));
-
-        res_ok(res, {{"success", true}});
+        throw std::runtime_error("remote model download is not supported; only local model files are allowed");
         return res;
     };
 
