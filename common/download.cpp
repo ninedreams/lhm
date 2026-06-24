@@ -319,9 +319,9 @@ static int common_download_file_single_online(const std::string & url,
 
     auto head = cli.Head(parts.path);
     if (!head || head->status < 200 || head->status >= 300) {
-        LHM_LOG_TRACE("%s: HEAD failed, status: %d\n", __func__, head ? head->status : -1);
+        LOG_TRACE("%s: HEAD failed, status: %d\n", __func__, head ? head->status : -1);
         if (file_exists) {
-            LHM_LOG_TRACE("%s: using cached file (HEAD failed): %s\n", __func__, path.c_str());
+            LOG_TRACE("%s: using cached file (HEAD failed): %s\n", __func__, path.c_str());
             return 304; // 304 Not Modified - fake cached response
         }
         return head ? head->status : -1;

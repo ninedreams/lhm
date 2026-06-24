@@ -1239,7 +1239,7 @@ common_init_result::common_init_result(common_params & params, bool model_only) 
     // initialize once
     for (lhm_token i = 0; i < lhm_vocab_n_tokens(vocab); i++) {
         if (lhm_vocab_is_eog(vocab, i)) {
-            LHM_LOG_TRACE("%s: added %s logit bias = %f\n", __func__, common_token_to_piece(vocab, i).c_str(), -INFINITY);
+            LOG_TRACE("%s: added %s logit bias = %f\n", __func__, common_token_to_piece(vocab, i).c_str(), -INFINITY);
             params.sampling.logit_bias_eog.push_back({i, -INFINITY});
         }
     }
@@ -1252,12 +1252,12 @@ common_init_result::common_init_result(common_params & params, bool model_only) 
     }
 
     //if (params.sampling.penalty_last_n == -1) {
-    //    LHM_LOG_TRACE("%s: setting penalty_last_n to ctx_size = %d\n", __func__, lhm_n_ctx(lctx));
+    //    LOG_TRACE("%s: setting penalty_last_n to ctx_size = %d\n", __func__, lhm_n_ctx(lctx));
     //    params.sampling.penalty_last_n = lhm_n_ctx(lctx);
     //}
 
     //if (params.sampling.dry_penalty_last_n == -1) {
-    //    LHM_LOG_TRACE("%s: setting dry_penalty_last_n to ctx_size = %d\n", __func__, lhm_n_ctx(lctx));
+    //    LOG_TRACE("%s: setting dry_penalty_last_n to ctx_size = %d\n", __func__, lhm_n_ctx(lctx));
     //    params.sampling.dry_penalty_last_n = lhm_n_ctx(lctx);
     //}
 
@@ -1472,7 +1472,7 @@ common_context_seq_rm_type common_context_can_seq_rm(lhm_context * ctx) {
 
     // try to remove the last tokens
     if (!lhm_memory_seq_rm(mem, 0, 1, -1)) {
-        LHM_LOG_TRACE("%s: the context does not support partial sequence removal\n", __func__);
+        LOG_TRACE("%s: the context does not support partial sequence removal\n", __func__);
         res = COMMON_CONTEXT_SEQ_RM_TYPE_FULL;
         goto done;
     }
