@@ -1,8 +1,6 @@
 #include "common.h"
 #include "log.h"
 #include "lhm.h"
-#include "mtmd.h"
-#include "mtmd-helper.h"
 #include "chat.h"
 #include "base64.hpp"
 #include "lhm_assert.h"
@@ -233,168 +231,40 @@ static inline raw_buffer base64_decode(const std::string & encoded_string) {
 //
 // server_tokens implementation
 //
+// server_tokens implementation
+//
 
-server_tokens::server_tokens(mtmd::input_chunks & mtmd_chunks, bool has_mtmd) : has_mtmd(has_mtmd) {
-    for (size_t i = 0; i < mtmd_chunks.size(); ++i) {
-        push_back(mtmd_chunks[i]);
-    }
-}
-
-server_tokens::server_tokens(const lhm_tokens & tokens, bool has_mtmd) : has_mtmd(has_mtmd), tokens(tokens) {
+server_tokens::server_tokens(const lhm_tokens & tokens) : tokens(tokens) {
 }
 
 lhm_pos server_tokens::pos_next(int64_t n_tokens) const {
-    if (!has_mtmd) {
-        if (n_tokens < 0) {
-            return tokens.size();
-        }
-
-        return n_tokens;
-    }
-
     if (n_tokens < 0) {
-        lhm_pos res = tokens.size();
-
-        for (auto it = map_idx_to_media.begin(); it != map_idx_to_media.end(); ++it) {
-            const auto & chunk = it->second;
-            res += mtmd_input_chunk_get_n_pos(chunk.get()) - mtmd_input_chunk_get_n_tokens(chunk.get());
-        }
-
-        return res;
+        return tokens.size();
     }
 
-    int64_t idx = 0;
-    lhm_pos pos = 0;
-
-    LHM_ASSERT(n_tokens <= (int64_t)tokens.size());
-
-    while (idx < n_tokens) {
-        const auto media_it = map_idx_to_media.find(idx);
-        if (media_it != map_idx_to_media.end()) {
-            const auto & chunk = media_it->second;
-            const lhm_pos n_pos = mtmd_input_chunk_get_n_pos(chunk.get());
-            const size_t n_tok = mtmd_input_chunk_get_n_tokens(chunk.get());
-
-            pos += n_pos;
-            idx += n_tok;
-        } else {
-            pos++;
-            idx++;
-        }
-    }
-
-    return pos;
+    return n_tokens;
 }
 
 size_t server_tokens::size_up_to_pos(lhm_pos max_pos) const {
-    if (!has_mtmd) {
-        return std::min((size_t)max_pos, tokens.size());
-    }
-
-    size_t idx = 0;
-    lhm_pos pos = 0;
-
-    while (idx < tokens.size()) {
-        const auto media_it = map_idx_to_media.find(idx);
-        if (media_it != map_idx_to_media.end()) {
-            const auto & chunk = media_it->second;
-            const lhm_pos n_pos = mtmd_input_chunk_get_n_pos(chunk.get());
-            const size_t n_tok = mtmd_input_chunk_get_n_tokens(chunk.get());
-
-            pos += n_pos;
-            idx += n_tok;
-        } else {
-            pos++;
-            idx++;
-        }
-
-        if (pos >= max_pos) {
-            break;
-        }
-    }
-
-    return idx;
+    return std::min((size_t)max_pos, tokens.size());
 }
 
 std::string server_tokens::str() const {
     std::ostringstream oss;
     oss << "tokens: ";
     for (size_t idx = 0; idx < tokens.size(); ++idx) {
-        lhm_token t = tokens[idx];
-        oss << "idx:" << idx << " ";
-        if (t == LHM_TOKEN_NULL) {
-            oss << "<embd> ";
-        } else {
-            oss << t << " ";
-        }
-    }
-    oss << "\n";
-    oss << "image idx: ";
-    for (const auto & it : map_idx_to_media) {
-        oss << it.first << ", ";
+        oss << "idx:" << idx << " " << tokens[idx] << " ";
     }
     return oss.str();
 }
 
-const mtmd::input_chunk_ptr & server_tokens::find_chunk(size_t idx) const {
-    auto it = map_idx_to_media.find(idx);
-    if (it != map_idx_to_media.end()) {
-        return it->second;
-    }
-    throw std::runtime_error("Chunk not found");
-}
-
-std::pair<const mtmd::input_chunk_ptr *, size_t> server_tokens::find_next_media_chunk(size_t idx) const {
-    auto it = map_idx_to_media.upper_bound(idx);
-    if (it != map_idx_to_media.end()) {
-        return { &it->second, it->first };
-    }
-    return { nullptr, 0 };
-}
-
 void server_tokens::push_back(lhm_token tok) {
-    if (tok == LHM_TOKEN_NULL) {
-        throw std::runtime_error("Invalid token");
-    }
     tokens.emplace_back(tok);
 }
 
-void server_tokens::push_back(const mtmd_input_chunk * chunk) {
-    auto type = mtmd_input_chunk_get_type(chunk);
-    if (type == MTMD_INPUT_CHUNK_TYPE_IMAGE || type == MTMD_INPUT_CHUNK_TYPE_AUDIO) {
-        LHM_ASSERT(has_mtmd);
-        const size_t n_tokens = mtmd_input_chunk_get_n_tokens(chunk);
-        size_t start_idx = tokens.size();
-        for (size_t i = 0; i < n_tokens; ++i) {
-            tokens.emplace_back(LHM_TOKEN_NULL);
-        }
-        mtmd::input_chunk_ptr new_chunk(mtmd_input_chunk_copy(chunk));
-        map_idx_to_media[start_idx] = std::move(new_chunk);
-    } else if (type == MTMD_INPUT_CHUNK_TYPE_TEXT) {
-        size_t n_tokens;
-        const auto * text_tokens = mtmd_input_chunk_get_tokens_text(chunk, &n_tokens);
-        for (size_t i = 0; i < n_tokens; ++i) {
-            push_back(text_tokens[i]);
-        }
-    } else {
-        GGML_ABORT("Invalid chunk type");
-    }
-}
-
 void server_tokens::push_back(server_tokens & tokens) {
-    size_t start_idx = size();
     for (size_t i = 0; i < tokens.size(); i++) {
         push_back(tokens[i]);
-    }
-    if (tokens.has_mtmd) {
-        // Assert if we are copying MTMD chunks to a server_tokens that does not have mtmd.
-        // We could also just check, but this will prevent silently dropping MTMD data.
-        LHM_ASSERT(has_mtmd);
-        for (auto it = tokens.map_idx_to_media.begin(); it != tokens.map_idx_to_media.end(); ) {
-            auto * chunk = tokens.map_idx_to_media[it->first].get();
-            mtmd::input_chunk_ptr new_chunk(mtmd_input_chunk_copy(chunk));
-            map_idx_to_media[start_idx + it->first] = std::move(new_chunk);
-        }
     }
 }
 
@@ -403,118 +273,38 @@ void server_tokens::insert(const lhm_tokens & inp_tokens) {
 }
 
 const lhm_tokens & server_tokens::get_tokens() const {
-    LHM_ASSERT(!has_mtmd);
     return tokens;
 }
 
 lhm_tokens server_tokens::get_text_tokens() const {
-    lhm_tokens res;
-    res.reserve(tokens.size());
-    for (lhm_token t : tokens) {
-        if (t != LHM_TOKEN_NULL) {
-            res.push_back(t);
-        }
-    }
-    return res;
+    return tokens;
 }
 
 void server_tokens::set_token(lhm_pos pos, lhm_token id) {
-    LHM_ASSERT(!has_mtmd); // only allow this if mtmd is disabled
     tokens[pos] = id;
 }
 
 void server_tokens::keep_first(size_t n) {
     LHM_ASSERT(n <= tokens.size());
-    if (has_mtmd) {
-        if (n == tokens.size()) {
-            return; // nothing to do
-        }
-        // we throw an error if we try to remove a token in the middle of an image
-        // for ex. with input of 5 text tokens and 2 images:
-        //    [0] [1] [2] [3] [4] [img0] [img0] [img0] [img1] [img1]
-        // n  1   2   3   4   5   6      7      8      9      10
-        // allowed to resize      ^                    ^
-        // disallowed to resize          ^      ^             ^
-        if (n > 0) {
-            // make sure we never remove tokens in the middle of an image
-            // note that the case where we keep a full image at the end is allowed:
-            //   tokens[n - 1] == LHM_TOKEN_NULL && tokens[n] != LHM_TOKEN_NULL
-            if (tokens[n - 1] == LHM_TOKEN_NULL && tokens[n] == LHM_TOKEN_NULL) {
-                find_chunk(n - 1); // will throw an error if the token is not begin-of-chunk
-            }
-        }
-        // remove all image chunks that are not used anymore
-        for (auto it = map_idx_to_media.begin(); it != map_idx_to_media.end(); ) {
-            size_t idx = it->first;
-            if (idx >= n) {
-                it = map_idx_to_media.erase(it);
-            } else {
-                ++it;
-            }
-        }
-    }
     tokens.resize(n);
 }
 
 std::string server_tokens::detokenize(const lhm_context * ctx, bool special) const {
-    lhm_tokens text_tokens;
-    text_tokens.reserve(tokens.size());
-    for (const auto & t : tokens) {
-        if (t != LHM_TOKEN_NULL) {
-            text_tokens.push_back(t);
-        }
-    }
-    return common_detokenize(ctx, text_tokens, special);
+    return common_detokenize(ctx, tokens, special);
 }
 
 size_t server_tokens::get_common_prefix(const server_tokens & b) const {
     const size_t max_idx = std::min(tokens.size(), b.tokens.size());
 
-    if (!has_mtmd) {
-        for (size_t i = 0; i < max_idx; ++i) {
-            if (tokens[i] == b.tokens[i]) {
-                continue;
-            }
-
-            return i;
-        }
-
-        return max_idx;
-    }
-
     for (size_t i = 0; i < max_idx; ++i) {
-        const lhm_token ai =   tokens[i];
-        const lhm_token bi = b.tokens[i];
-
-        if (ai == LHM_TOKEN_NULL && bi == LHM_TOKEN_NULL) {
-            const auto & a_chunk =   find_chunk(i);
-            const auto & b_chunk = b.find_chunk(i);
-
-            LHM_ASSERT(a_chunk && b_chunk);
-
-            const std::string id_ai = mtmd_input_chunk_get_id(a_chunk.get());
-            const std::string id_bi = mtmd_input_chunk_get_id(b_chunk.get());
-
-            const size_t n_tok_a = mtmd_input_chunk_get_n_tokens(a_chunk.get());
-            const size_t n_tok_b = mtmd_input_chunk_get_n_tokens(b_chunk.get());
-
-            if (id_ai == id_bi && n_tok_a == n_tok_b) {
-                LHM_ASSERT(n_tok_a > 0 && "Invalid media chunk"); // should never happen
-                i += n_tok_a - 1; // will be +1 by the for loop
-                continue;
-            }
-
-            return i;
-        }
-
-        if (ai == bi) {
+        if (tokens[i] == b.tokens[i]) {
             continue;
         }
 
         return i;
     }
 
-    return max_idx; // all tokens are equal
+    return max_idx;
 }
 
 bool server_tokens::validate(const struct lhm_context * ctx) const {
@@ -524,15 +314,7 @@ bool server_tokens::validate(const struct lhm_context * ctx) const {
 
     for (size_t i = 0; i < tokens.size(); ++i) {
         const auto & t = tokens[i];
-        if (t == LHM_TOKEN_NULL) {
-            try {
-                const auto & chunk = find_chunk(i);
-                size_t n_tokens = mtmd_input_chunk_get_n_tokens(chunk.get());
-                i += n_tokens - 1; // will be +1 by the for loop
-            } catch (const std::exception & e) {
-                return false;
-            }
-        } else if (t < 0 || t >= n_vocab) {
+        if (t < 0 || t >= n_vocab) {
             return false;
         }
     }
@@ -541,17 +323,9 @@ bool server_tokens::validate(const struct lhm_context * ctx) const {
 
 server_tokens server_tokens::clone() const {
     server_tokens res;
-    res.has_mtmd = has_mtmd;
-    res.tokens   = tokens;
-    for (auto it = map_idx_to_media.begin(); it != map_idx_to_media.end(); ++it) {
-        size_t idx = it->first;
-        const mtmd::input_chunk_ptr & chunk = it->second;
-        res.map_idx_to_media[idx] = mtmd::input_chunk_ptr(mtmd_input_chunk_copy(chunk.get()));
-    }
+    res.tokens = tokens;
     return res;
 }
-
-//
 // tokenizer and input processing utils
 //
 
@@ -678,42 +452,6 @@ size_t validate_utf8(const std::string& text) {
     return len;
 }
 
-server_tokens process_mtmd_prompt(mtmd_context * mctx, const std::string & prompt, const std::vector<raw_buffer> & files, bool is_placeholder) {
-    // these will be freed upon going out of scope
-    mtmd::bitmaps bitmaps;
-    std::vector<mtmd_helper::video_ptr> videos;
-    for (auto & file : files) {
-        auto out = mtmd_helper_bitmap_init_from_buf(mctx, file.data(), file.size(), is_placeholder);
-        if (!out.bitmap) {
-            throw std::runtime_error("Failed to load image or audio file");
-        }
-        bitmaps.entries.emplace_back(out.bitmap);
-        if (out.video_ctx) {
-            videos.emplace_back(out.video_ctx);
-        }
-    }
-    // process prompt
-    std::vector<server_tokens> inputs;
-    // multimodal
-    mtmd_input_text inp_txt = {
-        prompt.c_str(),
-        /* add_special */   true,
-        /* parse_special */ true,
-    };
-    mtmd::input_chunks chunks(mtmd_input_chunks_init());
-    auto bitmaps_c_ptr = bitmaps.c_ptr();
-    int32_t tokenized = mtmd_tokenize(mctx,
-                                      chunks.ptr.get(),
-                                      &inp_txt,
-                                      bitmaps_c_ptr.data(),
-                                      bitmaps_c_ptr.size());
-    if (tokenized != 0) {
-        throw std::runtime_error("Failed to tokenize prompt");
-    }
-    auto result = server_tokens(chunks, true);
-    return result;
-}
-
 /**
  * break the input "prompt" object into multiple prompt if needed, then tokenize them
  * use tokenize_input_prompts() if the input could be an array.
@@ -721,51 +459,36 @@ server_tokens process_mtmd_prompt(mtmd_context * mctx, const std::string & promp
  * - "prompt": "string"
  * - "prompt": [12, 34, 56]
  * - "prompt": [12, 34, "string", 56, 78]
- * - "prompt": { "prompt_string": "string", "multimodal_data": [ "base64" ] }
+ * - "prompt": { "prompt_string": "string" }
  */
-static server_tokens tokenize_input_subprompt(const lhm_vocab * vocab, mtmd_context * mctx, const json & json_prompt, bool add_special, bool parse_special) {
+static server_tokens tokenize_input_subprompt(const lhm_vocab * vocab, const json & json_prompt, bool add_special, bool parse_special) {
     constexpr char JSON_STRING_PROMPT_KEY[] = "prompt_string";
-    constexpr char JSON_MTMD_DATA_KEY[] = "multimodal_data";
-    const bool has_mtmd = mctx != nullptr;
     if (json_prompt.is_string() || json_is_array_of_mixed_numbers_strings(json_prompt)) {
         // string or mixed
         lhm_tokens tmp = tokenize_mixed(vocab, json_prompt, add_special, parse_special);
-        return server_tokens(tmp, false);
+        return server_tokens(tmp);
     } else if (json_is_array_of_numbers(json_prompt)) {
         // array of tokens
         lhm_tokens tmp = json_prompt.get<lhm_tokens>();
-        return server_tokens(tmp, false);
+        return server_tokens(tmp);
     } else if (json_prompt.contains(JSON_STRING_PROMPT_KEY)) {
         // JSON object with prompt key.
-        if (json_prompt.contains(JSON_MTMD_DATA_KEY)) {
-            if (!has_mtmd)
-                throw std::runtime_error("Multimodal data provided, but model does not support multimodal requests.");
-
-            // JSON object with prompt and multimodal key.
-            std::vector<raw_buffer> files;
-            for (const auto & entry : json_prompt.at(JSON_MTMD_DATA_KEY)) {
-                files.push_back(base64_decode(entry));
-            }
-            return process_mtmd_prompt(mctx, json_prompt.at(JSON_STRING_PROMPT_KEY), files);
-        } else {
-            // Not multimodal, but contains a subobject.
-            lhm_tokens tmp = tokenize_mixed(vocab, json_prompt.at(JSON_STRING_PROMPT_KEY), add_special, parse_special);
-            return server_tokens(tmp, false);
-        }
+        lhm_tokens tmp = tokenize_mixed(vocab, json_prompt.at(JSON_STRING_PROMPT_KEY), add_special, parse_special);
+        return server_tokens(tmp);
    } else {
        throw std::runtime_error("\"prompt\" elements must be a string, a list of tokens, a JSON object containing a prompt string, or a list of mixed strings & tokens.");
    }
 }
 
-std::vector<server_tokens> tokenize_input_prompts(const lhm_vocab * vocab, mtmd_context * mctx, const json & json_prompt, bool add_special, bool parse_special) {
+std::vector<server_tokens> tokenize_input_prompts(const lhm_vocab * vocab, const json & json_prompt, bool add_special, bool parse_special) {
     std::vector<server_tokens> result;
     if (json_prompt.is_array() && !json_is_array_and_contains_numbers(json_prompt)) {
         result.reserve(json_prompt.size());
         for (const auto & p : json_prompt) {
-            result.push_back(tokenize_input_subprompt(vocab, mctx, p,add_special, parse_special));
+            result.push_back(tokenize_input_subprompt(vocab, p, add_special, parse_special));
         }
     } else {
-        result.push_back(tokenize_input_subprompt(vocab, mctx, json_prompt, add_special, parse_special));
+        result.push_back(tokenize_input_subprompt(vocab, json_prompt, add_special, parse_special));
     }
     if (result.empty()) {
         throw std::runtime_error("\"prompt\" must not be empty");
@@ -1502,7 +1225,6 @@ lhm_tokens format_prompt_infill(
 server_tokens format_prompt_rerank(
         const struct lhm_model * model,
         const struct lhm_vocab * vocab,
-        mtmd_context * mctx,
         const std::string & query,
         const std::string & doc) {
     server_tokens result = {};
@@ -1513,12 +1235,12 @@ server_tokens format_prompt_rerank(
         std::string prompt = rerank_prompt;
         string_replace_all(prompt, "{query}"   , query);
         string_replace_all(prompt, "{document}", doc  );
-        server_tokens tokens = tokenize_input_subprompt(vocab, mctx, prompt, false, true);
+        server_tokens tokens = tokenize_input_subprompt(vocab, prompt, false, true);
         result.push_back(tokens);
     } else {
         // Get EOS token - use SEP token as fallback if EOS is not available
-        server_tokens query_tokens = tokenize_input_subprompt(vocab, mctx, query, false, false);
-        server_tokens doc_tokens   = tokenize_input_subprompt(vocab, mctx, doc,   false, false);
+        server_tokens query_tokens = tokenize_input_subprompt(vocab, query, false, false);
+        server_tokens doc_tokens   = tokenize_input_subprompt(vocab, doc,   false, false);
         lhm_token eos_token = lhm_vocab_eos(vocab);
         if (eos_token == LHM_TOKEN_NULL) {
             eos_token = lhm_vocab_sep(vocab);

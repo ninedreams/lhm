@@ -13,8 +13,6 @@
 #include "log.h"
 #include "sampling.h"
 #include "speculative.h"
-#include "mtmd.h"
-#include "mtmd-helper.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -73,10 +71,6 @@ struct server_slot {
 
     lhm_context * ctx_tgt = nullptr;
     lhm_context * ctx_dft = nullptr;
-
-    // multimodal
-    mtmd_context * mctx = nullptr;
-    mtmd::batch_ptr mbatch = nullptr;
 
     // speculative decoding
     common_speculative * spec;
@@ -241,9 +235,6 @@ struct server_slot {
 
         // clear alora start
         alora_invocation_start = -1;
-
-        // clear multimodal state
-        mbatch.reset();
     }
 
     void init_sampler() const {
@@ -598,93 +589,6 @@ struct server_slot {
         other.init_sampler();
     }
 
-    // returns 0 on success
-    // caller need to update prompt.tokens after a successful call to keep track of the processing progress
-    int process_mtmd_chunk(size_t idx, size_t & n_tokens_out) {
-        LHM_ASSERT(mctx);
-        const auto & input_tokens = task->tokens;
-        const auto & chunk = input_tokens.find_chunk(idx);
-        int32_t res = 0;
-
-        auto try_decode = [&]() -> int32_t {
-            if (mbatch) {
-                float * embd = mtmd_batch_get_output_embd(mbatch.get(), chunk.get());
-                if (embd) {
-                    void * cb_data = spec;
-                    static auto cb = [](lhm_batch batch, void * user_data) {
-                        common_speculative * spec = static_cast<common_speculative *>(user_data);
-                        if (!common_speculative_process(spec, batch)) {
-                            return 1;
-                        }
-                        return 0;
-                    };
-
-                    lhm_pos new_n_past; // unused for now
-                    res = mtmd_helper_decode_image_chunk(
-                        mctx,
-                        ctx_tgt,
-                        chunk.get(),
-                        embd,
-                        prompt.tokens.pos_next(),
-                        id,
-                        lhm_n_batch(ctx_tgt),
-                        &new_n_past,
-                        cb,
-                        cb_data
-                    );
-                    if (res != 0) {
-                        SLT_ERR(*this, "failed to decode mtmd chunk, idx = %zu, res = %d\n", idx, res);
-                        return -1;
-                    }
-                    n_tokens_out = mtmd_input_chunk_get_n_tokens(chunk.get());
-                    return 0; // success
-                }
-            }
-            return 1; // (non-error) need to create & encode batch
-        };
-
-        // if the batch is already exist, try searching & encode
-        res = try_decode();
-        if (res == 0) {
-            return 0;
-        }
-        if (res < 0) {
-            // fatal error
-            return res;
-        }
-
-        // otherwise, the batch is either uninitialized or is used up
-        // we need to create & encode a new batch
-        mbatch.reset(mtmd_batch_init(mctx));
-        res = mtmd_batch_add_chunk(mbatch.get(), chunk.get());
-        LHM_ASSERT(res == 0); // we should never have an empty batch
-
-        // try batching as much as possible
-        int n_added = 1;
-        size_t idx_cur = idx;
-        while (res == 0) {
-            auto [next_chunk, next_idx] = input_tokens.find_next_media_chunk(idx_cur);
-            if (next_chunk == nullptr) {
-                break;
-            }
-            res = mtmd_batch_add_chunk(mbatch.get(), next_chunk->get());
-            n_added += (res == 0 ? 1 : 0);
-            idx_cur = next_idx;
-            SLT_DBG(*this, "try adding media chunk idx = %zu to batch, res = %d\n", next_idx, res);
-            // if res != 0, batch is full or chunk is not compatible -> this loop breaks
-        }
-
-        // TODO @ngxson : move this log line to debug when it become more stable
-        SLT_INF(*this, "encoding mtmd batch from idx = %zu, n_chunks = %d\n", idx, n_added);
-
-        res = mtmd_batch_encode(mbatch.get());
-        if (res != 0) {
-            SLT_ERR(*this, "failed to encode mtmd batch for chunk idx = %zu, res = %d\n", idx, res);
-            return -1;
-        }
-
-        return try_decode();
-    }
 };
 
 
@@ -764,7 +668,6 @@ public:
     //  - and, with thread-safe APIs (e.g., tokenizer calls)
     lhm_model * model_tgt = nullptr;
 
-    mtmd_context * mctx = nullptr;
     const lhm_vocab * vocab = nullptr;
 
     server_queue    queue_tasks;
@@ -773,9 +676,7 @@ public:
     // note: chat_params must not be refreshed upon existing sleeping state
     server_chat_params chat_params;
 
-    server_context_impl() {
-        mtmd_helper_log_set(common_log_default_callback, nullptr);
-    }
+    server_context_impl() = default;
 
     ~server_context_impl() {
         if (!sleeping) {
@@ -847,9 +748,6 @@ private:
         ctx_tgt = nullptr;
         model_tgt = nullptr;
 
-        mtmd_free(mctx);
-        mctx = nullptr;
-
         lhm_batch_free(batch);
     }
 
@@ -876,47 +774,6 @@ private:
 
         params_base = params;
         params_base.n_outputs_max = server_n_outputs_max(params_base);
-
-        std::string & mmproj_path = params_base.mmproj.path;
-        bool has_mmproj = !mmproj_path.empty();
-        mtmd_context_params mparams = mtmd_context_params_default();
-        if (has_mmproj) {
-            mparams.use_gpu          = params_base.mmproj_use_gpu;
-            mparams.print_timings    = false;
-            mparams.n_threads        = params_base.cpuparams.n_threads;
-            mparams.flash_attn_type  = params_base.flash_attn_type;
-            mparams.warmup           = params_base.warmup;
-            mparams.image_min_tokens = params_base.image_min_tokens;
-            mparams.image_max_tokens = params_base.image_max_tokens;
-            mparams.batch_max_tokens = params_base.mtmd_batch_max_tokens;
-            mparams.media_marker     = get_media_marker();
-        }
-
-        // optionally get the memory usage of mmproj
-        if (has_mmproj && params_base.fit_params) {
-            auto mmproj_mem = mtmd_get_memory_usage(mmproj_path.c_str(), mparams);
-            if (!mmproj_mem.empty()) {
-                size_t total = 0;
-                for (auto & [dev, size] : mmproj_mem) {
-                    total += size;
-                }
-                SRV_INF("[mtmd] estimated worst-case memory usage of mmproj is %.2f MiB\n", total / (1024.0 * 1024.0));
-                LHM_ASSERT(!params_base.fit_params_target.empty());
-                for (auto & [dev, size] : mmproj_mem) {
-                    for (size_t i = 0; i < ggml_backend_dev_count(); i++) {
-                        if (ggml_backend_dev_get(i) == dev) {
-                            if (i < params_base.fit_params_target.size()) {
-                                SRV_DBG("[mtmd] adding %.2f MiB to fit_params_target for device %s\n", size / (1024.0 * 1024.0), ggml_backend_dev_name(dev));
-                                params_base.fit_params_target[i] += size;
-                            }
-                            break;
-                        }
-                    }
-                }
-            } else {
-                SRV_ERR("%s", "[mtmd] failed to get memory usage of mmproj\n");
-            }
-        }
 
         // optionally reserve VRAM for the draft / MTP context before fitting the target model
         if (params_base.fit_params) {
@@ -1081,30 +938,6 @@ private:
             params_base.speculative.draft.ctx_tgt = ctx_tgt;
             params_base.speculative.draft.ctx_dft = ctx_dft.get();
         }
-
-        if (has_mmproj) {
-            if (!is_resume) {
-                mtmd_helper_log_set(common_log_default_callback, nullptr);
-            }
-
-            mctx = mtmd_init_from_file(mmproj_path.c_str(), model_tgt, mparams);
-            if (mctx == nullptr) {
-                SRV_ERR("failed to load multimodal model, '%s'\n", mmproj_path.c_str());
-                return false;
-            }
-            SRV_INF("loaded multimodal model, '%s'\n", mmproj_path.c_str());
-
-            if (params_base.ctx_shift) {
-                params_base.ctx_shift = false;
-                SRV_WRN("%s\n", "ctx_shift is not supported by multimodal, it will be disabled");
-            }
-
-            if (params_base.n_cache_reuse) {
-                params_base.n_cache_reuse = 0;
-                SRV_WRN("%s\n", "cache_reuse is not supported by multimodal, it will be disabled");
-            }
-        }
-
         if (!lhm_memory_can_shift(lhm_get_memory(ctx_tgt))) {
             if (params_base.ctx_shift) {
                 params_base.ctx_shift = false;
@@ -1184,8 +1017,7 @@ private:
             slot.spec    = spec.get();
             slot.n_ctx   = n_ctx_slot;
 
-            slot.mctx                   = mctx;
-            slot.prompt.tokens.has_mtmd = mctx != nullptr;
+            slot.mctx                   = nullptr;
 
             SLT_INF(slot, "new slot, n_ctx = %d\n", slot.n_ctx);
 
@@ -1349,9 +1181,9 @@ private:
                 /* reasoning_format      */ params_base.reasoning_format,
                 /* chat_template_kwargs  */ params_base.default_template_kwargs,
                 /* tmpls                 */ std::move(chat_templates),
-                /* allow_image           */ mctx ? mtmd_support_vision(mctx) : false,
-                /* allow_audio           */ mctx ? mtmd_support_audio (mctx) : false,
-                /* allow_video           */ mctx ? mtmd_helper_support_video(mctx) : false,
+                /* allow_image           */ false,
+                /* allow_audio           */ false,
+                /* allow_video           */ false,
                 /* enable_thinking       */ enable_thinking,
                 /* reasoning_budget      */ params_base.sampling.reasoning_budget_tokens,
                 /* reasoning_budget_msg  */ params_base.sampling.reasoning_budget_message,
@@ -1866,14 +1698,6 @@ private:
         queue_results.send(std::move(res));
     }
 
-    // if multimodal is enabled, send an error and return false
-    bool check_no_mtmd(const int id_task) {
-        if (mctx) {
-            send_error(id_task, "This feature is not supported by multimodal", ERROR_TYPE_NOT_SUPPORTED);
-            return false;
-        }
-        return true;
-    }
 
     void send_partial_response(server_slot & slot, const completion_token_output & tkn, bool is_progress, bool is_begin = false) {
         auto res = std::make_unique<server_task_result_cmpl_partial>();
@@ -2065,11 +1889,7 @@ private:
     bool tokenize_cli_input(server_task & task) {
         try {
             auto & prompt = task.cli_prompt;
-            if (mctx != nullptr) {
-                task.tokens = process_mtmd_prompt(mctx, prompt, task.cli_files);
-            } else {
-                task.tokens = std::move(tokenize_input_prompts(vocab, mctx, prompt, true, true)[0]);
-            }
+            task.tokens = std::move(tokenize_input_prompts(vocab, nullptr, prompt, true, true)[0]);
             task.cli_prompt.clear();
             task.cli_files.clear();
         } catch (const std::exception & e) {
@@ -2334,10 +2154,6 @@ private:
                 } break;
             case SERVER_TASK_TYPE_SLOT_SAVE:
                 {
-                    if (!check_no_mtmd(task.id)) {
-                        break;
-                    }
-
                     const int id_slot = task.slot_action.id_slot;
                     server_slot * slot = get_slot_by_id(id_slot);
                     if (slot == nullptr) {
@@ -2375,7 +2191,6 @@ private:
                 } break;
             case SERVER_TASK_TYPE_SLOT_RESTORE:
                 {
-                    if (!check_no_mtmd(task.id)) break;
                     const int id_slot = task.slot_action.id_slot;
                     server_slot * slot = get_slot_by_id(id_slot);
                     if (slot == nullptr) {
@@ -2422,9 +2237,6 @@ private:
                 } break;
             case SERVER_TASK_TYPE_SLOT_ERASE:
                 {
-                    if (!check_no_mtmd(task.id)) {
-                        break;
-                    }
                     const int id_slot = task.slot_action.id_slot;
                     server_slot * slot = get_slot_by_id(id_slot);
                     if (slot == nullptr) {
@@ -2529,13 +2341,6 @@ private:
                     slot.release();
                     continue;
                 }
-
-                if (mctx) {
-                    // we should never reach this because params_base.ctx_shift is automatically disabled if mmproj is loaded
-                    // we don't support ctx_shift because an image chunk may contains multiple tokens
-                    GGML_ABORT("not supported by multimodal");
-                }
-
                 if (slot.task->is_parent() || slot.task->is_child()) {
                     send_error(slot, "context shift cannot be used for shared prompt", ERROR_TYPE_SERVER);
                     slot.release();
@@ -2567,8 +2372,6 @@ private:
                 // add generated tokens to cache
                 // ref: https://github.com/ggml-org/llama.cpp/pull/16818#discussion_r2473269481
                 {
-                    LHM_ASSERT(!slot.prompt.tokens.has_mtmd);
-
                     lhm_tokens new_tokens = slot.prompt.tokens.get_tokens(); // copy
                     for (size_t i = n_keep + n_discard; i < new_tokens.size(); i++) {
                         new_tokens[i - n_discard] = new_tokens[i];
@@ -2835,8 +2638,7 @@ private:
                                 const auto n_cache_reuse = slot.task->params.n_cache_reuse;
 
                                 const bool can_cache_reuse =
-                                    lhm_memory_can_shift(lhm_get_memory(ctx_tgt)) &&
-                                    !slot.prompt.tokens.has_mtmd;
+                                    lhm_memory_can_shift(lhm_get_memory(ctx_tgt));
 
                                 if (!can_cache_reuse && n_cache_reuse > 0) {
                                     SLT_WRN(slot, "cache reuse is not supported - ignoring n_cache_reuse = %d\n", n_cache_reuse);
@@ -2844,15 +2646,8 @@ private:
 
                                 // reuse chunks from the cached prompt by shifting their KV cache in the new position
                                 if (can_cache_reuse && n_cache_reuse > 0) {
-                                    LHM_ASSERT(!slot.prompt.tokens.has_mtmd);
-
                                     size_t head_c = n_past; // cache
                                     size_t head_p = n_past; // current prompt
-
-                                    if (mctx) {
-                                        // we should never reach this
-                                        GGML_ABORT("not supported by multimodal");
-                                    }
 
                                     SLT_DBG(slot, "trying to reuse chunks with size > %d, n_past = %d\n", n_cache_reuse, n_past);
 
@@ -2939,14 +2734,14 @@ private:
 
                                         {
                                             const auto token = slot.prompt.tokens[i];
-                                            const auto piece = token != LHM_TOKEN_NULL ? common_token_to_piece(ctx_tgt, token) : "[mtmd]";
+                                            const auto piece = token != LHM_TOKEN_NULL ? common_token_to_piece(ctx_tgt, token) : "[null]";
                                             ss0 << piece;
                                             st0 << std::setw(8) << token;
                                         }
 
                                         {
                                             const auto token = slot.task->tokens[i];
-                                            const auto piece = token != LHM_TOKEN_NULL ? common_token_to_piece(ctx_tgt, token) : "[mtmd]";
+                                            const auto piece = token != LHM_TOKEN_NULL ? common_token_to_piece(ctx_tgt, token) : "[null]";
                                             ss1 << piece;
                                             st1 << std::setw(8) << token;
                                         }
@@ -3085,39 +2880,6 @@ private:
                             ctx_tgt_seq_rm_type == COMMON_CONTEXT_SEQ_RM_TYPE_RS ||
                             n_swa > 0);
 
-                    bool has_mtmd = false;
-
-                    // check if we should process the image
-                    while (true) {
-                        auto cur_token_idx = slot.prompt.n_tokens();
-                        if (
-                            cur_token_idx >= slot.task->n_tokens() ||
-                            input_tokens[cur_token_idx] != LHM_TOKEN_NULL // encountered a text token
-                        ) {
-                            break;
-                        }
-
-                        // process the image
-                        size_t n_tokens_out = 0;
-                        int32_t res = slot.process_mtmd_chunk(cur_token_idx, n_tokens_out);
-                        if (res != 0) {
-                            SLT_ERR(slot, "failed to process image, res = %d\n", res);
-                            send_error(slot, "failed to process image", ERROR_TYPE_SERVER);
-                            slot.release();
-                            continue;
-                        }
-
-                        slot.n_prompt_tokens_processed += n_tokens_out;
-
-                        // add the image chunk to cache
-                        {
-                            const auto & chunk = input_tokens.find_chunk(cur_token_idx);
-                            slot.prompt.tokens.push_back(chunk.get()); // copy
-                        }
-
-                        has_mtmd = true;
-                    }
-
                     const int32_t n_before_user = slot.task->params.n_before_user;
                     const bool n_before_user_known = n_before_user > 0;
 
@@ -3234,9 +2996,6 @@ private:
                     if (do_checkpoint && pos_min < 0) {
                         do_checkpoint = false;
                     }
-
-                    // do not checkpoint after mtmd chunks
-                    do_checkpoint = do_checkpoint && !has_mtmd;
 
                     // no need to create checkpoints that are too close together
                     do_checkpoint = do_checkpoint && (slot.prompt.checkpoints.empty() || n_tokens_start > slot.prompt.checkpoints.back().n_tokens + params_base.checkpoint_min_step);
@@ -3664,7 +3423,6 @@ server_context_meta server_context::get_meta() const {
         /* model_aliases          */ impl->model_aliases,
         /* model_tags             */ impl->model_tags,
         /* model_path             */ impl->params_base.model.path,
-        /* has_mtmd               */ impl->mctx != nullptr,
         /* has_inp_image          */ impl->chat_params.allow_image,
         /* has_inp_audio          */ impl->chat_params.allow_audio,
         /* has_inp_video          */ impl->chat_params.allow_video,
@@ -3729,8 +3487,7 @@ static int32_t prompt_get_n_before_user(
         const json & message_spans,
         const std::string & prompt,
         const std::vector<raw_buffer> & files,
-        const lhm_vocab * vocab,
-        mtmd_context * mctx) {
+        const lhm_vocab * vocab) {
     int32_t result = -1;
     int32_t byte_pos = -1;
 
@@ -3747,25 +3504,10 @@ static int32_t prompt_get_n_before_user(
 
         const std::string prefix = prompt.substr(0, (size_t) byte_pos);
 
-        const std::string marker = get_media_marker();
-        size_t n_prefix_media = 0;
-        for (size_t pos = 0; (pos = prefix.find(marker, pos)) != std::string::npos; pos += marker.size()) {
-            n_prefix_media++;
-        }
+        result = (int32_t) tokenize_input_prompts(vocab, nullptr, prefix, true, true)[0].size();
 
-        LHM_ASSERT(n_prefix_media <= files.size());
-
-        if (mctx != nullptr && n_prefix_media > 0) {
-            // TODO: this makes a copy - avoid it
-            std::vector<raw_buffer> prefix_files(files.begin(), files.begin() + n_prefix_media);
-
-            result = (int32_t) process_mtmd_prompt(mctx, prefix, prefix_files).size();
-        } else {
-            result = (int32_t) tokenize_input_prompts(vocab, nullptr, prefix, true, true)[0].size();
-        }
-
-        SRV_TRC("message_spans: last user message: byte_pos=%d, media=%zu, n_before_user=%d\n",
-                byte_pos, n_prefix_media, result);
+        SRV_TRC("message_spans: last user message: byte_pos=%d, n_before_user=%d\n",
+                byte_pos, result);
     }
 
     return result;
@@ -3809,13 +3551,7 @@ std::unique_ptr<server_res_generator> server_routes::handle_completions_impl(
         // process prompt
         std::vector<server_tokens> inputs;
 
-        if (res_type != TASK_RESPONSE_TYPE_NONE && ctx_server.mctx != nullptr) {
-            // This is the case used by OAI compatible chat path with MTMD. TODO It can be moved to the path below.
-            inputs.push_back(process_mtmd_prompt(ctx_server.mctx, prompt.get<std::string>(), files));
-        } else {
-            // Everything else, including multimodal completions.
-            inputs = tokenize_input_prompts(ctx_server.vocab, ctx_server.mctx, prompt, true, true);
-        }
+        inputs = tokenize_input_prompts(ctx_server.vocab, nullptr, prompt, true, true);
 
         // tasks.reserve(inputs.size()); // TODO: this is inaccurate due to child tasks
 
@@ -3839,8 +3575,7 @@ std::unique_ptr<server_res_generator> server_routes::handle_completions_impl(
                         message_spans,
                         prompt.get<std::string>(),
                         files,
-                        ctx_server.vocab,
-                        ctx_server.mctx);
+                        ctx_server.vocab);
             }
 
             task.id_slot = json_value(data, "id_slot", -1);
@@ -4372,7 +4107,7 @@ void server_routes::init_routes() {
         data["input_extra"] = input_extra; // default to empty array if it's not exist
 
         std::string prompt = json_value(data, "prompt", std::string());
-        std::vector<server_tokens> tokenized_prompts = tokenize_input_prompts(ctx_server.vocab, ctx_server.mctx, prompt, false, true);
+        std::vector<server_tokens> tokenized_prompts = tokenize_input_prompts(ctx_server.vocab, nullptr, prompt, false, true);
         SRV_DBG("creating infill tasks, n_prompts = %d\n", (int) tokenized_prompts.size());
         data["prompt"] = format_prompt_infill(
             ctx_server.vocab,
@@ -4436,7 +4171,7 @@ void server_routes::init_routes() {
     };
 
     this->post_chat_completions_tok = [this](const server_http_req & req) {
-        return handle_count_tokens(ctx_server.vocab, ctx_server.mctx, req, TASK_RESPONSE_TYPE_OAI_CHAT);
+        return handle_count_tokens(ctx_server.vocab, nullptr, req, TASK_RESPONSE_TYPE_OAI_CHAT);
     };
 
     this->post_control = [this](const server_http_req & req) {
@@ -4495,13 +4230,13 @@ void server_routes::init_routes() {
     };
 
     this->post_responses_tok_oai = [this](const server_http_req & req) {
-        return handle_count_tokens(ctx_server.vocab, ctx_server.mctx, req, TASK_RESPONSE_TYPE_OAI_RESP);
+        return handle_count_tokens(ctx_server.vocab, nullptr, req, TASK_RESPONSE_TYPE_OAI_RESP);
     };
 
     this->post_transcriptions_oai = [this](const server_http_req & req) {
         auto res = create_response();
 
-        if (!meta->has_mtmd || !meta->chat_params.allow_audio) {
+        if (!meta->chat_params.allow_audio) {
             res->error(format_error_response("The current model does not support audio input.", ERROR_TYPE_NOT_SUPPORTED));
             return res;
         }
@@ -4545,7 +4280,7 @@ void server_routes::init_routes() {
     };
 
     this->post_anthropic_count_tokens = [this](const server_http_req & req) {
-        return handle_count_tokens(ctx_server.vocab, ctx_server.mctx, req, TASK_RESPONSE_TYPE_ANTHROPIC);
+        return handle_count_tokens(ctx_server.vocab, nullptr, req, TASK_RESPONSE_TYPE_ANTHROPIC);
     };
 
     // same with handle_chat_completions, but without inference part
@@ -4580,7 +4315,7 @@ void server_routes::init_routes() {
                     {"type", "model"},
                     {"description", ""},
                     {"tags", {""}},
-                    {"capabilities", meta->has_mtmd ? json({"completion","multimodal"}) : json({"completion"})},
+                    {"capabilities", json({"completion"})},
                     {"parameters", ""},
                     {"details", {
                         {"parent_model", ""},
@@ -4707,7 +4442,7 @@ void server_routes::init_routes() {
             std::vector<server_task> tasks;
             tasks.reserve(documents.size());
             for (size_t i = 0; i < documents.size(); i++) {
-                auto tmp = format_prompt_rerank(ctx_server.model_tgt, ctx_server.vocab, ctx_server.mctx, query, documents[i]);
+                auto tmp = format_prompt_rerank(ctx_server.model_tgt, ctx_server.vocab, nullptr, query, documents[i]);
                 server_task task = server_task(SERVER_TASK_TYPE_RERANK);
                 task.id     = rd.get_new_id();
                 task.tokens = std::move(tmp);
@@ -4965,7 +4700,7 @@ std::unique_ptr<server_res_generator> server_routes::handle_embeddings_impl(cons
         }
     }
 
-    auto tokenized_prompts = tokenize_input_prompts(ctx_server.vocab, ctx_server.mctx, prompt, true, true);
+    auto tokenized_prompts = tokenize_input_prompts(ctx_server.vocab, nullptr, prompt, true, true);
     for (const auto & tokens : tokenized_prompts) {
         // this check is necessary for models that do not add BOS token to the input
         if (tokens.empty()) {
@@ -5026,7 +4761,7 @@ std::unique_ptr<server_res_generator> server_routes::handle_embeddings_impl(cons
     return res;
 }
 
-std::unique_ptr<server_res_generator> server_routes::handle_count_tokens(const lhm_vocab * vocab, mtmd_context * mctx, const server_http_req & req, task_response_type res_type) {
+std::unique_ptr<server_res_generator> server_routes::handle_count_tokens(const lhm_vocab * vocab, const server_http_req & req, task_response_type res_type) {
     auto res = create_response();
     std::vector<raw_buffer> files;
     json body = json::parse(req.body);
@@ -5059,15 +4794,7 @@ std::unique_ptr<server_res_generator> server_routes::handle_count_tokens(const l
     // SRV_DBG("prompt = %s\n", prompt.dump().c_str());
 
     // TODO @ngxson : refactor this code block, move this to server_common and reuse it in other places
-    size_t n_tokens;
-    if (mctx != nullptr) {
-        if (!prompt.is_string()) {
-            throw std::runtime_error("for mtmd, input prompt must be a string.");
-        }
-        n_tokens = process_mtmd_prompt(mctx, prompt.get<std::string>(), files, true).size();
-    } else {
-        n_tokens = tokenize_mixed(vocab, prompt, true, true).size();
-    }
+    size_t n_tokens = tokenize_mixed(vocab, prompt, true, true).size();
 
     json response = {{"input_tokens", static_cast<int64_t>(n_tokens)}};
     if (is_oai) {

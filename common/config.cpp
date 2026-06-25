@@ -694,10 +694,6 @@ void fill_common_params(common_params & params) {
         params.image_max_tokens = FLAGS_image_max_tokens;
     }
 
-    if (FLAGS_mtmd_batch_max_tokens != 1024) {
-        params.mtmd_batch_max_tokens = FLAGS_mtmd_batch_max_tokens;
-    }
-
     // ========================================================================
     // RPC / memory parameters
     // ========================================================================

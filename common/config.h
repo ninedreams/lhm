@@ -176,7 +176,6 @@ DEFINE_bool(mmproj_offload, true, "use GPU for multimodal model");
 DEFINE_string(image, "", "path to image/audio/video file(s)");
 DEFINE_int32(image_min_tokens, -1, "minimum tokens for image encoding");
 DEFINE_int32(image_max_tokens, -1, "maximum tokens for image encoding");
-DEFINE_int32(mtmd_batch_max_tokens, 1024, "max tokens per batch for multimodal");
 
 // ============================================================================
 // RPC / memory parameters

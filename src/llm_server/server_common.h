@@ -4,7 +4,6 @@
 #include "log.h"
 #include "lhm.h"
 #include "chat.h"
-#include "mtmd.h"
 
 #include <nlohmann/json.hpp>
 
@@ -18,14 +17,14 @@ using json = nlohmann::ordered_json;
 #define SLT_TRC(slot, fmt, ...) LOG_TRACE("slot %12.*s: id %2d | task %d | " fmt, 12, __func__, (slot).id, ((slot).task ? (slot).task->id : -1), __VA_ARGS__)
 #define SLT_INF(slot, fmt, ...) LOG_INFO("slot %12.*s: id %2d | task %d | " fmt, 12, __func__, (slot).id, ((slot).task ? (slot).task->id : -1), __VA_ARGS__)
 #define SLT_WRN(slot, fmt, ...) LOG_WARN("slot %12.*s: id %2d | task %d | " fmt, 12, __func__, (slot).id, ((slot).task ? (slot).task->id : -1), __VA_ARGS__)
-#define SLT_ERR(slot, fmt, ...) LOG_ERROROR("slot %12.*s: id %2d | task %d | " fmt, 12, __func__, (slot).id, ((slot).task ? (slot).task->id : -1), __VA_ARGS__)
+#define SLT_ERR(slot, fmt, ...) LOG_ERROR("slot %12.*s: id %2d | task %d | " fmt, 12, __func__, (slot).id, ((slot).task ? (slot).task->id : -1), __VA_ARGS__)
 #define SLT_CNT(slot, fmt, ...) LOG_INFO(""                                 fmt,                                                                __VA_ARGS__)
 
 #define SRV_DBG(fmt, ...) LOG_DEBUG("srv  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
 #define SRV_TRC(fmt, ...) LOG_TRACE("srv  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
 #define SRV_INF(fmt, ...) LOG_INFO("srv  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
 #define SRV_WRN(fmt, ...) LOG_WARN("srv  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
-#define SRV_ERR(fmt, ...) LOG_ERROROR("srv  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
+#define SRV_ERR(fmt, ...) LOG_ERROR("srv  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
 #define SRV_CNT(fmt, ...) LOG_INFO(""              fmt,               __VA_ARGS__)
 
 using raw_buffer = std::vector<uint8_t>;
@@ -123,30 +122,14 @@ std::vector<size_t> lora_get_enabled_ids(const std::vector<common_adapter_lora_i
 //
 
 /**
- * server_tokens is a helper to manage the input tokens and image for the server.
+ * server_tokens is a helper to manage the input tokens for the server.
  * it is made this way to simplify the logic of KV cache management.
  */
 struct server_tokens {
-    bool has_mtmd = false;
 
-private: // disallow accessing these members directly, risking out-of-sync
-
-    // map a **start** index in tokens to the image chunk
-    // note: the order need to be in-sync with tokens
-    std::map<size_t, mtmd::input_chunk_ptr> map_idx_to_media;
-
+private:
     // list of tokens
-    //   if the token is LHM_TOKEN_NULL, it indicates that this position is occupied by media chunk
-    //   otherwise, it is a normal text token
-    // note: a non-text chunk can occupy multiple tokens (aka memory cells) in the token list
-    // note(2): for M-RoPE, an image can occupy different number of pos; do not assume 1-to-1 mapping tokens <-> pos
     lhm_tokens tokens;
-
-    // for ex. with input of 5 text tokens and 2 images (each image occupies 3 tokens and 2 pos):
-    //      [0] [1] [2] [3] [4] [img0] [img0] [img0] [img1] [img1] [img1]
-    // idx  0   1   2   3   4   5      6      7      8      9      10
-    // pos  0   1   2   3   4   5      5      5      7      7      7
-    // map_idx_to_media will contain: {5, img0}, {8, img1}
 
 public:
     server_tokens() = default;
@@ -165,8 +148,7 @@ public:
     lhm_token operator[](size_t index) { return tokens[index]; }
     const lhm_token& operator[](size_t index) const { return tokens[index]; }
 
-    server_tokens(mtmd::input_chunks & mtmd_chunks, bool has_mtmd);
-    server_tokens(const lhm_tokens & tokens, bool has_mtmd);
+    server_tokens(const lhm_tokens & tokens);
 
     // for debugging
     std::string str() const;
@@ -177,18 +159,9 @@ public:
     // number of tokens with position < max_pos
     size_t size_up_to_pos(lhm_pos max_pos) const;
 
-    const mtmd::input_chunk_ptr & find_chunk(size_t idx) const;
-
-    // find next media chunk after idx
-    // returns a pair of pointer to the chunk (nullptr if not found) and its start index in tokens
-    std::pair<const mtmd::input_chunk_ptr *, size_t> find_next_media_chunk(size_t idx) const;
-
     void push_back(lhm_token tok);
 
-    // will create a copy of the chunk if it contains non-text data
-    void push_back(const mtmd_input_chunk * chunk);
-
-    // appends server tokens, updates the media map. copies media chunks.
+    // appends server tokens
     void push_back(server_tokens & tokens);
 
     // for compatibility with context shift and prompt truncation
@@ -207,7 +180,6 @@ public:
     bool empty() const { return tokens.empty(); }
 
     void clear() {
-        map_idx_to_media.clear();
         tokens.clear();
     }
 
@@ -251,26 +223,21 @@ lhm_tokens tokenize_mixed(const lhm_vocab * vocab, const json & json_prompt, boo
 // if validate_utf8(text) == text.size(), then the whole text is valid utf8
 size_t validate_utf8(const std::string& text);
 
-// process mtmd prompt, return the server_tokens containing both text tokens and media chunks
-// if is_placeholder is true, the media chunk will be treated as placeholder for counting tokens; the output tokens are not usable for actual inference (e.g. for submitting a task to server_queue)
-server_tokens process_mtmd_prompt(mtmd_context * mctx, const std::string & prompt, const std::vector<raw_buffer> & files, bool is_placeholder = false);
-
 /**
  * break the input "prompt" object into multiple prompt if needed, then tokenize them
  * this supports these cases:
  * - "prompt": "string"
  * - "prompt": [12, 34, 56]
  * - "prompt": [12, 34, "string", 56, 78]
- * - "prompt": { "prompt_string": "string", "multimodal_data": [ "base64" ] }
+ * - "prompt": { "prompt_string": "string" }
  * and multiple prompts (multi-tasks):
  * - "prompt": ["string1", "string2"]
  * - "prompt": ["string1", [12, 34, 56]]
  * - "prompt": [[12, 34, 56], [78, 90, 12]]
- * - "prompt": [[12, 34, "string", 56, 78], [12, 34, 56], { "prompt_string": "string", "multimodal_data": [ "base64" ]}]
+ * - "prompt": [[12, 34, "string", 56, 78], [12, 34, 56], { "prompt_string": "string" }]
  */
 std::vector<server_tokens> tokenize_input_prompts(
                                         const lhm_vocab * vocab,
-                                        mtmd_context * mctx,
                                         const json & json_prompt,
                                         bool add_special,
                                         bool parse_special);
@@ -366,6 +333,5 @@ lhm_tokens format_prompt_infill(
 server_tokens format_prompt_rerank(
         const struct lhm_model * model,
         const struct lhm_vocab * vocab,
-        mtmd_context * mctx,
         const std::string & query,
         const std::string & doc);

@@ -131,8 +131,6 @@ static const std::map<std::string, std::string> & get_key_to_flag_map() {
         {"LHM_ARG_MODEL_URL",        "--model-url"},
         {"LHM_ARG_HF_REPO",          "--hf-repo"},
         {"LHM_ARG_HF_REPO_FILE",     "--hf-file"},
-        {"LHM_ARG_MMPROJ",           "--mmproj"},
-        {"LHM_ARG_MMPROJ_URL",       "--mmproj-url"},
         {"LHM_ARG_HOST",             "--host"},
         {"LHM_ARG_PORT",             "--port"},
         {"LHM_ARG_ALIAS",            "--alias"},
@@ -243,8 +241,6 @@ static bool is_bool_flag(const std::string & key) {
         "LHM_ARG_JINJA",
         "LHM_ARG_NO_KV_OFFLOAD",
         "LHM_ARG_CACHE_PROMPT",
-        "LHM_ARG_MMPROJ_AUTO",
-        "LHM_ARG_MMPROJ_OFFLOAD",
         "LHM_ARG_IGNORE_EOS",
         "LHM_ARG_METRICS",
         "LHM_ARG_SLOTS",
@@ -303,10 +299,6 @@ void model_preset::apply_model_options(common_params & params, const std::set<st
             params.model.hf_repo = value;
         } else if (key == "LHM_ARG_HF_REPO_FILE") {
             params.model.hf_file = value;
-        } else if (key == "LHM_ARG_MMPROJ") {
-            params.mmproj.path = value;
-        } else if (key == "LHM_ARG_MMPROJ_URL") {
-            params.mmproj.url = value;
         }
     }
 }
@@ -604,27 +596,7 @@ void server_model_meta::update_args(std::string bin_path) {
 }
 
 void server_model_meta::update_caps() {
-    try {
-        common_params params;
-        preset.apply_model_options(params, {
-            "LHM_ARG_MODEL",
-            "LHM_ARG_MODEL_URL",
-            "LHM_ARG_MMPROJ",
-            "LHM_ARG_MMPROJ_URL",
-            "LHM_ARG_HF_REPO",
-            "LHM_ARG_HF_REPO_FILE",
-        });
-        params.offline = true;
-        common_params_handle_models(params, LHM_EXAMPLE_SERVER);
-        if (params.mmproj.path.empty()) {
-            multimodal = { false, false };
-        } else {
-            multimodal = mtmd_get_cap_from_file(params.mmproj.path.c_str());
-        }
-    } catch (const std::exception & e) {
-        LOG_WARN("failed to initialize common_params for multimodal capability detection: %s\n", e.what());
-        multimodal = { false, false };
-    }
+    // mtmd/multimodal support has been removed
 }
 
 //
@@ -837,7 +809,6 @@ void server_models::load_models() {
                 /* loaded_info   */ {},
                 /* exit_code     */ 0,
                 /* stop_timeout  */ DEFAULT_STOP_TIMEOUT,
-                /* multimodal    */ mtmd_caps{false, false},
                 // /* need_download */ false,
             };
             add_model(std::move(meta));
@@ -992,7 +963,6 @@ void server_models::load_models() {
                     /* loaded_info   */ {},
                     /* exit_code     */ 0,
                     /* stop_timeout  */ DEFAULT_STOP_TIMEOUT,
-                    /* multimodal    */ mtmd_caps{false, false},
                     // /* need_download */ false,
                 };
                 add_model(std::move(meta));

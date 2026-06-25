@@ -8,8 +8,6 @@ lhm_add_compile_flags()
 set(TARGET lhm_common)
 
 add_library(${TARGET}
-    lhm_assert.h
-    lhm_ext.h
     base64.hpp
     chat_auto_parser_generator.cpp
     chat_auto_parser_helpers.cpp
@@ -34,6 +32,7 @@ add_library(${TARGET}
     json_partial.h
     json_schema_to_grammar.cpp
     llguidance.cpp
+    lhm_assert.h
     log.cpp
     log.h
     ngram_cache.cpp
