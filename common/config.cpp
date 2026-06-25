@@ -662,39 +662,6 @@ void fill_common_params(common_params & params) {
     }
 
     // ========================================================================
-    // Multimodal parameters
-    // ========================================================================
-    if (is_set(FLAGS_mmproj)) {
-        params.mmproj.path = FLAGS_mmproj;
-    }
-
-    if (is_set(FLAGS_mmproj_url)) {
-        params.mmproj.url = FLAGS_mmproj_url;
-    }
-
-    if (!FLAGS_mmproj_auto) {
-        params.no_mmproj = true;
-    }
-
-    if (!FLAGS_mmproj_offload) {
-        params.mmproj_use_gpu = false;
-    }
-
-    if (is_set(FLAGS_image)) {
-        for (const auto & item : parse_csv_row(FLAGS_image)) {
-            params.image.push_back(item);
-        }
-    }
-
-    if (FLAGS_image_min_tokens != -1) {
-        params.image_min_tokens = FLAGS_image_min_tokens;
-    }
-
-    if (FLAGS_image_max_tokens != -1) {
-        params.image_max_tokens = FLAGS_image_max_tokens;
-    }
-
-    // ========================================================================
     // RPC / memory parameters
     // ========================================================================
     if (is_set(FLAGS_rpc)) {
@@ -883,34 +850,6 @@ void fill_common_params(common_params & params) {
 
     if (is_set(FLAGS_model)) {
         params.model.path = FLAGS_model;
-    }
-
-    if (is_set(FLAGS_model_url)) {
-        params.model.url = FLAGS_model_url;
-    }
-
-    if (is_set(FLAGS_docker_repo)) {
-        params.model.docker_repo = FLAGS_docker_repo;
-    }
-
-    if (is_set(FLAGS_hf_repo)) {
-        params.model.hf_repo = FLAGS_hf_repo;
-    }
-
-    if (is_set(FLAGS_hf_file)) {
-        params.model.hf_file = FLAGS_hf_file;
-    }
-
-    if (is_set(FLAGS_hf_repo_v)) {
-        params.vocoder.model.hf_repo = FLAGS_hf_repo_v;
-    }
-
-    if (is_set(FLAGS_hf_file_v)) {
-        params.vocoder.model.hf_file = FLAGS_hf_file_v;
-    }
-
-    if (is_set(FLAGS_hf_token)) {
-        params.hf_token = FLAGS_hf_token;
     }
 
     // ========================================================================
@@ -1384,10 +1323,6 @@ void fill_common_params(common_params & params) {
     // ========================================================================
     // Speculative decoding parameters
     // ========================================================================
-    if (is_set(FLAGS_spec_draft_hf)) {
-        params.speculative.draft.mparams.hf_repo = FLAGS_spec_draft_hf;
-    }
-
     if (FLAGS_spec_draft_threads != 0) {
         params.speculative.draft.cpuparams.n_threads = FLAGS_spec_draft_threads;
         if (params.speculative.draft.cpuparams.n_threads <= 0) {
@@ -1677,18 +1612,6 @@ void fill_common_params(common_params & params) {
     // ========================================================================
     // Preset defaults
     // ========================================================================
-    if (FLAGS_tts_oute_default) {
-        params.model.hf_repo = "lmstudio-community/Qwen2.5-OuteTTS-1.0-0.6B-GGUF";
-        params.model.hf_file = "*.gguf";
-        params.vocoder.model.hf_repo = "ggml-org/OuteTTS-1.0-0.6B";
-    }
-
-    if (FLAGS_embd_gemma_default) {
-        params.model.hf_repo = "google/gemma-3-4b-it-qat-q4_k_m-gguf";
-        params.model.hf_file = "*q4_k_m.gguf";
-        params.port = 8081;
-    }
-
     if (FLAGS_spec_default) {
         params.speculative.ngram_mod.n_match = 2;
         params.speculative.ngram_mod.n_min = 1;
@@ -1734,113 +1657,3 @@ void fill_common_params(common_params & params) {
 }
 
 } // namespace lhm
-
-// ============================================================================
-// Model handling (migrated from arg.cpp)
-// ============================================================================
-
-static const std::initializer_list<enum lhm_example> mmproj_examples = {
-    LHM_EXAMPLE_MTMD,
-    LHM_EXAMPLE_SERVER,
-    LHM_EXAMPLE_CLI,
-};
-
-struct handle_model_result {
-    bool found_mmproj = false;
-    common_params_model mmproj;
-
-    bool found_mtp = false;
-    common_params_model mtp;
-
-    bool found_preset = false;
-    std::string preset_path;
-};
-
-static handle_model_result common_params_handle_model(struct common_params_model & model,
-                                                      const common_download_opts & opts) {
-    handle_model_result result;
-
-    if (!model.docker_repo.empty()) {
-        model.path = common_docker_resolve_model(model.docker_repo);
-        model.name = model.docker_repo;
-    } else if (!model.hf_repo.empty()) {
-        // If -m was used with -hf, treat the model "path" as the hf_file to download
-        if (model.hf_file.empty() && !model.path.empty()) {
-            model.hf_file = model.path;
-            model.path = "";
-            throw std::exception("hf_file must be specified when using -hf with -m");
-        }
-    } else if (!model.url.empty()) {
-        if (model.path.empty()) {
-            auto f = string_split<std::string>(model.url, '#').front();
-            f = string_split<std::string>(f, '?').front();
-            model.path = fs_get_cache_file(string_split<std::string>(f, '/').back());
-        }
-
-    }
-
-    return result;
-}
-
-bool common_params_handle_models(common_params & params, lhm_example curr_ex) {
-    const bool spec_type_draft_mtp = std::find(params.speculative.types.begin(),
-                                         params.speculative.types.end(),
-                                         COMMON_SPECULATIVE_TYPE_DRAFT_MTP) != params.speculative.types.end();
-
-    common_download_opts opts;
-    opts.bearer_token    = params.hf_token;
-    opts.offline         = params.offline;
-    opts.skip_download   = params.skip_download;
-    opts.download_mtp    = spec_type_draft_mtp;
-    opts.download_mmproj = !params.no_mmproj && params.mmproj.path.empty() && params.mmproj.url.empty();
-
-    // sub-models (draft, mmproj, vocoder) are explicitly specified by the user,
-    // so we should not auto-discover mtp/mmproj siblings for them
-    common_download_opts sub_opts = opts;
-    sub_opts.download_mtp    = false;
-    sub_opts.download_mmproj = false;
-
-    try {
-        auto res = common_params_handle_model(params.model, opts);
-        if (res.found_preset) {
-            if (!params.models_preset.empty()) {
-                throw std::invalid_argument("cannot use both --models-preset and -hf with a preset.ini file");
-            }
-            // if HF repo is a preset repo, we simply run server in router mode with the preset.ini file
-            params.models_preset_hf = params.model.hf_repo; // only for showing a warning
-            params.models_preset    = res.preset_path;
-            params.model = common_params_model{}; // make sure to clear model, so server starts in router mode
-            return true;
-        }
-
-        if (params.no_mmproj) {
-            params.mmproj = {};
-        } else if (res.found_mmproj && params.mmproj.path.empty() && params.mmproj.url.empty()) {
-            // optionally, handle mmproj model when -hf is specified
-            params.mmproj = res.mmproj;
-        }
-        // only download mmproj if the current example is using it
-        for (const auto & ex : mmproj_examples) {
-            if (curr_ex == ex) {
-                common_params_handle_model(params.mmproj, sub_opts);
-                break;
-            }
-        }
-
-        // when --spec-type mtp is set and no draft model was provided explicitly,
-        // fall back to the MTP head discovered alongside the -hf model
-        if (spec_type_draft_mtp && res.found_mtp &&
-            params.speculative.draft.mparams.path.empty() &&
-            params.speculative.draft.mparams.hf_repo.empty() &&
-            params.speculative.draft.mparams.url.empty()) {
-            params.speculative.draft.mparams.path = res.mtp.path;
-        }
-        common_params_handle_model(params.speculative.draft.mparams, sub_opts);
-        common_params_handle_model(params.vocoder.model,             sub_opts);
-        return true;
-    } catch (const common_skip_download_exception &) {
-        return false;
-    } catch (const std::exception &) {
-        throw;
-    }
-}

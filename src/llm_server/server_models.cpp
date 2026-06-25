@@ -207,9 +207,6 @@ static const std::map<std::string, std::string> & get_key_to_flag_map() {
         {"LHM_ARG_SLOTS",            "--slots"},
         {"LHM_ARG_SLOT_SAVE_PATH",   "--slot-save-path"},
         {"LHM_ARG_CACHE_REUSE",      "--cache-reuse"},
-        {"LHM_ARG_MMPROJ_AUTO",      "--mmproj-auto"},
-        {"LHM_ARG_MMPROJ_OFFLOAD",   "--mmproj-offload"},
-        {"LHM_ARG_IMAGE",            "--image"},
         {"LHM_ARG_SIMPLE_IO",        "--simple-io"},
         {"LHM_ARG_SSE_PING_INTERVAL","--sse-ping-interval"},
         {"LHM_ARG_SLOT_PROMPT_SIMILARITY","--slot-prompt-similarity"},
@@ -295,8 +292,6 @@ void model_preset::apply_model_options(common_params & params, const std::set<st
             params.model.path = value;
         } else if (key == "LHM_ARG_MODEL_URL") {
             params.model.url = value;
-        } else if (key == "LHM_ARG_HF_REPO") {
-            params.model.hf_repo = value;
         } else if (key == "LHM_ARG_HF_REPO_FILE") {
             params.model.hf_file = value;
         }
@@ -364,7 +359,6 @@ static model_presets load_presets_from_models_dir(const std::string & models_dir
     struct local_model {
         std::string name;
         std::string path;
-        std::string path_mmproj;
     };
 
     std::vector<local_model> models;
@@ -372,19 +366,16 @@ static model_presets load_presets_from_models_dir(const std::string & models_dir
         auto files = fs_list(subdir_path, false);
         common_file_info model_file;
         common_file_info first_shard_file;
-        common_file_info mmproj_file;
         for (const auto & file : files) {
             if (string_ends_with(file.name, ".gguf")) {
-                if (file.name.find("mmproj") != std::string::npos) {
-                    mmproj_file = file;
-                } else if (file.name.find("-00001-of-") != std::string::npos) {
+                if (file.name.find("-00001-of-") != std::string::npos) {
                     first_shard_file = file;
                 } else {
                     model_file = file;
                 }
             }
         }
-        local_model model{\ name, first_shard_file.path.empty() ? model_file.path : first_shard_file.path, mmproj_file.path };
+        local_model model{name, first_shard_file.path.empty() ? model_file.path : first_shard_file.path};
         if (!model.path.empty()) {
             models.push_back(model);
         }
@@ -405,9 +396,6 @@ static model_presets load_presets_from_models_dir(const std::string & models_dir
         model_preset preset;
         preset.name = model.name;
         preset.set_option("LHM_ARG_MODEL", model.path);
-        if (!model.path_mmproj.empty()) {
-            preset.set_option("LHM_ARG_MMPROJ", model.path_mmproj);
-        }
         out[preset.name] = preset;
     }
     return out;

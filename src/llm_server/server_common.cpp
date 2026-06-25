@@ -665,54 +665,7 @@ json oaicompat_chat_params_parse(
 
         for (auto & p : content) {
             std::string type      = json_value(p, "type", std::string());
-            if (type == "image_url") {
-                if (!opt.allow_image) {
-                    throw std::runtime_error("image input is not supported - hint: if this is unexpected, you may need to provide the mmproj");
-                }
-
-                json image_url = json_value(p, "image_url", json::object());
-                handle_media(out_files, image_url, opt.media_path);
-
-                p["type"] = "media_marker";
-                p["text"] = get_media_marker();
-                p.erase("image_url");
-
-            } else if (type == "input_audio") {
-                if (!opt.allow_audio) {
-                    throw std::runtime_error("audio input is not supported - hint: if this is unexpected, you may need to provide the mmproj");
-                }
-
-                json input_audio   = json_value(p, "input_audio", json::object());
-                std::string data   = json_value(input_audio, "data", std::string());
-                std::string format = json_value(input_audio, "format", std::string());
-                // while we also support flac, we don't allow it here so we matches the OAI spec
-                if (format != "wav" && format != "mp3") {
-                    throw std::invalid_argument("input_audio.format must be either 'wav' or 'mp3'");
-                }
-                auto decoded_data = base64_decode(data); // expected to be base64 encoded
-                out_files.push_back(decoded_data);
-
-                // TODO: add audio_url support by reusing handle_media()
-
-                p["type"] = "media_marker";
-                p["text"] = get_media_marker();
-                p.erase("input_audio");
-
-            } else if (type == "input_video") {
-                if (!opt.allow_video) {
-                    throw std::runtime_error("video input is not supported - hint: if this is unexpected, you may need to provide the mmproj");
-                }
-
-                json input_video  = json_value(p, "input_video", json::object());
-                std::string data  = json_value(input_video, "data", std::string());
-                auto decoded_data = base64_decode(data); // expected to be base64 encoded
-                out_files.push_back(decoded_data);
-
-                p["type"] = "media_marker";
-                p["text"] = get_media_marker();
-                p.erase("input_video");
-
-            } else if (type != "text") {
+            if (type != "text") {
                 throw std::invalid_argument("unsupported content[].type");
             }
         }

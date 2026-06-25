@@ -293,9 +293,6 @@ struct common_params_sampling {
 struct common_params_model {
     std::string path        = ""; // model local path                                       // NOLINT
     std::string url         = ""; // model url to download                                  // NOLINT
-    std::string hf_repo     = ""; // HF repo                                                // NOLINT
-    std::string hf_file     = ""; // HF file                                                // NOLINT
-    std::string docker_repo = ""; // Docker repo                                            // NOLINT
     std::string name        = ""; // in format <user>/<model>[:<tag>] (tag is optional)     // NOLINT
 };
 
@@ -359,7 +356,7 @@ struct common_params_speculative {
     common_params_speculative_ngram_cache ngram_cache;
 
     bool has_dft() const {
-        return !draft.mparams.path.empty() || !draft.mparams.hf_repo.empty();
+        return !draft.mparams.path.empty();
     }
 
     uint32_t need_n_rs_seq() const {
@@ -482,7 +479,6 @@ struct common_params {
 
     std::set<std::string> model_alias;     // model aliases                                                 // NOLINT
     std::set<std::string> model_tags;      // model tags (informational, not used for routing)              // NOLINT
-    std::string hf_token             = ""; // HF token (aka bearer token)                                   // NOLINT
     std::string prompt               = "";                                                                  // NOLINT
     std::string system_prompt        = "";                                                                  // NOLINT
     std::string prompt_file          = ""; // store the external prompt file name                           // NOLINT
@@ -570,9 +566,6 @@ struct common_params {
     common_conversation_mode conversation_mode = COMMON_CONVERSATION_MODE_AUTO;
 
     // multimodal models (see tools/mtmd)
-    struct common_params_model mmproj;
-    bool mmproj_use_gpu = true;     // use GPU for multimodal model
-    bool no_mmproj = false;         // explicitly disable multimodal model
     std::vector<std::string> image; // path to image file(s) ; TODO: change the name to "media"
     int image_min_tokens = -1;
     int image_max_tokens = -1;

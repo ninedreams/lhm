@@ -11,10 +11,6 @@ void fill_common_params(struct common_params & params);
 
 }
 
-// Populate model paths (main model, mmproj, etc) from -hf if necessary
-// Returns true if the model is ready to use
-bool common_params_handle_models(common_params & params, lhm_example curr_ex);
-
 // ============================================================================
 // Log parameters (originally in config.h)
 // ============================================================================
@@ -167,17 +163,6 @@ DEFINE_int32(sequences, 1, "number of sequences to decode");
 DEFINE_bool(cont_batching, true, "insert new sequences for decoding on-the-fly");
 
 // ============================================================================
-// Multimodal parameters
-// ============================================================================
-DEFINE_string(mmproj, "", "path to multimodal projector model");
-DEFINE_string(mmproj_url, "", "URL to multimodal projector model");
-DEFINE_bool(mmproj_auto, true, "automatically load multimodal projector model");
-DEFINE_bool(mmproj_offload, true, "use GPU for multimodal model");
-DEFINE_string(image, "", "path to image/audio/video file(s)");
-DEFINE_int32(image_min_tokens, -1, "minimum tokens for image encoding");
-DEFINE_int32(image_max_tokens, -1, "maximum tokens for image encoding");
-
-// ============================================================================
 // RPC / memory parameters
 // ============================================================================
 DEFINE_string(rpc, "", "comma-separated list of RPC servers");
@@ -226,13 +211,6 @@ DEFINE_bool(lora_init_without_apply, false, "only load lora to memory, but do no
 DEFINE_string(alias, "", "model alias(es)");
 DEFINE_string(tags, "", "model tags");
 DEFINE_string(model, "", "model path");
-DEFINE_string(model_url, "", "model download URL");
-DEFINE_string(docker_repo, "", "Docker repository for model");
-DEFINE_string(hf_repo, "", "Hugging Face model repository");
-DEFINE_string(hf_file, "", "Hugging Face model file");
-DEFINE_string(hf_repo_v, "", "Hugging Face vocoder model repository");
-DEFINE_string(hf_file_v, "", "Hugging Face vocoder model file");
-DEFINE_string(hf_token, "", "Hugging Face token (bearer token)");
 
 // ============================================================================
 // Retrieval / embedding parameters
