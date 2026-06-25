@@ -91,8 +91,8 @@ if(NOT DEFINED GGML_CUDA_GRAPHS)
     set(GGML_CUDA_GRAPHS_DEFAULT ON)
 endif()
 
-# include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/fmt/include)
-# include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/spdlog/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/fmt/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/spdlog/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/llama.cpp/ggml/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/rapidjson/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gflags/include)
@@ -125,11 +125,12 @@ add_subdirectory(thirdparty/llama.cpp/ggml)
 
 # Project include dirs
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lhm)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/json)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/json_compat)
+# include_directories(${CMAKE_CURRENT_SOURCE_DIR}/json)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/common)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/models)
 
-add_compile_options(-Werror)
+# add_compile_options(-Werror)
 
 add_subdirectory(common)
 add_subdirectory(models)

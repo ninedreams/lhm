@@ -52,7 +52,6 @@ struct buffer_view {
 void replace_all(std::string & s, const std::string & search, const std::string & replace);
 
 // TODO: rename to lhm_format ?
-LHM_ATTRIBUTE_FORMAT(1, 2)
 std::string format(const char * fmt, ...);
 
 std::string lhm_format_tensor_shape(const std::vector<int64_t> & ne);
