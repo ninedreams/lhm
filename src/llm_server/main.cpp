@@ -1,5 +1,6 @@
 #include "config.h"
 #include "common.h"
+#include "common_params.h"
 #include "log.h"
 #include "server.h"
 

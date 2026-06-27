@@ -1105,50 +1105,10 @@ void fill_common_params(common_params & params) {
         params.api_prefix = FLAGS_api_prefix;
     }
 
-    if (is_set(FLAGS_webui_config)) {
-        params.webui_config_json = FLAGS_webui_config;
-        params.ui_config_json = FLAGS_webui_config;
-    }
-
-    if (is_set(FLAGS_ui_config)) {
-        params.ui_config_json = FLAGS_ui_config;
-        params.webui_config_json = FLAGS_ui_config;
-    }
-
-    if (is_set(FLAGS_webui_config_file)) {
-        params.webui_config_json = read_file_contents(FLAGS_webui_config_file);
-        params.ui_config_json = params.webui_config_json;
-    }
-
-    if (is_set(FLAGS_ui_config_file)) {
-        params.ui_config_json = read_file_contents(FLAGS_ui_config_file);
-        params.webui_config_json = params.ui_config_json;
-    }
-
-    if (FLAGS_webui_mcp_proxy) {
-        params.webui_mcp_proxy = true;
-        params.ui_mcp_proxy = true;
-    }
-
-    if (FLAGS_ui_mcp_proxy) {
-        params.ui_mcp_proxy = true;
-        params.webui_mcp_proxy = true;
-    }
-
     if (is_set(FLAGS_tools)) {
         for (const auto & t : string_split<std::string>(FLAGS_tools, ',')) {
             params.server_tools.push_back(t);
         }
-    }
-
-    if (!FLAGS_webui) {
-        params.webui = false;
-        params.ui = false;
-    }
-
-    if (!FLAGS_ui) {
-        params.ui = false;
-        params.webui = false;
     }
 
     if (FLAGS_embedding) {

@@ -16,6 +16,8 @@ add_library(${TARGET} STATIC
     server_context.h
     server_tools.cpp
     server_tools.h
+    server_schema.cpp
+    server_schema.h
 )
 
 target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR})
@@ -23,7 +25,22 @@ target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR}/lhm)
 target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR}/json)
 target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR}/common)
 target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR}/models)
-target_link_libraries(${TARGET} PRIVATE common lhm_models ${CMAKE_THREAD_LIBS_INIT})
+target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR}/thirdparty/subprocess.h)
+target_link_libraries(${TARGET} PRIVATE
+    common
+    lhm_models
+    lhm_models 
+    lhm_params
+    lhm_kvcache
+    lhm_memory
+    lhm_loader
+    lhm_llm
+    lhm_chat
+    fmt::fmt
+    gflags
+    spdlog::spdlog
+    ${CMAKE_THREAD_LIBS_INIT}
+)
 
 # llm_server-impl: server logic, reusable by app
 set(TARGET llm_server_impl)
@@ -39,7 +56,8 @@ set_target_properties(${TARGET} PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 target_include_directories(${TARGET} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR})
-target_link_libraries(${TARGET} PUBLIC server_context httplib::httplib ${CMAKE_THREAD_LIBS_INIT})
+target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR}/thirdparty/subprocess.h)
+target_link_libraries(${TARGET} PUBLIC server_context httplib gflags ${CMAKE_THREAD_LIBS_INIT})
 
 # llm_server executable
 set(TARGET llm_server)
@@ -47,4 +65,4 @@ set(TARGET llm_server)
 add_executable(${TARGET} main.cpp)
 install(TARGETS ${TARGET} RUNTIME)
 
-target_link_libraries(${TARGET} PRIVATE llm_server_impl fmt::fmt spdlog::spdlog gflags::gflags ggml)
+target_link_libraries(${TARGET} PRIVATE llm_server_impl fmt::fmt spdlog::spdlog gflags ggml)

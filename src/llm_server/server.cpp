@@ -1,7 +1,7 @@
 #include "server_context.h"
 #include "server_http.h"
 #include "server_models.h"
-#include "server_cors-proxy.h"
+#include "server_cors_proxy.h"
 #include "server_tools.h"
 
 #include "common.h"
@@ -75,8 +75,8 @@ int llm_server(common_params & params, int argc, char ** argv) {
 
     common_init();
 
-    llm_backend_init();
-    llm_numa_init(params.numa);
+    lhm_backend_init();
+    lhm_numa_init(params.numa);
 
     // router server never loads a model and must not touch the GPU
     // skip device enumeration so the CUDA primary context stays uncreated
@@ -215,16 +215,6 @@ int llm_server(common_params & params, int argc, char ** argv) {
     // Google Cloud Platform (Vertex AI) compat
     ctx_http.register_gcp_compat();
 
-    // CORS proxy (EXPERIMENTAL, only used by the Web UI for MCP)
-    // Supports both new ui_mcp_proxy and deprecated webui_mcp_proxy fields
-    if (params.ui_mcp_proxy || params.webui_mcp_proxy) {
-        SRV_WRN("%s", "-----------------\n");
-        SRV_WRN("%s", "CORS proxy is enabled, do not expose server to untrusted environments\n");
-        SRV_WRN("%s", "This feature is EXPERIMENTAL and may be removed or changed in future versions\n");
-        SRV_WRN("%s", "-----------------\n");
-        ctx_http.get ("/cors-proxy",      ex_wrapper(proxy_handler_get));
-        ctx_http.post("/cors-proxy",      ex_wrapper(proxy_handler_post));
-    }
     // EXPERIMENTAL built-in tools
     if (!params.server_tools.empty()) {
         try {
@@ -256,7 +246,7 @@ int llm_server(common_params & params, int argc, char ** argv) {
                 models_routes->stopping.store(true); // maybe redundant, but just to be safe
                 models_routes->models.unload_all();
             }
-            llm_backend_free();
+            lhm_backend_free();
         };
 
         if (!ctx_http.start()) {
@@ -280,7 +270,7 @@ int llm_server(common_params & params, int argc, char ** argv) {
             SRV_INF("%s: cleaning up before exit...\n", __func__);
             ctx_http.stop();
             ctx_server.terminate();
-            llm_backend_free();
+            lhm_backend_free();
         };
 
         // start the HTTP server before loading the model to be able to serve /health requests
@@ -371,7 +361,7 @@ int llm_server(common_params & params, int argc, char ** argv) {
             monitor_thread.join();
         }
 
-        auto * ll_ctx = ctx_server.get_llm_context();
+        auto * ll_ctx = ctx_server.get_lhm_context();
         if (ll_ctx != nullptr) {
             common_memory_breakdown_print(ll_ctx);
         }

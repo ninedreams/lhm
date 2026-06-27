@@ -98,7 +98,7 @@ struct cli_context {
             // reasoning budget sampler
             if (!chat_params.thinking_end_tag.empty()) {
                 const llm_vocab * vocab = llm_model_get_vocab(
-                    llm_get_model(ctx_server.get_llm_context()));
+                    llm_get_model(ctx_server.get_lhm_context()));
 
                 task.params.sampling.reasoning_budget_tokens = defaults.sampling.reasoning_budget_tokens;
                 task.params.sampling.generation_prompt = chat_params.generation_prompt;
@@ -368,8 +368,8 @@ int llm_cli() {
     // struct that contains lhm context and inference
     cli_context ctx_cli(params);
 
-    lhm::llm_backend_init();
-    lhm::llm_numa_init(params.numa);
+    lhm_backend_init();
+    lhm_numa_init(params.numa);
 
     // TODO: avoid using atexit() here by making `console` a singleton
     lhm::console::init(params.simple_io, params.use_color);
@@ -463,7 +463,7 @@ int llm_cli() {
             return false;
         }
         if (inf.fim_sep_token != llm_TOKEN_NULL) {
-            cur_msg += common_token_to_piece(ctx_cli.ctx_server.get_llm_context(), inf.fim_sep_token, true);
+            cur_msg += common_token_to_piece(ctx_cli.ctx_server.get_lhm_context(), inf.fim_sep_token, true);
             cur_msg += fname;
             cur_msg.push_back('\n');
         } else {
@@ -657,7 +657,7 @@ int llm_cli() {
 
     // bump the log level to display timings
     common_log_set_verbosity_thold(LOG_LEVEL_INFO);
-    common_memory_breakdown_print(ctx_cli.ctx_server.get_llm_context());
+    common_memory_breakdown_print(ctx_cli.ctx_server.get_lhm_context());
 
     return 0;
 }

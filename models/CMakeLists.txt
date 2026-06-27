@@ -60,11 +60,17 @@ target_include_directories(${TARGET} PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/spdlo
 
 target_link_libraries(${TARGET} PRIVATE
     common
+    ggml
+    gflags
+    fmt::fmt
+    spdlog::spdlog
+)
+
+target_link_libraries(${TARGET} PUBLIC
     lhm_params
     lhm_kvcache
     lhm_memory
     lhm_loader
     lhm_llm
     lhm_chat
-    ggml
 )

@@ -3,8 +3,9 @@
 
 #include "config.h"
 
-#include <cpp-httplib/httplib.h>
-#include <sheredom/subprocess.h>
+#include <httplib.h>
+#include <subprocess.h>
+
 #include <functional>
 #include <optional>
 #include <algorithm>
@@ -213,8 +214,6 @@ static const std::map<std::string, std::string> & get_key_to_flag_map() {
         {"LHM_ARG_NO_CONTEXT_SHIFT", "--no-context-shift"},
         {"LHM_ARG_PREFILL_ASSISTANT","--prefill-assistant"},
         {"LHM_ARG_SKIP_CHAT_PARSING","--skip-chat-parsing"},
-        {"LHM_ARG_WEBUI",            "--webui"},
-        {"LHM_ARG_UI",               "--ui"},
         {"LHM_ARG_SLEEP_IDLE_SECONDS","--sleep-idle-seconds"},
         {"LHM_ARG_MEDIA_PATH",       "--media-path"},
         {"LHM_ARG_CHAT_TEMPLATE_FILE","--chat-template-file"},
@@ -290,10 +289,6 @@ void model_preset::apply_model_options(common_params & params, const std::set<st
         }
         if (key == "LHM_ARG_MODEL") {
             params.model.path = value;
-        } else if (key == "LHM_ARG_MODEL_URL") {
-            params.model.url = value;
-        } else if (key == "LHM_ARG_HF_REPO_FILE") {
-            params.model.hf_file = value;
         }
     }
 }
@@ -388,7 +383,7 @@ static model_presets load_presets_from_models_dir(const std::string & models_dir
         } else if (string_ends_with(file.name, ".gguf")) {
             std::string name = file.name;
             string_replace_all(name, ".gguf", "");
-            models.push_back({name, file.path, ""});
+            models.push_back({name, file.path});
         }
     }
 
@@ -1220,7 +1215,7 @@ void server_models::load(const std::string & name) {
         //                so that we can use stdout for commands and stderr for logging
         int options = subprocess_option_no_window | subprocess_option_combined_stdout_stderr;
         inst.subproc->sproc.emplace();
-        int result = subprocess_create_ex(argv.data(), options, envp.data(), &inst.subproc->get());
+        int result = subprocess_create_ex(argv.data(), options, envp.data(), nullptr, &inst.subproc->get());
         if (result != 0) {
             throw std::runtime_error("failed to spawn server instance");
         }
@@ -1241,7 +1236,7 @@ void server_models::load(const std::string & name) {
             char * buffer = vec_buf.data();
             if (stdout_file) {
                 while (fgets(buffer, vec_buf.size(), stdout_file) != nullptr) {
-                    LOG("[%5d] %s", port, buffer);
+                    SRV_INF("[%5d] %s", port, buffer);
                     std::string str(buffer);
                     if (string_starts_with(buffer, CMD_CHILD_TO_ROUTER_READY)) {
                         this->update_status(name, SERVER_MODEL_STATUS_LOADED, 0);
@@ -1543,13 +1538,11 @@ bool server_models::is_child_server() {
 
 std::thread server_models::setup_child_server(const std::function<void(int)> & shutdown_handler, const json & model_info) {
     // send a notification to the router server that a model instance is ready
-    common_log_pause(common_log_main());
     fflush(stdout);
     fprintf(stdout, "%s\n", CMD_CHILD_TO_ROUTER_READY);
     fflush(stdout);
     fprintf(stdout, "%s%s\n", CMD_CHILD_TO_ROUTER_INFO, safe_json_to_str(model_info).c_str());
     fflush(stdout);
-    common_log_resume(common_log_main());
 
     // setup thread for monitoring stdin
     return std::thread([shutdown_handler]() {
@@ -1577,11 +1570,9 @@ std::thread server_models::setup_child_server(const std::function<void(int)> & s
 }
 
 void server_models::notify_router_sleeping_state(bool is_sleeping) {
-    common_log_pause(common_log_main());
     fflush(stdout);
     fprintf(stdout, "%s\n", is_sleeping ? CMD_CHILD_TO_ROUTER_SLEEP : CMD_CHILD_TO_ROUTER_READY);
     fflush(stdout);
-    common_log_resume(common_log_main());
 }
 
 
@@ -1685,11 +1676,6 @@ void server_models_routes::init_routes() {
                     {"params", json{}},
                     {"n_ctx",  0},
                 }},
-                // New key
-                {"ui_settings",     ui_settings},
-                // Deprecated: use ui_settings instead (kept for backward compat)
-                {"webui_settings",  webui_settings},
-                {"cors_proxy_enabled", params.ui_mcp_proxy || params.webui_mcp_proxy},
             });
             return res;
         }
@@ -1767,12 +1753,6 @@ void server_models_routes::init_routes() {
 
             // pi coding agent multimodal compatibility
             json input_modalities = json::array({"text"});
-            if (meta.multimodal.inp_vision) {
-                input_modalities.push_back("image");
-            }
-            if (meta.multimodal.inp_audio) {
-                input_modalities.push_back("audio");
-            }
             json architecture {
                 {"input_modalities",  input_modalities},
                 {"output_modalities", json::array({"text"})},

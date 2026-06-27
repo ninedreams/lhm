@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cpp-httplib/httplib.h>
+#include <httplib.h>
 
 struct common_http_url {
     std::string scheme;

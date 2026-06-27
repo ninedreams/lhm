@@ -563,8 +563,6 @@ struct common_params {
 
     common_conversation_mode conversation_mode = COMMON_CONVERSATION_MODE_AUTO;
 
-    // multimodal models (see tools/mtmd)
-    std::vector<std::string> image; // path to image file(s) ; TODO: change the name to "media"
     int image_min_tokens = -1;
     int image_max_tokens = -1;
 
@@ -612,17 +610,6 @@ struct common_params {
     std::string ssl_file_cert = "";                                                                         // NOLINT
 
     std::map<std::string, std::string> default_template_kwargs;
-
-    // UI configs
-    bool ui = true;
-
-    // Deprecated: use ui, ui_mcp_proxy, ui_config_json instead
-    bool webui = ui;
-    bool webui_mcp_proxy = false;
-    std::string webui_config_json;
-
-    bool ui_mcp_proxy = false;
-    std::string ui_config_json;
 
     // "advanced" endpoints are disabled by default for better security
     bool endpoint_slots   = true;

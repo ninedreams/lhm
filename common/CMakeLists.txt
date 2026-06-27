@@ -65,7 +65,7 @@ target_include_directories(${TARGET} PRIVATE .)
 target_include_directories(${TARGET} PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/fmt/include)
 target_include_directories(${TARGET} PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/spdlog/include)
 
-target_link_libraries(${TARGET} PRIVATE httplib::httplib gflags::gflags fmt::fmt spdlog::spdlog RapidJSON ggml lhm_models)
+target_link_libraries(${TARGET} PRIVATE httplib gflags fmt::fmt spdlog::spdlog RapidJSON ggml lhm_models)
 
 if(LHM_LLGUIDANCE)
     message("Not support LHM_LLGUIDANCE")

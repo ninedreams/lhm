@@ -1131,22 +1131,6 @@ private:
             }
         }
 
-        // populate UI settings (from either new ui_config_json or deprecated webui_config_json)
-        {
-            const std::string & cfg = !params_base.ui_config_json.empty()
-                ? params_base.ui_config_json
-                : params_base.webui_config_json;
-            if (!cfg.empty()) {
-                try {
-                    json json_settings = json::parse(cfg);
-                    json_ui_settings = json_settings;
-                } catch (const std::exception & e) {
-                    SRV_ERR("%s: failed to parse UI config: %s\n", __func__, e.what());
-                    return false;
-                }
-            }
-        }
-
         // populate chat template params
         {
             common_chat_templates_ptr chat_templates;
@@ -4004,17 +3988,11 @@ void server_routes::init_routes() {
             { "endpoint_slots",              params.endpoint_slots },
             { "endpoint_props",              params.endpoint_props },
             { "endpoint_metrics",            params.endpoint_metrics },
-            // New keys
-            { "ui",                           params.ui },
-            { "ui_settings",                  meta->json_ui_settings },
-            // Deprecated: use ui/ui_settings instead (kept for backward compat)
-            { "webui",                        params.webui },
             { "chat_template",               tmpl_default },
             { "chat_template_caps",          meta->chat_template_caps },
             { "bos_token",                   meta->bos_token_str },
             { "eos_token",                   meta->eos_token_str },
             { "is_sleeping",                 queue_tasks.is_sleeping() },
-            { "cors_proxy_enabled",          params.ui_mcp_proxy || params.webui_mcp_proxy },
         };
         if (params.use_jinja) {
             if (!tmpl_tools.empty()) {
