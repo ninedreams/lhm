@@ -96,6 +96,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/spdlog/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/llama.cpp/ggml/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/rapidjson/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gflags/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/subprocess.h)
 
 if(MSVC)
     add_compile_options(/W4 /WX)

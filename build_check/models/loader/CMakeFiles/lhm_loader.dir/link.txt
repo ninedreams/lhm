@@ -1,2 +1,0 @@
-/usr/bin/ar qc liblhm_loader.a CMakeFiles/lhm_loader.dir/lhm_mmap.cpp.o CMakeFiles/lhm_loader.dir/lhm_model_loader.cpp.o CMakeFiles/lhm_loader.dir/lhm_model_saver.cpp.o
-/usr/bin/ranlib liblhm_loader.a

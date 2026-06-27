@@ -1,2 +1,0 @@
-/usr/bin/ar qc libfmt-c.a "CMakeFiles/fmt-c.dir/src/fmt-c.cc.o"
-/usr/bin/ranlib libfmt-c.a

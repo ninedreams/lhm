@@ -19,8 +19,8 @@ add_library(${TARGET} STATIC
     console.h
     debug.cpp
     debug.h
-    # fit.cpp
-    # fit.h
+    fit.cpp
+    fit.h
     http.h
     imatrix_loader.cpp
     imatrix_loader.h
@@ -43,8 +43,8 @@ add_library(${TARGET} STATIC
     regex_partial.h
     sampling.cpp
     sampling.h
-    # speculative.cpp
-    # speculative.h
+    speculative.cpp
+    speculative.h
     unicode.cpp
     unicode.h
     jinja/lexer.cpp

@@ -1,2 +1,0 @@
-/usr/bin/ar qc liblhm_llm.a CMakeFiles/lhm_llm.dir/qwen35.cpp.o CMakeFiles/lhm_llm.dir/qwen35moe.cpp.o
-/usr/bin/ranlib liblhm_llm.a

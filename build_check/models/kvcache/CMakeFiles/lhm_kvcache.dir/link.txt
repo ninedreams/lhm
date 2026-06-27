@@ -1,2 +1,0 @@
-/usr/bin/ar qc liblhm_kvcache.a CMakeFiles/lhm_kvcache.dir/lhm_kv_cache.cpp.o CMakeFiles/lhm_kvcache.dir/lhm_kv_cache_dsa.cpp.o CMakeFiles/lhm_kvcache.dir/lhm_kv_cache_iswa.cpp.o
-/usr/bin/ranlib liblhm_kvcache.a

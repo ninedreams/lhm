@@ -1,10 +1,3 @@
-#include "fit.h"
-
-#include "log.h"
-
-
-#include "lhm_ext.h"
-
 #include <array>
 #include <cassert>
 #include <stdexcept>
@@ -12,6 +5,11 @@
 #include <set>
 #include <string>
 #include <vector>
+
+#include "fit.h"
+#include "log.h"
+#include "lhm_ext.h"
+
 
 // this enum is only used in lhm_params_fit_impl but needs to be defined outside of it to fix a Windows compilation issue
 // enum to identify part of a layer for distributing its tensors:

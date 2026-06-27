@@ -1,2 +1,0 @@
-/usr/bin/ar qc libserver_context.a CMakeFiles/server_context.dir/server_chat.cpp.o CMakeFiles/server_context.dir/server_task.cpp.o CMakeFiles/server_context.dir/server_queue.cpp.o CMakeFiles/server_context.dir/server_common.cpp.o CMakeFiles/server_context.dir/server_context.cpp.o CMakeFiles/server_context.dir/server_tools.cpp.o
-/usr/bin/ranlib libserver_context.a
