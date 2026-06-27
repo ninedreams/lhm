@@ -1,7 +1,7 @@
 #include "lhm_vocab.h"
 
-#include "ggml.h"
-#include "gguf.h"
+#include <ggml.h>
+#include <gguf.h>
 #include "lhm_impl.h"
 #include "lhm_model_loader.h"
 

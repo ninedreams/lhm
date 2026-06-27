@@ -430,7 +430,6 @@ int llm_cli() {
 
     lhm::console::log("\n");
     lhm::console::log("%s\n", llm_ASCII_LOGO);
-    lhm::console::log("build      : %s\n", inf.build_info.c_str());
     lhm::console::log("model      : %s\n", inf.model_name.c_str());
     lhm::console::log("modalities : %s\n", modalities.c_str());
     if (!params.system_prompt.empty()) {

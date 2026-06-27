@@ -8,8 +8,8 @@
 #include "lhm_impl.h"
 #include "memory/lhm_memory.h"
 
-#include "ggml-cpp.h"
-#include "ggml-opt.h"
+#include <ggml-cpp.h>
+#include <ggml-opt.h>
 
 #include <map>
 #include <vector>

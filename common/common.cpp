@@ -1,5 +1,5 @@
-#include "ggml.h"
-#include "gguf.h"
+#include <ggml.h>
+#include <gguf.h>
 
 
 #include "config.h"

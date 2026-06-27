@@ -2,7 +2,7 @@
 
 
 #include "common.h"
-#include "ggml.h"
+#include <ggml.h>
 #include "lhm.h"
 #include "log.h"
 #include "ngram_cache.h"

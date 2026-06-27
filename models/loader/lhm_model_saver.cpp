@@ -1,7 +1,7 @@
 #include "lhm_model_saver.h"
 
-#include "ggml.h"
-#include "gguf.h"
+#include <ggml.h>
+#include <gguf.h>
 
 
 #include "lhm_arch.h"

@@ -4,7 +4,7 @@
 #include "chat_auto_parser.h"
 #include "chat_peg_parser.h"
 #include "common.h"
-#include "ggml.h"
+#include <ggml.h>
 #include "json_schema_to_grammar.h"
 #include "log.h"
 

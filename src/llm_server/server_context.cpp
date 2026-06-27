@@ -727,7 +727,6 @@ private:
     server_metrics metrics;
 
     json json_ui_settings = json::object();    // Primary: new name
-    json json_webui_settings = json::object();    // Deprecated: use json_ui_settings instead (kept for compat)
 
     // Necessary similarity of prompt for slot selection
     float slot_prompt_similarity = 0.0f;
@@ -1141,7 +1140,6 @@ private:
                 try {
                     json json_settings = json::parse(cfg);
                     json_ui_settings = json_settings;
-                    json_webui_settings = json_settings; // deprecated: keep in sync
                 } catch (const std::exception & e) {
                     SRV_ERR("%s: failed to parse UI config: %s\n", __func__, e.what());
                     return false;
@@ -3422,7 +3420,6 @@ server_context_meta server_context::get_meta() const {
         /* model_tags             */ impl->model_tags,
         /* model_path             */ impl->params_base.model.path,
         /* json_ui_settings       */ impl->json_ui_settings,
-        /* json_webui_settings    */ impl->json_webui_settings,  // Deprecated
         /* slot_n_ctx             */ impl->get_slot_n_ctx(),
         /* pooling_type           */ lhm_pooling_type(impl->ctx_tgt),
 
@@ -4012,12 +4009,10 @@ void server_routes::init_routes() {
             { "ui_settings",                  meta->json_ui_settings },
             // Deprecated: use ui/ui_settings instead (kept for backward compat)
             { "webui",                        params.webui },
-            { "webui_settings",               meta->json_webui_settings },
             { "chat_template",               tmpl_default },
             { "chat_template_caps",          meta->chat_template_caps },
             { "bos_token",                   meta->bos_token_str },
             { "eos_token",                   meta->eos_token_str },
-            { "build_info",                  meta->build_info },
             { "is_sleeping",                 queue_tasks.is_sleeping() },
             { "cors_proxy_enabled",          params.ui_mcp_proxy || params.webui_mcp_proxy },
         };

@@ -6,7 +6,7 @@
 #include "log.h"
 #include "reasoning_budget.h"
 
-#include "ggml.h"
+#include <ggml.h>
 
 #include <algorithm>
 #include <cctype>

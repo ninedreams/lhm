@@ -1,7 +1,7 @@
 #include "lhm_memory_recurrent.h"
 
 
-#include "ggml-backend.h"
+#include <ggml-backend.h>
 #include "lhm_impl.h"
 #include "lhm_io.h"
 #include "lhm_batch.h"

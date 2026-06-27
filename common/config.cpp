@@ -432,6 +432,8 @@ DEFINE_string(tensor_filter, "", "filter tensor names for debug output (regex)")
 // ============================================================================
 DEFINE_bool(embd_gemma_default, false, "use default Gemma embedding configuration");
 DEFINE_bool(spec_default, false, "use default speculative decoding configuration");
+
+
 namespace lhm {
 
 void init_config(int argc, char ** argv) {

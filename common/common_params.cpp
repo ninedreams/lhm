@@ -568,7 +568,6 @@ void fill_common_params(common_params & params) {
     if (is_set(FLAGS_logit_bias)) {
         // Parse TOKEN_ID(+/-)BIAS format
         // For simplicity, store as string to be parsed later
-        // The original arg.h handler does: params.sampling.logit_bias.push_back(...)
         // We need to parse the format "TOKEN_ID(+/-)BIAS"
         std::string bias_str = FLAGS_logit_bias;
         // Parse format: e.g. "123+1.0" or "456-0.5"
@@ -1660,7 +1659,7 @@ void fill_common_params(common_params & params) {
     }
 
     // ========================================================================
-    // Post-processing (same as original arg.cpp)
+    // Post-processing
     // ========================================================================
     postprocess_cpu_params(params.cpuparams, nullptr);
     postprocess_cpu_params(params.cpuparams_batch, &params.cpuparams);

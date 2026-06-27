@@ -1,10 +1,10 @@
 #pragma once
 
-#include "ggml.h"
-#include "ggml-cpu.h"
-#include "ggml-backend.h"
-#include "ggml-opt.h"
-#include "gguf.h"
+#include <ggml.h>
+#include <ggml-cpu.h>
+#include <ggml-backend.h>
+#include <ggml-opt.h>
+#include <gguf.h>
 
 #include <stddef.h>
 #include <stdint.h>

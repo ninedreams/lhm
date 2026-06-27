@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ggml.h" // ggml_op
+#include <ggml.h> // ggml_op
 
 #include <string>
 #include <set>

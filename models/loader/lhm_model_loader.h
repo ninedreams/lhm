@@ -7,7 +7,7 @@
 #include "lhm_hparams.h"
 #include "lhm_mmap.h"
 
-#include "ggml-cpp.h"
+#include <ggml-cpp.h>
 
 #include <cstddef>
 #include <cstring>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ggml.h"
+#include <ggml.h>
 #include "lhm.h"
 
 #include <vector>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "gguf.h"
+#include <gguf.h>
 #include "lhm.h"
 #include "lhm_arch.h"
 

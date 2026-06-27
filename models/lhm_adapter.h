@@ -2,7 +2,7 @@
 
 #include "lhm.h"
 
-#include "ggml-cpp.h"
+#include <ggml-cpp.h>
 
 #include <string>
 #include <unordered_map>

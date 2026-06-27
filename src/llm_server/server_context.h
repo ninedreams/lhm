@@ -1,25 +1,25 @@
 #pragma once
 
-#include "server_http.h"
-#include "server_task.h"
-#include "server_queue.h"
-
-#include <nlohmann/json_fwd.hpp>
-
 #include <cstddef>
 #include <memory>
 #include <set>
 
+#include <nlohmann/json_fwd.hpp>
+
+#include "lhm.h"
+#include "server_http.h"
+#include "server_task.h"
+#include "server_queue.h"
+
+
 struct server_context_impl; // private implementation
 
 struct server_context_meta {
-    std::string build_info;
     std::string model_name;
     std::set<std::string> model_aliases;
     std::set<std::string> model_tags;
     std::string model_path;
     json json_ui_settings;            // Primary: new name
-    json json_webui_settings;            // Deprecated: use json_ui_settings instead (kept for backward compat)
     int slot_n_ctx;
     enum lhm_pooling_type pooling_type;
 
