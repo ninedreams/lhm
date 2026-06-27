@@ -5,12 +5,12 @@
 #include "lhm_batch.h"
 #include "lhm_cparams.h"
 
-#include "lhm_kv_cache.h"
-#include "lhm_kv_cache_iswa.h"
-#include "lhm_kv_cache_dsa.h"
-#include "lhm_memory_hybrid.h"
-#include "lhm_memory_hybrid_iswa.h"
-#include "lhm_memory_recurrent.h"
+#include "kvcache/lhm_kv_cache.h"
+#include "kvcache/lhm_kv_cache_iswa.h"
+#include "kvcache/lhm_kv_cache_dsa.h"
+#include "memory/lhm_memory_hybrid.h"
+#include "memory/lhm_memory_hybrid_iswa.h"
+#include "memory/lhm_memory_recurrent.h"
 
 #include <cassert>
 #include <cmath>
@@ -1668,24 +1668,7 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
     switch (type_op) {
         case LLM_FFN_SILU:
             if (gate_exps) {
-                // Step35: per-layer clamp for routed experts
-                if (arch == LLM_ARCH_STEP35 && il >= 0) {
-                    const float limit = hparams.swiglu_clamp_exp[il];
-                    constexpr float eps = 1e-6f;
-                    if (limit > eps) {
-                        ggml_tensor * gate_act = ggml_silu(ctx0, cur);
-                        cb(gate_act, "ffn_moe_silu", il);
-                        gate_act = ggml_clamp(ctx0, gate_act, -INFINITY, limit);
-                        cb(gate_act, "ffn_moe_silu_clamped", il);
-
-                        up = ggml_clamp(ctx0, up, -limit, limit);
-                        cb(up, "ffn_moe_up_clamped", il);
-
-                        cur = ggml_mul(ctx0, gate_act, up);
-                        cb(cur, "ffn_moe_swiglu_limited", il);
-                        break;
-                    }
-                }
+                // pass
             }
 
             if (has_gate) {
@@ -2090,19 +2073,6 @@ ggml_tensor * llm_graph_context::build_attn_mha(
         // note: this op tends to require high floating point range
         //       while for some models F16 is enough, for others it is not, so we default to F32 here
         ggml_mul_mat_set_prec(kq, GGML_PREC_F32);
-
-        if (arch == LLM_ARCH_GROK) {
-            // need to do the following:
-            // multiply by attn_output_multiplier
-            // and then :
-            // kq = 30 * tanh(kq / 30)
-            // before the softmax below
-
-            kq = ggml_tanh(ctx0, ggml_scale(ctx0, kq, hparams.f_attn_out_scale / hparams.f_attn_logit_softcapping));
-            cb(kq, "kq_tanh", il);
-            kq = ggml_scale(ctx0, kq, hparams.f_attn_logit_softcapping);
-            cb(kq, "kq_scaled", il);
-        }
 
         if (hparams.attn_soft_cap) {
             kq = ggml_scale(ctx0, kq, 1.0f / hparams.f_attn_logit_softcapping);

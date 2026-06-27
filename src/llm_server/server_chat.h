@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "chat.h"
+#include "chat/chat.h"
 #include "server_common.h"
 #include "server_http.h"
 

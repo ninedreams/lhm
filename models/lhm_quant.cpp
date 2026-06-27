@@ -1,6 +1,6 @@
 #include "lhm_impl.h"
 #include "lhm_model.h"
-#include "lhm_model-loader.h"
+#include "loader/lhm_model_loader.h"
 #include "lhm_ext.h"
 
 #include <algorithm>
@@ -1035,7 +1035,7 @@ static void lhm_model_quantize_impl(const std::string & fname_inp, const std::st
             if (params->dry_run) {
                 will_require_imatrix = true;
             } else {
-                LHM_LOG_ERROR("\n============================================================================\n"
+                LOG_ERROR("\n============================================================================\n"
                                 " ERROR: this quantization requires an importance matrix!\n"
                                 "        - offending tensor: %s\n"
                                 "        - target type: %s\n"
@@ -1192,10 +1192,10 @@ static void lhm_model_quantize_impl(const std::string & fname_inp, const std::st
                     }
                 }
                 if (!imatrix && tm.requires_imatrix) {
-                    LHM_LOG_ERROR("\n\n============================================================\n");
-                    LHM_LOG_ERROR("Missing importance matrix for tensor %s in a very low-bit quantization\n", tensor->name);
-                    LHM_LOG_ERROR("The result will be garbage, so bailing out\n");
-                    LHM_LOG_ERROR("============================================================\n\n");
+                    LOG_ERROR("\n\n============================================================\n");
+                    LOG_ERROR("Missing importance matrix for tensor %s in a very low-bit quantization\n", tensor->name);
+                    LOG_ERROR("The result will be garbage, so bailing out\n");
+                    LOG_ERROR("============================================================\n\n");
                     throw std::runtime_error(format("Missing importance matrix for tensor %s in a very low-bit quantization", tensor->name));
                 }
 
@@ -1304,7 +1304,7 @@ uint32_t lhm_model_quantize(
     try {
         lhm_model_quantize_impl(fname_inp, fname_out, params);
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: failed to quantize: %s\n", __func__, err.what());
+        LOG_ERROR("%s: failed to quantize: %s\n", __func__, err.what());
         return 1;
     }
 

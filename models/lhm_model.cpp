@@ -1,26 +1,3 @@
-#include "lhm_model.h"
-
-#include "lassert.h"
-#include "lhm_arch.h"
-#include "lhm_ext.h"
-#include "lhm_hparams.h"
-#include "lhm_impl.h"
-#include "lhm_mmap.h"
-#include "lhm_cparams.h"
-#include "lhm_model-loader.h"
-
-#include "lhm_kv_cache.h"
-#include "lhm_kv_cache_iswa.h"
-#include "lhm_kv_cache_dsa.h"
-#include "lhm_memory_hybrid.h"
-#include "lhm_memory_hybrid_iswa.h"
-#include "lhm_memory_recurrent.h"
-
-#include "models/models.h"
-
-#include "ggml.h"
-#include "ggml-cpp.h"
-
 #include <algorithm>
 #include <cassert>
 #include <cfloat>
@@ -35,6 +12,26 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+#include <ggml.h>
+#include <ggml-cpp.h>
+
+#include "loader/lhm_model_loader.h"
+#include "params/lhm_hparams.h"
+#include "kvcache/lhm_kv_cache.h"
+#include "kvcache/lhm_kv_cache_iswa.h"
+#include "kvcache/lhm_kv_cache_dsa.h"
+#include "memory/lhm_memory_hybrid.h"
+#include "memory/lhm_memory_hybrid_iswa.h"
+#include "memory/lhm_memory_recurrent.h"
+#include "llm/models.h"
+
+#include "lhm_model.h"
+#include "lhm_arch.h"
+#include "lhm_ext.h"
+#include "lhm_impl.h"
+#include "lhm_mmap.h"
+#include "lhm_cparams.h"
 
 static lhm_model * lhm_model_mapping(llm_arch arch, const lhm_model_params & params) {
     switch (arch) {
@@ -1468,8 +1465,8 @@ void lhm_model::print_info() const {
         LOG_INFO("%s: n_expert_groups       = %d\n",     __func__, hparams.n_expert_groups);
         LOG_INFO("%s: n_group_used          = %d\n",     __func__, hparams.n_group_used);
         LOG_INFO("%s: causal attn           = %d\n",     __func__, hparams.causal_attn);
-        LOG_INFO("%s: pooling type          = %d\n",     __func__, hparams.pooling_type);
-        LOG_INFO("%s: rope type             = %d\n",     __func__, hparams.rope_type);
+        LOG_INFO("%s: pooling type          = %d\n",     __func__, int(hparams.pooling_type));
+        LOG_INFO("%s: rope type             = %d\n",     __func__, int(hparams.rope_type));
         LOG_INFO("%s: rope scaling          = %s\n",     __func__, rope_scaling_type.c_str());
         LOG_INFO("%s: freq_base_train       = %.1f\n",   __func__, hparams.rope_freq_base_train);
         LOG_INFO("%s: freq_scale_train      = %g\n",     __func__, hparams.rope_freq_scale_train);
@@ -1979,9 +1976,6 @@ const char * lhm_model_chat_template(const lhm_model * model, const char * name)
         // do not extend this list unless absolutely necessary
         // Mistral-Small-2503 does not have built-in chat template
         lhm_vocab_pre_type pre_type = model->vocab.get_pre_type();
-        if (!name && pre_type == LHM_VOCAB_PRE_TYPE_TEKKEN && model->layers.size() == 40) {
-            return "mistral-v7-tekken";
-        }
 
         return nullptr;
     }

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libcpp-httplib.a CMakeFiles/httplib.dir/out/httplib.cc.o
+/usr/bin/ranlib libcpp-httplib.a

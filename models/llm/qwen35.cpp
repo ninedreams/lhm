@@ -1,5 +1,5 @@
 #include "models.h"
-#include "lhm_memory_recurrent.h"
+#include "memory/lhm_memory_recurrent.h"
 
 void lhm_model_qwen35::load_arch_hparams(lhm_model_loader & ml) {
     ml.get_key(LLM_KV_ATTENTION_LAYERNORM_RMS_EPS,       hparams.f_norm_rms_eps);

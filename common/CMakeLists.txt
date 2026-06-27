@@ -7,7 +7,7 @@ lhm_add_compile_flags()
 #
 set(TARGET common)
 
-add_library(${TARGET}
+add_library(${TARGET} STATIC
     base64.hpp
     common_params.cpp
     common_params.h
@@ -27,7 +27,6 @@ add_library(${TARGET}
     json_partial.cpp
     json_partial.h
     json_schema_to_grammar.cpp
-    lassert.h
     log.cpp
     log.h
     ngram_cache.cpp
@@ -66,7 +65,7 @@ target_include_directories(${TARGET} PRIVATE .)
 target_include_directories(${TARGET} PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/fmt/include)
 target_include_directories(${TARGET} PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/spdlog/include)
 
-target_link_libraries(${TARGET} PRIVATE httplib::httplib gflags::gflags fmt::fmt spdlog::spdlog RapidJSON ggml)
+target_link_libraries(${TARGET} PRIVATE httplib::httplib gflags::gflags fmt::fmt spdlog::spdlog RapidJSON ggml lhm_models)
 
 if(LHM_LLGUIDANCE)
     message("Not support LHM_LLGUIDANCE")

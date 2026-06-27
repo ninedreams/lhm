@@ -1,7 +1,7 @@
 #include "ggml.h"
 #include "gguf.h"
 
-#include "lassert.h"
+
 #include "config.h"
 #include "common.h"
 #include "fit.h"

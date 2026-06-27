@@ -2,8 +2,8 @@
 
 #include "lhm_batch.h"
 #include "lhm_graph.h"
-#include "lhm_kv-cells.h"
-#include "lhm_memory.h"
+#include "lhm_kv_cells.h"
+#include "memory/lhm_memory.h"
 
 #include <unordered_map>
 #include <vector>

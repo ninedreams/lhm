@@ -104,14 +104,14 @@ lhm_memory_context_ptr lhm_memory_hybrid::init_batch(lhm_batch_allocr & balloc, 
         // prepare the recurrent batches first
         if (!mem_recr->prepare(ubatches)) {
             // TODO: will the recurrent cache be in an undefined context at this point?
-            LHM_LOG_ERROR("%s: failed to prepare recurrent ubatches\n", __func__);
+            LOG_ERROR("%s: failed to prepare recurrent ubatches\n", __func__);
             return std::make_unique<lhm_memory_hybrid_context>(LHM_MEMORY_STATUS_FAILED_PREPARE);
         }
 
         // prepare the attention cache
         auto heads_attn = mem_attn->prepare(ubatches);
         if (heads_attn.empty()) {
-            LHM_LOG_ERROR("%s: failed to prepare attention ubatches\n", __func__);
+            LOG_ERROR("%s: failed to prepare attention ubatches\n", __func__);
             return std::make_unique<lhm_memory_hybrid_context>(LHM_MEMORY_STATUS_FAILED_PREPARE);
         }
 

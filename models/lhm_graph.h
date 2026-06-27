@@ -2,7 +2,7 @@
 
 #include "lhm_arch.h"
 #include "lhm_batch.h"
-#include "lhm_hparams.h"
+#include "params/lhm_hparams.h"
 #include "lhm_adapter.h"
 
 #include <cstdint>

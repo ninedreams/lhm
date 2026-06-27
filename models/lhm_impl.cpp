@@ -1,14 +1,16 @@
-#include "lhm_impl.h"
-
-#include "gguf.h"
-#include "lhm.h"
-
 #include <cinttypes>
 #include <climits>
 #include <cstdarg>
 #include <cstring>
 #include <vector>
 #include <sstream>
+
+#include <gguf.h>
+
+#include "lhm.h"
+#include "log.h"
+
+#include "lhm_impl.h"
 
 time_meas::time_meas(int64_t & t_acc, bool disable) : t_start_us(disable ? -1 : ggml_time_us()), t_acc(t_acc) {}
 

@@ -2,7 +2,7 @@
 
 #include "lhm_model.h"
 #include "lhm_graph.h"
-#include "lhm_model-loader.h"
+#include "loader/lhm_model_loader.h"
 
 // note: almost all graphs require at least sqrtf, so include cmath globally
 #include <cmath>

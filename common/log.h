@@ -1,8 +1,12 @@
 #pragma once
 
+#include <cstdarg>
+
 #include <map>
 #include <memory>
 
+#include <fmt/core.h>
+#include <fmt/format.h>
 #include <spdlog/common.h>
 #include <spdlog/spdlog.h>
 
@@ -83,3 +87,23 @@ void lhm_log_impl(fmt::format_string<Args...> fmt, Args&&... args)
 #define LOG_WARN(...) lhm_log_impl<spdlog::level::warn>(__VA_ARGS__)
 #define LOG_ERROR(...) lhm_log_impl<spdlog::level::err>(__VA_ARGS__)
 #define LOG_CRIT(...) lhm_log_impl<spdlog::level::critical>(__VA_ARGS__)
+
+template<typename... Args>
+[[noreturn]] static void lhm_abort_impl(const char* file, int line, 
+                               fmt::format_string<Args...> fmt, Args&&... args) {
+    std::string content = fmt::format(fmt, std::forward<Args>(args)...);
+    LOG_CRIT("{}:{}: {}", file, line, content);
+    std::abort();
+}
+
+#define LHM_ABORT(...)                                                  \
+    do {                                                                \
+        lhm_abort_impl(__FILE__, __LINE__, __VA_ARGS__);                \
+    } while (0)
+
+#define LHM_ASSERT(x)                                                   \
+    do {                                                                \
+        if (!(x)) {                                                     \
+            LHM_ABORT("LHM_ASSERT(%s) failed", #x);                     \
+        }                                                               \
+    } while (0)

@@ -1,6 +1,6 @@
 #include "lhm_memory_recurrent.h"
 
-#include "lassert.h"
+
 #include "ggml-backend.h"
 #include "lhm_impl.h"
 #include "lhm_io.h"
@@ -516,7 +516,7 @@ bool lhm_memory_recurrent::find_slot(const lhm_ubatch & ubatch) {
             if (seq_id < 0 || (uint32_t) seq_id >= size) {
                 // too big seq_id
                 // TODO: would it be possible to resize the cache instead?
-                LHM_LOG_ERROR("%s: seq_id=%d >= n_seq_max=%u Try using a bigger --parallel value\n", __func__, seq_id, n_seq_max);
+                LOG_ERROR("%s: seq_id=%d >= n_seq_max=%u Try using a bigger --parallel value\n", __func__, seq_id, n_seq_max);
                 return false;
             }
             if (j > 0) {
@@ -545,14 +545,14 @@ bool lhm_memory_recurrent::find_slot(const lhm_ubatch & ubatch) {
             auto & cell = cells[i];
             for (lhm_seq_id seq_id : cell.seq_id) {
                 if (tails_verif[seq_id] != -1) {
-                    LHM_LOG_ERROR("%s: duplicate tail for seq_id %d in cell %d and %d\n", __func__, seq_id, i, tails_verif[seq_id]);
+                    LOG_ERROR("%s: duplicate tail for seq_id %d in cell %d and %d\n", __func__, seq_id, i, tails_verif[seq_id]);
                 }
                 tails_verif[seq_id] = i;
             }
         }
         for (uint32_t i = 0; i < size; ++i) {
             if (tails_verif[i] != cells[i].tail) {
-                LHM_LOG_ERROR("%s: wrong tail for seq_id %d, (%d instead of %d)\n", __func__, i, cells[i].tail, tails_verif[i]);
+                LOG_ERROR("%s: wrong tail for seq_id %d, (%d instead of %d)\n", __func__, i, cells[i].tail, tails_verif[i]);
             }
         }
     }
@@ -967,7 +967,7 @@ bool lhm_memory_recurrent::state_read_meta(lhm_io_read_i & io, uint32_t cell_cou
             io.read(&n_seq_id, sizeof(n_seq_id));
 
             if (n_seq_id != 0) {
-                LHM_LOG_ERROR("%s: invalid seq_id-agnostic kv cell\n", __func__);
+                LOG_ERROR("%s: invalid seq_id-agnostic kv cell\n", __func__);
                 return false;
             }
 
@@ -977,7 +977,7 @@ bool lhm_memory_recurrent::state_read_meta(lhm_io_read_i & io, uint32_t cell_cou
         ubatch.seq_id[0] = &dest_seq_id;
 
         if (!find_slot(ubatch)) {
-            LHM_LOG_ERROR("%s: failed to find available cells in kv cache\n", __func__);
+            LOG_ERROR("%s: failed to find available cells in kv cache\n", __func__);
             return false;
         }
 
@@ -992,7 +992,7 @@ bool lhm_memory_recurrent::state_read_meta(lhm_io_read_i & io, uint32_t cell_cou
         // whole KV cache restore
 
         if (cell_count > size) {
-            LHM_LOG_ERROR("%s: not enough cells in kv cache\n", __func__);
+            LOG_ERROR("%s: not enough cells in kv cache\n", __func__);
             return false;
         }
 
@@ -1014,7 +1014,7 @@ bool lhm_memory_recurrent::state_read_meta(lhm_io_read_i & io, uint32_t cell_cou
                 io.read(&seq_id, sizeof(seq_id));
 
                 if (seq_id < 0 || (uint32_t) seq_id >= this->n_seq_max) {
-                    LHM_LOG_ERROR("%s: invalid seq_id, %d is out of range [0, %u)\n", __func__, seq_id, this->n_seq_max);
+                    LOG_ERROR("%s: invalid seq_id, %d is out of range [0, %u)\n", __func__, seq_id, this->n_seq_max);
                     return false;
                 }
 
@@ -1022,7 +1022,7 @@ bool lhm_memory_recurrent::state_read_meta(lhm_io_read_i & io, uint32_t cell_cou
 
                 int32_t & tail = cells[seq_id].tail;
                 if (tail != -1) {
-                    LHM_LOG_ERROR("%s: duplicate tail for seq_id %d in cell %d and %d\n", __func__, seq_id, i, tail);
+                    LOG_ERROR("%s: duplicate tail for seq_id %d in cell %d and %d\n", __func__, seq_id, i, tail);
                     return false;
                 }
                 tail = i;
@@ -1049,15 +1049,15 @@ bool lhm_memory_recurrent::state_read_data(lhm_io_read_i & io, uint32_t cell_cou
     io.read(&n_layer, sizeof(n_layer));
 
     if (n_layer != hparams.n_layer()) {
-        LHM_LOG_ERROR("%s: mismatched layer count (%u instead of %u)\n", __func__, n_layer, hparams.n_layer());
+        LOG_ERROR("%s: mismatched layer count (%u instead of %u)\n", __func__, n_layer, hparams.n_layer());
         return false;
     }
     if (cell_count > size) {
-        LHM_LOG_ERROR("%s: not enough cells in kv cache to restore state (%u > %u)\n", __func__, cell_count, size);
+        LOG_ERROR("%s: not enough cells in kv cache to restore state (%u > %u)\n", __func__, cell_count, size);
         return false;
     }
     if (false != (bool) s_trans) {
-        LHM_LOG_ERROR("%s: incompatible s transposition\n", __func__);
+        LOG_ERROR("%s: incompatible s transposition\n", __func__);
         return false;
     }
 
@@ -1071,7 +1071,7 @@ bool lhm_memory_recurrent::state_read_data(lhm_io_read_i & io, uint32_t cell_cou
         io.read(&r_type_i_ref, sizeof(r_type_i_ref));
         const int32_t r_type_i = (int32_t) r_l[il]->type;
         if (r_type_i != r_type_i_ref) {
-            LHM_LOG_ERROR("%s: mismatched r type (%d != %d, layer %d)\n", __func__, r_type_i, r_type_i_ref, il);
+            LOG_ERROR("%s: mismatched r type (%d != %d, layer %d)\n", __func__, r_type_i, r_type_i_ref, il);
             return false;
         }
 
@@ -1080,7 +1080,7 @@ bool lhm_memory_recurrent::state_read_data(lhm_io_read_i & io, uint32_t cell_cou
         io.read(&r_size_row_ref, sizeof(r_size_row_ref));
         const size_t r_size_row = ggml_row_size(r_l[il]->type, hparams.n_embd_r());
         if (r_size_row != r_size_row_ref) {
-            LHM_LOG_ERROR("%s: mismatched r row size (%zu != %zu, layer %d)\n", __func__, r_size_row, (size_t) r_size_row_ref, il);
+            LOG_ERROR("%s: mismatched r row size (%zu != %zu, layer %d)\n", __func__, r_size_row, (size_t) r_size_row_ref, il);
             return false;
         }
 
@@ -1101,7 +1101,7 @@ bool lhm_memory_recurrent::state_read_data(lhm_io_read_i & io, uint32_t cell_cou
             const int32_t s_type_i = (int32_t)s_l[il]->type;
 
             if (s_type_i != s_type_i_ref) {
-                LHM_LOG_ERROR("%s: mismatched s type (%d != %d, layer %d)\n", __func__, s_type_i, s_type_i_ref, il);
+                LOG_ERROR("%s: mismatched s type (%d != %d, layer %d)\n", __func__, s_type_i, s_type_i_ref, il);
                 return false;
             }
 
@@ -1110,7 +1110,7 @@ bool lhm_memory_recurrent::state_read_data(lhm_io_read_i & io, uint32_t cell_cou
             io.read(&s_size_row_ref, sizeof(s_size_row_ref));
             const size_t s_size_row = ggml_row_size(s_l[il]->type, hparams.n_embd_s());
             if (s_size_row != s_size_row_ref) {
-                LHM_LOG_ERROR("%s: mismatched s row size (%zu != %zu, layer %d)\n", __func__, s_size_row, (size_t) s_size_row_ref, il);
+                LOG_ERROR("%s: mismatched s row size (%zu != %zu, layer %d)\n", __func__, s_size_row, (size_t) s_size_row_ref, il);
                 return false;
             }
 
@@ -1132,7 +1132,7 @@ bool lhm_memory_recurrent::state_read_data(lhm_io_read_i & io, uint32_t cell_cou
             io.read(&s_type_i_ref, sizeof(s_type_i_ref));
             const int32_t s_type_i = (int32_t)s_l[il]->type;
             if (s_type_i != s_type_i_ref) {
-                LHM_LOG_ERROR("%s: mismatched s type (%d != %d, layer %d)\n", __func__, s_type_i, s_type_i_ref, il);
+                LOG_ERROR("%s: mismatched s type (%d != %d, layer %d)\n", __func__, s_type_i, s_type_i_ref, il);
                 return false;
             }
 
@@ -1141,7 +1141,7 @@ bool lhm_memory_recurrent::state_read_data(lhm_io_read_i & io, uint32_t cell_cou
             io.read(&s_size_el_ref, sizeof(s_size_el_ref));
             const size_t s_size_el = ggml_type_size(s_l[il]->type);
             if (s_size_el != s_size_el_ref) {
-                LHM_LOG_ERROR("%s: mismatched s element size (%zu != %zu, layer %d)\n", __func__, s_size_el, (size_t) s_size_el_ref, il);
+                LOG_ERROR("%s: mismatched s element size (%zu != %zu, layer %d)\n", __func__, s_size_el, (size_t) s_size_el_ref, il);
                 return false;
             }
 
@@ -1149,7 +1149,7 @@ bool lhm_memory_recurrent::state_read_data(lhm_io_read_i & io, uint32_t cell_cou
             uint32_t n_embd_s_ref;
             io.read(&n_embd_s_ref, sizeof(n_embd_s_ref));
             if (n_embd_s != n_embd_s_ref) {
-                LHM_LOG_ERROR("%s: mismatched s embedding size (%u != %u, layer %d)\n", __func__, n_embd_s, n_embd_s_ref, il);
+                LOG_ERROR("%s: mismatched s embedding size (%u != %u, layer %d)\n", __func__, n_embd_s, n_embd_s_ref, il);
                 return false;
             }
 

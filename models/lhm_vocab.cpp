@@ -363,13 +363,6 @@ struct llm_tokenizer_bpe_session {
             if (vocab.get_ignore_merges() && vocab.text_to_token(word) != LHM_TOKEN_NULL) {
                 symbols.emplace_back(llm_symbol{-1, -1, word.c_str(), word.size()});
                 offset = word.size();
-            } else if (tok_pre == LHM_VOCAB_PRE_TYPE_GEMMA4 && word.find_first_not_of('\n') == std::string::npos) {
-                // fix for gemma 4, ref: https://github.com/ggml-org/lhm.cpp/pull/21343
-                auto tok = vocab.text_to_token(word);
-                if (tok != LHM_TOKEN_NULL) {
-                    symbols.emplace_back(llm_symbol{-1, -1, word.c_str(), word.size()});
-                    offset = word.size();
-                }
             }
 
             while (offset < word.size()) {
@@ -2051,14 +2044,6 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
             if (ml.get_key(LLM_KV_TOKENIZER_ADD_SEP, temp, false)) {
                 add_sep = temp;
             }
-
-            // workaround for Gemma 4
-            // ref: https://github.com/ggml-org/lhm.cpp/pull/21500
-            if (pre_type == LHM_VOCAB_PRE_TYPE_GEMMA4 && !add_bos) {
-                add_bos = true;
-
-                LOG_WARN("%s: override '%s' to 'true' for Gemma4\n", __func__, kv(LLM_KV_TOKENIZER_ADD_BOS).c_str());
-            }
         }
 
         // BertNormalizer options
@@ -2327,7 +2312,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
 
             if (t.first == "<|channel|>" || t.first == "<|message|>" || t.first == "<|start|>" || t.first == "<|constrain|>") {
                 LOG_WARN("%s: setting token '%s' (%d) attribute to USER_DEFINED (%u), old attributes: %u\n",
-                        __func__, t.first.c_str(), t.second, LHM_TOKEN_ATTR_USER_DEFINED, attr);
+                        __func__, t.first.c_str(), int(t.second), int(LHM_TOKEN_ATTR_USER_DEFINED), int(attr));
 
                 attr = LHM_TOKEN_ATTR_USER_DEFINED;
             }
@@ -2600,7 +2585,7 @@ lhm_token_attr lhm_vocab::impl::token_get_attr(lhm_token id) const {
 }
 
 void lhm_vocab::impl::init_tokenizer(enum lhm_vocab_type type) {
-    LOG_DEBUG("%s: initializing tokenizer for type %d\n", __func__, type);
+    LOG_DEBUG("%s: initializing tokenizer for type %d\n", __func__, int(type));
 
     switch (type) {
         case LHM_VOCAB_TYPE_SPM:
@@ -3547,12 +3532,12 @@ int32_t lhm_vocab::tokenize(
                         bool   parse_special) const {
     auto res = tokenize(std::string(text, text_len), add_special, parse_special);
     if (res.size() >= static_cast<size_t>(std::numeric_limits<int32_t>::max())) {
-        LHM_LOG_ERROR("%s: tokenization result size %zu exceeds int32_t limit\n", __func__, res.size());
+        LOG_ERROR("%s: tokenization result size %zu exceeds int32_t limit\n", __func__, res.size());
         return std::numeric_limits<int32_t>::min();
     }
 
     if (n_tokens_max < (int) res.size()) {
-        // LHM_LOG_ERROR("%s: too many tokens\n", __func__);
+        // LOG_ERROR("%s: too many tokens\n", __func__);
         return -((int) res.size());
     }
 

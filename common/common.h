@@ -1,12 +1,6 @@
-// Various helper functions and utilities
-
 #pragma once
 
-#include "lassert.h"
-#include "lhm_cpp.h"
 
-#include "ggml-opt.h"
-#include "ggml.h"
 
 #include <set>
 #include <sstream>
@@ -15,6 +9,12 @@
 #include <vector>
 #include <map>
 #include <algorithm>
+
+#include <ggml-opt.h>
+#include <ggml.h>
+
+#include "log.h"
+#include "lhm_cpp.h"
 
 #if defined(_WIN32) && !defined(_WIN32_WINNT)
 #define _WIN32_WINNT 0x0A00

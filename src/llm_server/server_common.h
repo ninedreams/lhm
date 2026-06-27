@@ -3,7 +3,7 @@
 #include "common.h"
 #include "log.h"
 #include "lhm.h"
-#include "chat.h"
+#include "chat/chat.h"
 
 #include <nlohmann/json.hpp>
 

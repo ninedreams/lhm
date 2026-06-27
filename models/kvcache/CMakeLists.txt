@@ -16,7 +16,3 @@ target_include_directories(lhm_kvcache PUBLIC ${CMAKE_SOURCE_DIR}/lhm)
 target_compile_features(lhm_kvcache PRIVATE cxx_std_17) # don't bump
 
 target_link_libraries(lhm_kvcache PUBLIC lhm_params lhm_memory ggml)
-
-if(BUILD_SHARED_LIBS)
-    set_target_properties(lhm_kvcache PROPERTIES POSITION_INDEPENDENT_CODE ON)
-endif()

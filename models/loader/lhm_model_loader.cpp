@@ -1658,7 +1658,7 @@ bool lhm_model_loader::load_all_data(
     for (auto & future : validation_result) {
         auto result = future.get();
         if (!result.second) {
-            LHM_LOG_ERROR("%s: tensor '%s' has invalid data\n", __func__, ggml_get_name(result.first));
+            LOG_ERROR("%s: tensor '%s' has invalid data\n", __func__, ggml_get_name(result.first));
             validation_failed = true;
         }
     }

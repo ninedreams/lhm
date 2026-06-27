@@ -1,4 +1,4 @@
-#include "lhm_memory_hybrid-iswa.h"
+#include "lhm_memory_hybrid_iswa.h"
 
 #include "lhm_impl.h"
 #include "lhm_model.h"
@@ -103,20 +103,20 @@ lhm_memory_context_ptr lhm_memory_hybrid_iswa::init_batch(lhm_batch_allocr & bal
         // prepare the recurrent batches first
         if (!mem_recr->prepare(ubatches)) {
             // TODO: will the recurrent cache be in an undefined context at this point?
-            LHM_LOG_ERROR("%s: failed to prepare recurrent ubatches\n", __func__);
+            LOG_ERROR("%s: failed to prepare recurrent ubatches\n", __func__);
             return std::make_unique<lhm_memory_hybrid_iswa_context>(LHM_MEMORY_STATUS_FAILED_PREPARE);
         }
 
         // prepare the attention cache (iswa version returns both base and swa slot infos)
         auto sinfos_base = mem_attn->get_base()->prepare(ubatches);
         if (sinfos_base.empty()) {
-            LHM_LOG_ERROR("%s: failed to prepare attention base ubatches\n", __func__);
+            LOG_ERROR("%s: failed to prepare attention base ubatches\n", __func__);
             return std::make_unique<lhm_memory_hybrid_iswa_context>(LHM_MEMORY_STATUS_FAILED_PREPARE);
         }
 
         auto sinfos_swa = mem_attn->get_swa()->prepare(ubatches);
         if (sinfos_swa.empty()) {
-            LHM_LOG_ERROR("%s: failed to prepare attention swa ubatches\n", __func__);
+            LOG_ERROR("%s: failed to prepare attention swa ubatches\n", __func__);
             return std::make_unique<lhm_memory_hybrid_iswa_context>(LHM_MEMORY_STATUS_FAILED_PREPARE);
         }
 

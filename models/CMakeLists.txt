@@ -8,13 +8,14 @@ add_subdirectory(kvcache)
 add_subdirectory(memory)
 add_subdirectory(loader)
 add_subdirectory(llm)
+add_subdirectory(chat)
 
 #
 # main library: lhm
 #
 set(TARGET lhm_models)
 
-add_library(${TARGET}
+add_library(${TARGET} STATIC
     ../lhm/lhm.h
     ../lhm/lhm_cpp.h
     lhm.cpp
@@ -53,22 +54,17 @@ add_library(${TARGET}
 
 target_include_directories(${TARGET} PRIVATE .)
 target_include_directories(${TARGET} PUBLIC ${CMAKE_SOURCE_DIR}/lhm)
+target_include_directories(${TARGET} PUBLIC ${CMAKE_SOURCE_DIR}/common)
 target_include_directories(${TARGET} PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/fmt/include)
 target_include_directories(${TARGET} PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/spdlog/include)
-target_compile_features(${TARGET} PRIVATE cxx_std_17) # don't bump
 
-target_link_libraries(${TARGET} PUBLIC
+target_link_libraries(${TARGET} PRIVATE
     common
     lhm_params
     lhm_kvcache
     lhm_memory
     lhm_loader
     lhm_llm
+    lhm_chat
     ggml
 )
-
-if(BUILD_SHARED_LIBS)
-    set_target_properties(${TARGET} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    target_compile_definitions(${TARGET} PRIVATE LHM_BUILD)
-    target_compile_definitions(${TARGET} PUBLIC LHM_SHARED)
-endif()

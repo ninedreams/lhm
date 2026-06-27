@@ -6,7 +6,7 @@
 #include <thread>
 #include <signal.h>
 
-#include "chat.h"
+#include "chat/chat.h"
 #include "common.h"
 #include "config.h"
 #include "console.h"

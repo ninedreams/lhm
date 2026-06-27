@@ -1,14 +1,14 @@
-#include "lhm_grammar.h"
-
-#include "lhm_impl.h"
-#include "lhm_vocab.h"
-#include "lhm_sampler.h"
-
 #include <cmath>
 #include <algorithm>
 #include <cstdint>
 #include <set>
 #include <stdexcept>
+
+#include "lhm_grammar.h"
+#include "log.h"
+#include "lhm_impl.h"
+#include "lhm_vocab.h"
+#include "lhm_sampler.h"
 
 #define MAX_REPETITION_THRESHOLD 2000
 //
@@ -1148,7 +1148,7 @@ struct lhm_grammar * lhm_grammar_init_impl(
             continue;
         }
         if (lhm_grammar_detect_left_recursion(vec_rules, i, &rules_visited, &rules_in_progress, &rules_may_be_empty)) {
-            LHM_LOG_ERROR("unsupported grammar, left recursion detected for nonterminal at index %zu", i);
+            LOG_ERROR("unsupported grammar, left recursion detected for nonterminal at index %zu", i);
             return nullptr;
         }
     }
@@ -1206,13 +1206,13 @@ struct lhm_grammar * lhm_grammar_init_impl(
     // if there is a grammar, parse it
     // rules will be empty (default) if there are parse errors
     if (!parser.parse(grammar_str) || parser.rules.empty()) {
-        LHM_LOG_ERROR("failed to parse grammar\n");
+        LOG_ERROR("failed to parse grammar\n");
         return nullptr;
     }
 
     // Ensure that the grammar contains the start symbol
     if (parser.symbol_ids.find(grammar_root) == parser.symbol_ids.end()) {
-        LHM_LOG_ERROR("grammar does not contain a '%s' symbol\n", grammar_root);
+        LOG_ERROR("grammar does not contain a '%s' symbol\n", grammar_root);
         return nullptr;
     }
 
@@ -1241,7 +1241,7 @@ struct lhm_grammar * lhm_grammar_init_impl(
             continue;
         }
         if (lhm_grammar_detect_left_recursion(vec_rules, i, &rules_visited, &rules_in_progress, &rules_may_be_empty)) {
-            LHM_LOG_ERROR("unsupported grammar, left recursion detected for nonterminal at index %zu\n", i);
+            LOG_ERROR("unsupported grammar, left recursion detected for nonterminal at index %zu\n", i);
             return nullptr;
         }
     }

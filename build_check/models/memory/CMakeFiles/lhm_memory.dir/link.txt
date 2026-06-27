@@ -1,0 +1,2 @@
+/usr/bin/ar qc liblhm_memory.a CMakeFiles/lhm_memory.dir/lhm_memory.cpp.o CMakeFiles/lhm_memory.dir/lhm_memory_hybrid.cpp.o CMakeFiles/lhm_memory.dir/lhm_memory_hybrid_iswa.cpp.o CMakeFiles/lhm_memory.dir/lhm_memory_recurrent.cpp.o
+/usr/bin/ranlib liblhm_memory.a

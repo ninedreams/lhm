@@ -1,15 +1,3 @@
-#include "lhm.h"
-
-#include "lhm_impl.h"
-
-#include "lhm_chat.h"
-#include "lhm_context.h"
-#include "lhm_mmap.h"
-#include "lhm_vocab.h"
-#include "lhm_model-loader.h"
-#include "lhm_model-saver.h"
-#include "lhm_model.h"
-
 #include "ggml.h"
 #include "ggml-cpp.h"
 #include "ggml-backend.h"
@@ -25,6 +13,18 @@
 #include <ctime>
 #include <stdexcept>
 #include <vector>
+
+#include "lhm.h"
+#include "lhm_impl.h"
+
+#include "lhm_chat.h"
+#include "lhm_context.h"
+#include "lhm_mmap.h"
+#include "lhm_vocab.h"
+#include "loader/lhm_model_loader.h"
+#include "loader/lhm_model_saver.h"
+#include "lhm_model.h"
+
 
 #if defined(_MSC_VER)
 #pragma warning(disable: 4244 4267) // possible loss of data
@@ -131,7 +131,7 @@ static bool lhm_prepare_model_devices(const lhm_model_params & params, lhm_model
                 n_devs++;
             }
             if (n_devs == 0) {
-                LHM_LOG_ERROR("%s: LHM_SPLIT_MODE_TENSOR needs >= 1 devices\n", __func__);
+                LOG_ERROR("%s: LHM_SPLIT_MODE_TENSOR needs >= 1 devices\n", __func__);
                 return false;
             }
             LOG_INFO("%s: creating a Meta device with %zu devices\n", __func__, n_devs);
@@ -169,7 +169,7 @@ static bool lhm_prepare_model_devices(const lhm_model_params & params, lhm_model
                 devs.push_back(dev);
             }
             if (devs.empty()) {
-                LHM_LOG_ERROR("%s: LHM_SPLIT_MODE_TENSOR needs >= 1 devices\n", __func__);
+                LOG_ERROR("%s: LHM_SPLIT_MODE_TENSOR needs >= 1 devices\n", __func__);
                 return false;
             }
 
@@ -254,7 +254,7 @@ static bool lhm_prepare_model_devices(const lhm_model_params & params, lhm_model
             model->devices.clear();
         } else {
             if (params.main_gpu >= (int)model->devices.size()) {
-                LHM_LOG_ERROR("%s: invalid value for main_gpu: %d (available devices: %zu)\n", __func__, params.main_gpu, model->devices.size());
+                LOG_ERROR("%s: invalid value for main_gpu: %d (available devices: %zu)\n", __func__, params.main_gpu, model->devices.size());
                 return false;
             }
             lhm_device main_gpu = model->devices[params.main_gpu];
@@ -330,7 +330,7 @@ static std::pair<int, lhm_model *> lhm_model_load(struct gguf_context * metadata
 
         return {0, model_ptr.release()};
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: error loading model: %s\n", __func__, err.what());
+        LOG_ERROR("%s: error loading model: %s\n", __func__, err.what());
         return {-1, nullptr};
     }
 }
@@ -355,14 +355,14 @@ static struct lhm_model * lhm_model_load_from_file_impl(
             n_sources_defined++;
         }
         if (n_sources_defined != 1) {
-            LHM_LOG_ERROR("%s: exactly one out metadata, path_model, and file must be defined\n", __func__);
+            LOG_ERROR("%s: exactly one out metadata, path_model, and file must be defined\n", __func__);
             return nullptr;
         }
     }
     ggml_time_init();
 
     if (!params.vocab_only && ggml_backend_reg_count() == 0) {
-        LHM_LOG_ERROR("%s: no backends are loaded. hint: use ggml_backend_load() or ggml_backend_load_all() to load a backend before calling this function\n", __func__);
+        LOG_ERROR("%s: no backends are loaded. hint: use ggml_backend_load() or ggml_backend_load_all() to load a backend before calling this function\n", __func__);
         return nullptr;
     }
 
@@ -373,10 +373,11 @@ static struct lhm_model * lhm_model_load_from_file_impl(
             unsigned * cur_percentage_p = (unsigned *) ctx;
             unsigned percentage = (unsigned) (100 * progress);
             while (percentage > *cur_percentage_p) {
+                // TODO
                 *cur_percentage_p = percentage;
-                LHM_LOG_CONT(".");
+                LOG_INFO("{}%", *cur_percentage_p);
                 if (percentage >= 100) {
-                    LHM_LOG_CONT("\n");
+                    LOG_INFO("\n");
                 }
             }
             return true;
@@ -387,7 +388,7 @@ static struct lhm_model * lhm_model_load_from_file_impl(
     LHM_ASSERT(status <= 0);
     if (status < 0) {
         if (status == -1) {
-            LHM_LOG_ERROR("%s: failed to load model\n", __func__);
+            LOG_ERROR("%s: failed to load model\n", __func__);
         } else if (status == -2) {
             LOG_INFO("%s: cancelled model load\n", __func__);
         }
@@ -433,7 +434,7 @@ struct lhm_model * lhm_model_load_from_splits(
         struct lhm_model_params params) {
     std::vector<std::string> splits;
     if (n_paths == 0) {
-        LHM_LOG_ERROR("%s: list of splits is empty\n", __func__);
+        LOG_ERROR("%s: list of splits is empty\n", __func__);
         return nullptr;
     }
     splits.reserve(n_paths);
@@ -445,7 +446,7 @@ struct lhm_model * lhm_model_load_from_splits(
 
 struct lhm_model * lhm_model_load_from_file_ptr(FILE * file, struct lhm_model_params params) {
     if (!file) {
-        LHM_LOG_ERROR("%s: file is NULL\n", __func__);
+        LOG_ERROR("%s: file is NULL\n", __func__);
         return nullptr;
     }
     std::string path_model;

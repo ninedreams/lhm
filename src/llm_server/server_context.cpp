@@ -6,7 +6,7 @@
 #include "server_queue.h"
 #include "server_schema.h"
 
-#include "lassert.h"
+
 #include "common.h"
 #include "fit.h"
 #include "lhm.h"
@@ -1017,8 +1017,6 @@ private:
             slot.spec    = spec.get();
             slot.n_ctx   = n_ctx_slot;
 
-            slot.mctx                   = nullptr;
-
             SLT_INF(slot, "new slot, n_ctx = %d\n", slot.n_ctx);
 
             slot.callback_on_release = [this](int id_slot) {
@@ -1889,7 +1887,7 @@ private:
     bool tokenize_cli_input(server_task & task) {
         try {
             auto & prompt = task.cli_prompt;
-            task.tokens = std::move(tokenize_input_prompts(vocab, nullptr, prompt, true, true)[0]);
+            task.tokens = std::move(tokenize_input_prompts(vocab, prompt, true, true)[0]);
             task.cli_prompt.clear();
             task.cli_files.clear();
         } catch (const std::exception & e) {
@@ -3423,9 +3421,6 @@ server_context_meta server_context::get_meta() const {
         /* model_aliases          */ impl->model_aliases,
         /* model_tags             */ impl->model_tags,
         /* model_path             */ impl->params_base.model.path,
-        /* has_inp_image          */ impl->chat_params.allow_image,
-        /* has_inp_audio          */ impl->chat_params.allow_audio,
-        /* has_inp_video          */ impl->chat_params.allow_video,
         /* json_ui_settings       */ impl->json_ui_settings,
         /* json_webui_settings    */ impl->json_webui_settings,  // Deprecated
         /* slot_n_ctx             */ impl->get_slot_n_ctx(),
@@ -3504,7 +3499,7 @@ static int32_t prompt_get_n_before_user(
 
         const std::string prefix = prompt.substr(0, (size_t) byte_pos);
 
-        result = (int32_t) tokenize_input_prompts(vocab, nullptr, prefix, true, true)[0].size();
+        result = (int32_t) tokenize_input_prompts(vocab, prefix, true, true)[0].size();
 
         SRV_TRC("message_spans: last user message: byte_pos=%d, n_before_user=%d\n",
                 byte_pos, result);
@@ -3551,7 +3546,7 @@ std::unique_ptr<server_res_generator> server_routes::handle_completions_impl(
         // process prompt
         std::vector<server_tokens> inputs;
 
-        inputs = tokenize_input_prompts(ctx_server.vocab, nullptr, prompt, true, true);
+        inputs = tokenize_input_prompts(ctx_server.vocab, prompt, true, true);
 
         // tasks.reserve(inputs.size()); // TODO: this is inaccurate due to child tasks
 
@@ -4008,11 +4003,6 @@ void server_routes::init_routes() {
             { "total_slots",                 params.n_parallel },
             { "model_alias",                 meta->model_name },
             { "model_path",                  meta->model_path },
-            { "modalities",                  json {
-                {"vision", meta->has_inp_image},
-                {"video",  meta->has_inp_video},
-                {"audio",  meta->has_inp_audio},
-            } },
             { "media_marker",                get_media_marker() },
             { "endpoint_slots",              params.endpoint_slots },
             { "endpoint_props",              params.endpoint_props },
@@ -4107,7 +4097,7 @@ void server_routes::init_routes() {
         data["input_extra"] = input_extra; // default to empty array if it's not exist
 
         std::string prompt = json_value(data, "prompt", std::string());
-        std::vector<server_tokens> tokenized_prompts = tokenize_input_prompts(ctx_server.vocab, nullptr, prompt, false, true);
+        std::vector<server_tokens> tokenized_prompts = tokenize_input_prompts(ctx_server.vocab, prompt, false, true);
         SRV_DBG("creating infill tasks, n_prompts = %d\n", (int) tokenized_prompts.size());
         data["prompt"] = format_prompt_infill(
             ctx_server.vocab,
@@ -4171,7 +4161,7 @@ void server_routes::init_routes() {
     };
 
     this->post_chat_completions_tok = [this](const server_http_req & req) {
-        return handle_count_tokens(ctx_server.vocab, nullptr, req, TASK_RESPONSE_TYPE_OAI_CHAT);
+        return handle_count_tokens(ctx_server.vocab, req, TASK_RESPONSE_TYPE_OAI_CHAT);
     };
 
     this->post_control = [this](const server_http_req & req) {
@@ -4230,7 +4220,7 @@ void server_routes::init_routes() {
     };
 
     this->post_responses_tok_oai = [this](const server_http_req & req) {
-        return handle_count_tokens(ctx_server.vocab, nullptr, req, TASK_RESPONSE_TYPE_OAI_RESP);
+        return handle_count_tokens(ctx_server.vocab, req, TASK_RESPONSE_TYPE_OAI_RESP);
     };
 
     this->post_transcriptions_oai = [this](const server_http_req & req) {
@@ -4280,7 +4270,7 @@ void server_routes::init_routes() {
     };
 
     this->post_anthropic_count_tokens = [this](const server_http_req & req) {
-        return handle_count_tokens(ctx_server.vocab, nullptr, req, TASK_RESPONSE_TYPE_ANTHROPIC);
+        return handle_count_tokens(ctx_server.vocab, req, TASK_RESPONSE_TYPE_ANTHROPIC);
     };
 
     // same with handle_chat_completions, but without inference part
@@ -4442,7 +4432,7 @@ void server_routes::init_routes() {
             std::vector<server_task> tasks;
             tasks.reserve(documents.size());
             for (size_t i = 0; i < documents.size(); i++) {
-                auto tmp = format_prompt_rerank(ctx_server.model_tgt, ctx_server.vocab, nullptr, query, documents[i]);
+                auto tmp = format_prompt_rerank(ctx_server.model_tgt, ctx_server.vocab, query, documents[i]);
                 server_task task = server_task(SERVER_TASK_TYPE_RERANK);
                 task.id     = rd.get_new_id();
                 task.tokens = std::move(tmp);
@@ -4700,7 +4690,7 @@ std::unique_ptr<server_res_generator> server_routes::handle_embeddings_impl(cons
         }
     }
 
-    auto tokenized_prompts = tokenize_input_prompts(ctx_server.vocab, nullptr, prompt, true, true);
+    auto tokenized_prompts = tokenize_input_prompts(ctx_server.vocab, prompt, true, true);
     for (const auto & tokens : tokenized_prompts) {
         // this check is necessary for models that do not add BOS token to the input
         if (tokens.empty()) {
@@ -4713,7 +4703,7 @@ std::unique_ptr<server_res_generator> server_routes::handle_embeddings_impl(cons
     if (body.count("embd_normalize") != 0) {
         embd_normalize = body.at("embd_normalize");
         if (meta->pooling_type == LHM_POOLING_TYPE_NONE) {
-            SRV_DBG("embd_normalize is not supported by pooling type %d, ignoring it\n", meta->pooling_type);
+            SRV_DBG("embd_normalize is not supported by pooling type %d, ignoring it\n", int(meta->pooling_type));
         }
     }
 

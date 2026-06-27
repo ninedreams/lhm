@@ -1,5 +1,5 @@
 #include "server_schema.h"
-#include "lassert.h"
+
 #include "json_schema_to_grammar.h"
 
 namespace server_schema {

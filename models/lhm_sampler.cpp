@@ -1,12 +1,3 @@
-#include "lhm_sampler.h"
-
-#include "lassert.h"
-#include "lhm_impl.h"
-#include "lhm_vocab.h"
-#include "lhm_grammar.h"
-
-#include "ggml-cpp.h"
-
 #include <array>
 #include <algorithm>
 #include <cassert>
@@ -20,6 +11,15 @@
 #include <random>
 #include <unordered_map>
 #include <stdexcept>
+
+#include <ggml-cpp.h>
+
+#include "lhm_sampler.h"
+
+#include "lhm_impl.h"
+#include "lhm_vocab.h"
+#include "lhm_grammar.h"
+#include "log.h"
 
 // the ring buffer works similarly to std::deque, but with a fixed capacity
 template<typename T>

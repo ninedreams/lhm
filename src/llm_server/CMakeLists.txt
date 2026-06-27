@@ -18,17 +18,17 @@ add_library(${TARGET} STATIC
     server_tools.h
 )
 
-if (BUILD_SHARED_LIBS)
-    set_target_properties(${TARGET} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-endif()
-
 target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR})
-target_link_libraries(${TARGET} PUBLIC common lhm_models ${CMAKE_THREAD_LIBS_INIT})
+target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR}/lhm)
+target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR}/json)
+target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR}/common)
+target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR}/models)
+target_link_libraries(${TARGET} PRIVATE common lhm_models ${CMAKE_THREAD_LIBS_INIT})
 
 # llm_server-impl: server logic, reusable by app
 set(TARGET llm_server_impl)
 
-add_library(${TARGET}
+add_library(${TARGET} STATIC
     server.cpp
     server_http.cpp
     server_http.h
@@ -42,11 +42,9 @@ target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(${TARGET} PUBLIC server_context httplib::httplib ${CMAKE_THREAD_LIBS_INIT})
 
 # llm_server executable
-
 set(TARGET llm_server)
 
 add_executable(${TARGET} main.cpp)
 install(TARGETS ${TARGET} RUNTIME)
 
-target_link_libraries(${TARGET} PRIVATE llm_server_impl fmt::fmt spdlog::spdlog gflags::gflags)
-target_compile_features(${TARGET} PRIVATE cxx_std_17)
+target_link_libraries(${TARGET} PRIVATE llm_server_impl fmt::fmt spdlog::spdlog gflags::gflags ggml)

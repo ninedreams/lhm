@@ -1,0 +1,29 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/mac/lhm/build_check/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/thirdparty/cpp-httplib/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/thirdparty/fmt/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/thirdparty/spdlog/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/thirdparty/gflags/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/thirdparty/rapidjson/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/thirdparty/rapidjson/doc/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/thirdparty/llama.cpp/ggml/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/thirdparty/llama.cpp/ggml/src/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/thirdparty/llama.cpp/ggml/src/ggml-cpu/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/thirdparty/llama.cpp/ggml/src/ggml-blas/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/thirdparty/llama.cpp/ggml/src/ggml-metal/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/common/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/models/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/models/params/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/models/kvcache/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/models/memory/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/models/loader/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/models/llm/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/models/chat/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/src/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/src/llm_server/cmake_install.cmake",
+		"/Users/mac/lhm/build_check/src/llm_cli/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

@@ -6,7 +6,7 @@
 #include "lhm_graph.h"
 #include "lhm_adapter.h"
 #include "lhm_impl.h"
-#include "lhm_memory.h"
+#include "memory/lhm_memory.h"
 
 #include "ggml-cpp.h"
 #include "ggml-opt.h"

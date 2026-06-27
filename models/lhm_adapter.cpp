@@ -67,7 +67,7 @@ bool lhm_adapter_cvec::init(const lhm_model & model) {
         ggml_backend_buffer_type_t buft = model.select_buft(il);
         ggml_context * ctx = ctx_for_buft(buft);
         if (!ctx) {
-            LHM_LOG_ERROR("%s: failed to allocate context for control vector\n", __func__);
+            LOG_ERROR("%s: failed to allocate context for control vector\n", __func__);
             return false;
         }
         ggml_tensor * tensor = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hparams.n_embd);
@@ -81,7 +81,7 @@ bool lhm_adapter_cvec::init(const lhm_model & model) {
         ggml_context * ctx = it.second;
         ggml_backend_buffer_t buf = ggml_backend_alloc_ctx_tensors_from_buft(ctx, buft);
         if (!buf) {
-            LHM_LOG_ERROR("%s: failed to allocate buffer for control vector\n", __func__);
+            LOG_ERROR("%s: failed to allocate buffer for control vector\n", __func__);
             return false;
         }
         ggml_backend_buffer_clear(buf, 0);
@@ -108,7 +108,7 @@ bool lhm_adapter_cvec::apply(
     }
 
     if (n_embd != (int) hparams.n_embd) {
-        LHM_LOG_ERROR("%s: control vector n_embd does not match model\n", __func__);
+        LOG_ERROR("%s: control vector n_embd does not match model\n", __func__);
         return false;
     }
 
@@ -424,7 +424,7 @@ lhm_adapter_lora * lhm_adapter_lora_init(lhm_model * model, const char * path_lo
         lhm_adapter_lora_init_impl(*model, path_lora, *adapter);
         return adapter;
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: failed to apply lora adapter: %s\n", __func__, err.what());
+        LOG_ERROR("%s: failed to apply lora adapter: %s\n", __func__, err.what());
 
         delete adapter;
     }

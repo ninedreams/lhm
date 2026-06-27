@@ -1,7 +1,7 @@
 #include "server_task.h"
-#include "lassert.h"
+
 #include "server_chat.h"
-#include "chat.h"
+#include "chat/chat.h"
 #include "common.h"
 #include "json_schema_to_grammar.h"
 #include "lhm.h"

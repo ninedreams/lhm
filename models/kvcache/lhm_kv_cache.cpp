@@ -875,14 +875,14 @@ bool lhm_kv_cache::update(lhm_context * lctx, bool do_shift, const stream_copy_i
 
             auto * gf = build_graph_shift(res, lctx);
             if (!ggml_backend_sched_alloc_graph(sched, gf)) {
-                LHM_LOG_ERROR("%s: failed to allocate compute graph for K-shift\n", __func__);
+                LOG_ERROR("%s: failed to allocate compute graph for K-shift\n", __func__);
                 return updated;
             }
 
             res->set_inputs(nullptr);
 
             if (lctx->graph_compute(gf, false) != GGML_STATUS_SUCCESS) {
-                LHM_LOG_ERROR("%s: failed to compute K-shift\n", __func__);
+                LOG_ERROR("%s: failed to compute K-shift\n", __func__);
                 return updated;
             }
 
@@ -1011,7 +1011,7 @@ lhm_kv_cache::slot_info lhm_kv_cache::find_slot(const lhm_ubatch & ubatch, bool 
         }
 
         if (n_tokens > cells.size()) {
-            LHM_LOG_ERROR("%s: n_tokens = %d > size = %u\n", __func__, n_tokens, cells.size());
+            LOG_ERROR("%s: n_tokens = %d > size = %u\n", __func__, n_tokens, cells.size());
             return { };
         }
 
@@ -1082,7 +1082,7 @@ lhm_kv_cache::slot_info lhm_kv_cache::find_slot(const lhm_ubatch & ubatch, bool 
             }
 
             if (n_tested >= cells.size()) {
-                //LHM_LOG_ERROR("%s: failed to find a slot for %d tokens\n", __func__, n_tokens);
+                //LOG_ERROR("%s: failed to find a slot for %d tokens\n", __func__, n_tokens);
                 return { };
             }
         }
@@ -1738,7 +1738,7 @@ void lhm_kv_cache::set_input_kq_mask(ggml_tensor * dst, const lhm_ubatch * ubatc
 
     //const int64_t t_end = ggml_time_us();
 
-    //LHM_LOG_ERROR("%s: kq mask time: %0.3f ms\n", __func__, (t_end - t_start)/1000.0);
+    //LOG_ERROR("%s: kq mask time: %0.3f ms\n", __func__, (t_end - t_start)/1000.0);
 }
 
 void lhm_kv_cache::set_input_pos_bucket(ggml_tensor * dst, const lhm_ubatch * ubatch) const {
@@ -2208,7 +2208,7 @@ bool lhm_kv_cache::state_read_meta(lhm_io_read_i & io, uint32_t strm, uint32_t c
             io.read(&n_seq_id, sizeof(n_seq_id));
 
             if (n_seq_id != 1) {
-                LHM_LOG_ERROR("%s: invalid seq_id-agnostic kv cell\n", __func__);
+                LOG_ERROR("%s: invalid seq_id-agnostic kv cell\n", __func__);
                 return false;
             }
 
@@ -2233,7 +2233,7 @@ bool lhm_kv_cache::state_read_meta(lhm_io_read_i & io, uint32_t strm, uint32_t c
 
         sinfo = find_slot(ubatch, false);
         if (sinfo.empty()) {
-            LHM_LOG_ERROR("%s: failed to find %d available cells in kv cache\n", __func__,  cell_count);
+            LOG_ERROR("%s: failed to find %d available cells in kv cache\n", __func__,  cell_count);
             return false;
         }
 
@@ -2255,7 +2255,7 @@ bool lhm_kv_cache::state_read_meta(lhm_io_read_i & io, uint32_t strm, uint32_t c
         // whole KV cache restore
 
         if (cell_count > cells.size()) {
-            LHM_LOG_ERROR("%s: not enough cells in kv cache\n", __func__);
+            LOG_ERROR("%s: not enough cells in kv cache\n", __func__);
             return false;
         }
 
@@ -2281,7 +2281,7 @@ bool lhm_kv_cache::state_read_meta(lhm_io_read_i & io, uint32_t strm, uint32_t c
                 io.read(&seq_id, sizeof(seq_id));
 
                 if (seq_id < 0 || (uint32_t) seq_id >= n_seq_max) {
-                    LHM_LOG_ERROR("%s: invalid seq_id, %d is out of range [0, %u)\n", __func__, seq_id, n_seq_max);
+                    LOG_ERROR("%s: invalid seq_id, %d is out of range [0, %u)\n", __func__, seq_id, n_seq_max);
                     return false;
                 }
 
@@ -2315,17 +2315,17 @@ bool lhm_kv_cache::state_read_data(lhm_io_read_i & io, uint32_t strm, uint32_t c
     io.read(&n_layer, sizeof(n_layer));
 
     if (n_layer != layers.size()) {
-        LHM_LOG_ERROR("%s: mismatched layer count (%u instead of %u)\n", __func__, n_layer, (uint32_t) layers.size());
+        LOG_ERROR("%s: mismatched layer count (%u instead of %u)\n", __func__, n_layer, (uint32_t) layers.size());
         return false;
     }
 
     if (cell_count > cells.size()) {
-        LHM_LOG_ERROR("%s: not enough cells in kv cache to restore state (%u > %u)\n", __func__, cell_count, cells.size());
+        LOG_ERROR("%s: not enough cells in kv cache to restore state (%u > %u)\n", __func__, cell_count, cells.size());
         return false;
     }
 
     if (this->v_trans != (bool) v_trans) {
-        LHM_LOG_ERROR("%s: incompatible V transposition\n", __func__);
+        LOG_ERROR("%s: incompatible V transposition\n", __func__);
         return false;
     }
 
@@ -2342,7 +2342,7 @@ bool lhm_kv_cache::state_read_data(lhm_io_read_i & io, uint32_t strm, uint32_t c
         io.read(&k_type_i_ref, sizeof(k_type_i_ref));
         const int32_t k_type_i = (int32_t) k->type;
         if (k_type_i != k_type_i_ref) {
-            LHM_LOG_ERROR("%s: mismatched key type (%d != %d, layer %d)\n", __func__, k_type_i, k_type_i_ref, il);
+            LOG_ERROR("%s: mismatched key type (%d != %d, layer %d)\n", __func__, k_type_i, k_type_i_ref, il);
             return false;
         }
 
@@ -2351,7 +2351,7 @@ bool lhm_kv_cache::state_read_data(lhm_io_read_i & io, uint32_t strm, uint32_t c
         io.read(&k_size_row_ref, sizeof(k_size_row_ref));
         const size_t k_size_row = ggml_row_size(k->type, n_embd_k_gqa);
         if (k_size_row != k_size_row_ref) {
-            LHM_LOG_ERROR("%s: mismatched key row size (%zu != %zu, layer %d)\n", __func__, k_size_row, (size_t) k_size_row_ref, il);
+            LOG_ERROR("%s: mismatched key row size (%zu != %zu, layer %d)\n", __func__, k_size_row, (size_t) k_size_row_ref, il);
             return false;
         }
 
@@ -2385,7 +2385,7 @@ bool lhm_kv_cache::state_read_data(lhm_io_read_i & io, uint32_t strm, uint32_t c
             io.read(&v_type_i_ref, sizeof(v_type_i_ref));
             const int32_t v_type_i = (int32_t) v->type;
             if (v_type_i != v_type_i_ref) {
-                LHM_LOG_ERROR("%s: mismatched value type (%d != %d, layer %d)\n", __func__, v_type_i, v_type_i_ref, il);
+                LOG_ERROR("%s: mismatched value type (%d != %d, layer %d)\n", __func__, v_type_i, v_type_i_ref, il);
                 return false;
             }
 
@@ -2394,7 +2394,7 @@ bool lhm_kv_cache::state_read_data(lhm_io_read_i & io, uint32_t strm, uint32_t c
             io.read(&v_size_row_ref, sizeof(v_size_row_ref));
             const size_t v_size_row = ggml_row_size(v->type, n_embd_v_gqa);
             if (v_size_row != v_size_row_ref) {
-                LHM_LOG_ERROR("%s: mismatched value row size (%zu != %zu, layer %d)\n", __func__, v_size_row, (size_t) v_size_row_ref, il);
+                LOG_ERROR("%s: mismatched value row size (%zu != %zu, layer %d)\n", __func__, v_size_row, (size_t) v_size_row_ref, il);
                 return false;
             }
 
@@ -2428,7 +2428,7 @@ bool lhm_kv_cache::state_read_data(lhm_io_read_i & io, uint32_t strm, uint32_t c
             io.read(&v_type_i_ref, sizeof(v_type_i_ref));
             const int32_t v_type_i = (int32_t) v->type;
             if (v_type_i != v_type_i_ref) {
-                LHM_LOG_ERROR("%s: mismatched value type (%d != %d, layer %d)\n", __func__, v_type_i, v_type_i_ref, il);
+                LOG_ERROR("%s: mismatched value type (%d != %d, layer %d)\n", __func__, v_type_i, v_type_i_ref, il);
                 return false;
             }
 
@@ -2437,7 +2437,7 @@ bool lhm_kv_cache::state_read_data(lhm_io_read_i & io, uint32_t strm, uint32_t c
             io.read(&v_size_el_ref, sizeof(v_size_el_ref));
             const size_t v_size_el = ggml_type_size(v->type);
             if (v_size_el != v_size_el_ref) {
-                LHM_LOG_ERROR("%s: mismatched value element size (%zu != %zu, layer %d)\n", __func__, v_size_el, (size_t) v_size_el_ref, il);
+                LOG_ERROR("%s: mismatched value element size (%zu != %zu, layer %d)\n", __func__, v_size_el, (size_t) v_size_el_ref, il);
                 return false;
             }
 
@@ -2445,7 +2445,7 @@ bool lhm_kv_cache::state_read_data(lhm_io_read_i & io, uint32_t strm, uint32_t c
             uint32_t n_embd_v_gqa_ref;
             io.read(&n_embd_v_gqa_ref, sizeof(n_embd_v_gqa_ref));
             if (n_embd_v_gqa != n_embd_v_gqa_ref) {
-                LHM_LOG_ERROR("%s: mismatched GQA embedding size (%u != %u, layer %d)\n", __func__, n_embd_v_gqa, n_embd_v_gqa_ref, il);
+                LOG_ERROR("%s: mismatched GQA embedding size (%u != %u, layer %d)\n", __func__, n_embd_v_gqa, n_embd_v_gqa_ref, il);
                 return false;
             }
 

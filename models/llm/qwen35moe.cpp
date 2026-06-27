@@ -1,5 +1,5 @@
 #include "models.h"
-#include "lhm_memory_recurrent.h"
+#include "memory/lhm_memory_recurrent.h"
 
 void lhm_model_qwen35moe::load_arch_hparams(lhm_model_loader & ml) {
     ml.get_key(LLM_KV_EXPERT_FEED_FORWARD_LENGTH,        hparams.n_ff_exp, false);

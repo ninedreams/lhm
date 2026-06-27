@@ -1,6 +1,6 @@
 #include "sampling.h"
 
-#include "lassert.h"
+
 #include "common.h"
 #include "fit.h"
 #include "log.h"

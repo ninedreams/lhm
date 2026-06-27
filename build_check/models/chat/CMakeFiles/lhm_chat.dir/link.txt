@@ -1,0 +1,2 @@
+/usr/bin/ar qc liblhm_chat.a CMakeFiles/lhm_chat.dir/chat.cpp.o CMakeFiles/lhm_chat.dir/chat_auto_parser_generator.cpp.o CMakeFiles/lhm_chat.dir/chat_auto_parser_helpers.cpp.o CMakeFiles/lhm_chat.dir/chat_diff_analyzer.cpp.o CMakeFiles/lhm_chat.dir/chat_peg_parser.cpp.o
+/usr/bin/ranlib liblhm_chat.a

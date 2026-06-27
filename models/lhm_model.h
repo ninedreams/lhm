@@ -3,8 +3,8 @@
 #include "lhm.h"
 #include "lhm_arch.h"
 #include "lhm_graph.h"
-#include "lhm_hparams.h"
-#include "lhm_memory.h"
+#include "params/lhm_hparams.h"
+#include "memory/lhm_memory.h"
 #include "lhm_vocab.h"
 
 #include <map>

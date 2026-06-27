@@ -2,7 +2,7 @@
 
 #include "lhm_batch.h"
 #include "lhm_graph.h"
-#include "lhm_kv-cache-iswa.h"
+#include "kvcache/lhm_kv_cache_iswa.h"
 #include "lhm_memory.h"
 #include "lhm_memory_recurrent.h"
 

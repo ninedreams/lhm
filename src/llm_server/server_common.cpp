@@ -1,9 +1,9 @@
 #include "common.h"
 #include "log.h"
 #include "lhm.h"
-#include "chat.h"
+#include "chat/chat.h"
 #include "base64.hpp"
-#include "lassert.h"
+
 
 #include "server_common.h"
 
@@ -164,7 +164,7 @@ std::vector<size_t> lora_get_enabled_ids(const std::vector<common_adapter_lora_i
 }
 
 //
-// base64 utils (TODO: use the base64::decode from base64.hpp)
+// base64 utils (TODO: use the lhm::base64::decode from base64.hpp)
 //
 
 static const std::string base64_chars =
@@ -818,7 +818,7 @@ json format_embeddings_response_oaicompat(
             const char* data_ptr = reinterpret_cast<const char*>(vec.data());
             size_t data_size = vec.size() * sizeof(float);
             embedding_obj = {
-                {"embedding", base64::encode(data_ptr, data_size)},
+                {"embedding", lhm::base64::encode(data_ptr, data_size)},
                 {"index", i++},
                 {"object", "embedding"},
                 {"encoding_format", "base64"}

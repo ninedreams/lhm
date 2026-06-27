@@ -2,7 +2,7 @@
 
 #include "lhm_impl.h"
 #include "lhm_vocab.h"
-#include "lhm_memory.h"
+#include "memory/lhm_memory.h"
 
 #include <cassert>
 #include <cstring>
@@ -42,14 +42,14 @@ bool lhm_batch_allocr::init(
     //
 
     if (n_seq_max > LHM_MAX_SEQ) {
-        LHM_LOG_ERROR("%s: n_seq_max = %d > %d\n", __func__, n_seq_max, LHM_MAX_SEQ);
+        LOG_ERROR("%s: n_seq_max = %d > %d\n", __func__, n_seq_max, LHM_MAX_SEQ);
         return false;
     }
 
     if (batch.token) {
         for (int32_t i = 0; i < batch.n_tokens; ++i) {
             if (batch.token[i] < 0 || (uint32_t) batch.token[i] >= vocab.n_tokens()) {
-                LHM_LOG_ERROR("%s: invalid token[%d] = %d\n", __func__, i, batch.token[i]);
+                LOG_ERROR("%s: invalid token[%d] = %d\n", __func__, i, batch.token[i]);
                 return false;
             }
         }
@@ -59,7 +59,7 @@ bool lhm_batch_allocr::init(
         for (int32_t i = 0; i < batch.n_tokens; ++i) {
             for (int32_t s = 0; s < batch.n_seq_id[i]; ++s) {
                 if (batch.seq_id && (batch.seq_id[i][s] < 0 || batch.seq_id[i][s] >= (lhm_seq_id) n_seq_max)) {
-                    LHM_LOG_ERROR("%s: invalid seq_id[%d][%d] = %d >= %d\n", __func__, i, s, batch.seq_id[i][s], (lhm_seq_id) n_seq_max);
+                    LOG_ERROR("%s: invalid seq_id[%d][%d] = %d >= %d\n", __func__, i, s, batch.seq_id[i][s], (lhm_seq_id) n_seq_max);
                     return false;
                 }
             }
@@ -263,7 +263,7 @@ bool lhm_batch_allocr::init(
 
             if (batch.token) {
                 if (p0 >= 0 && p0 >= seq_pos_min(s)) {
-                    LHM_LOG_ERROR(
+                    LOG_ERROR(
                             "%s: the tokens of sequence %d in the input batch have inconsistent sequence positions:\n"
                             " - the last position stored in the memory module of the context (i.e. the KV cache) for sequence %d is X = %d\n"
                             " - the tokens for sequence %d in the input batch have a starting position of Y = %d\n"
@@ -275,7 +275,7 @@ bool lhm_batch_allocr::init(
             } else {
                 // embedding inputs can have overlapping positions
                 if (p0 >= 0 && p0 > seq_pos_min(s)) {
-                    LHM_LOG_ERROR(
+                    LOG_ERROR(
                             "%s: the tokens of sequence %d in the input batch have inconsistent sequence positions:\n"
                             " - the last position stored in the memory module of the context (i.e. the KV cache) for sequence %d is X = %d\n"
                             " - the tokens for sequence %d in the input batch have a starting position of Y = %d\n"
@@ -302,7 +302,7 @@ bool lhm_batch_allocr::init(
                 }
 
                 if (!ok) {
-                    LHM_LOG_ERROR(
+                    LOG_ERROR(
                             "%s: the tokens of sequence %d in the input batch have inconsistent sequence positions:\n"
                             " - the last position stored in the memory module of the context (i.e. the KV cache) for sequence %d is X = %d\n"
                             " - the tokens for sequence %d in the input batch have a starting position of Y = %d\n"
@@ -314,7 +314,7 @@ bool lhm_batch_allocr::init(
             }
 
             if (seq_pos_max(s) - seq_pos_min(s) + 1 > (int) seq_pos[s].size()) {
-                LHM_LOG_ERROR("%s: sequence %d positions are not continuous\n", __func__, s);
+                LOG_ERROR("%s: sequence %d positions are not continuous\n", __func__, s);
                 return false;
             }
         }
@@ -326,7 +326,7 @@ bool lhm_batch_allocr::init(
                 if (seq_cpl[s0][s1]) {
                     if (memory->seq_pos_min(s0) != memory->seq_pos_min(s1) ||
                         memory->seq_pos_max(s0) != memory->seq_pos_max(s1)) {
-                        LHM_LOG_ERROR("%s: sequence %d is coupled to %d in the input batch, but have divereged\n", __func__, s0, s1);
+                        LOG_ERROR("%s: sequence %d is coupled to %d in the input batch, but have divereged\n", __func__, s0, s1);
                         return false;
                     }
                 }
@@ -371,12 +371,12 @@ bool lhm_batch_allocr::init(
                 cur_seq_set[seq_id] &= seq_set[i];
 
                 if (cur_seq_set[seq_id].none()) {
-                    LHM_LOG_ERROR("%s: sequence %d belongs to incompatible sequence sets (not allowed)\n", __func__, seq_id);
+                    LOG_ERROR("%s: sequence %d belongs to incompatible sequence sets (not allowed)\n", __func__, seq_id);
                     return false;
                 }
 
                 if (pos < cur_seq_pos[seq_id]) {
-                    LHM_LOG_ERROR("%s: sequence %d positions are decreasing (not allowed)\n", __func__, seq_id);
+                    LOG_ERROR("%s: sequence %d positions are decreasing (not allowed)\n", __func__, seq_id);
                     return false;
                 }
             }
@@ -507,7 +507,7 @@ lhm_ubatch lhm_batch_allocr::split_simple(uint32_t n_ubatch) {
 
 lhm_ubatch lhm_batch_allocr::split_equal(uint32_t n_ubatch, bool sequential) {
     if (sequential && has_cpl) {
-        LHM_LOG_ERROR("%s: sequential split is not supported when there are coupled sequences in the input batch (you may need to use the -kvu flag)\n", __func__);
+        LOG_ERROR("%s: sequential split is not supported when there are coupled sequences in the input batch (you may need to use the -kvu flag)\n", __func__);
 
         return {};
     }

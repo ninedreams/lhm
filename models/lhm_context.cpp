@@ -1,22 +1,25 @@
-#include "lhm_context.h"
-
-#include "ggml.h"
-#include "lhm_arch.h"
-#include "lhm_graph.h"
-#include "lhm_impl.h"
-#include "lhm_batch.h"
-#include "lhm_io.h"
-#include "lhm_memory.h"
-#include "lhm_mmap.h"
-#include "lhm_model.h"
-#include "lhm_ext.h"
-#include "lhm.h"
-
 #include <cinttypes>
 #include <cmath>
 #include <cstring>
 #include <limits>
 #include <stdexcept>
+
+#include <ggml.h>
+
+#include "lhm_context.h"
+
+#include "lhm_arch.h"
+#include "lhm_graph.h"
+#include "lhm_impl.h"
+#include "lhm_batch.h"
+#include "lhm_io.h"
+#include "memory/lhm_memory.h"
+#include "lhm_mmap.h"
+#include "lhm_model.h"
+#include "lhm_ext.h"
+#include "lhm.h"
+#include "log.h"
+
 
 //
 // lhm_context
@@ -138,7 +141,7 @@ lhm_context::lhm_context(
 
             cparams.yarn_attn_factor = get_mscale(factor, mscale) / get_mscale(factor, mscale_all_dims);
 
-            LOG_WARN("%s: setting new yarn_attn_factor = %.4f (mscale == %.1f, mscale_all_dim = %.1f)\n",
+            LOG_WARN("{}: setting new yarn_attn_factor = {:.4f} (mscale == {:.1f}, mscale_all_dim = {:.1f})\n",
                     __func__, cparams.yarn_attn_factor, mscale, mscale_all_dims);
         } else {
             cparams.yarn_attn_factor = get_mscale(factor, 1.0f);
@@ -193,7 +196,7 @@ lhm_context::lhm_context(
         graph_reuse_disable = LHM_GRAPH_REUSE_DISABLE ? (atoi(LHM_GRAPH_REUSE_DISABLE) != 0) : graph_reuse_disable;
 
         if (graph_reuse_disable) {
-            LOG_WARN("%s: graph reuse disabled\n", __func__);
+            LOG_WARN("{}: graph reuse disabled\n", __func__);
         }
     }
 
@@ -212,7 +215,7 @@ lhm_context::lhm_context(
 
         if (cparams.n_ctx != cparams.n_ctx_seq * cparams.n_seq_max) {
             cparams.n_ctx =  cparams.n_ctx_seq * cparams.n_seq_max;
-            LOG_WARN("%s: n_ctx is not divisible by n_seq_max - rounding down to %u\n", __func__, cparams.n_ctx);
+            LOG_WARN("{}: n_ctx is not divisible by n_seq_max - rounding down to {}\n", __func__, cparams.n_ctx);
         }
     }
 
@@ -230,12 +233,12 @@ lhm_context::lhm_context(
     LOG_INFO("%s: n_outputs_max = %u\n",   __func__, cparams.n_outputs_max);
 
     if (cparams.n_ctx_seq < hparams.n_ctx_train) {
-        LOG_WARN("%s: n_ctx_seq (%u) < n_ctx_train (%u) -- the full capacity of the model will not be utilized\n",
+        LOG_WARN("{}: n_ctx_seq ({}) < n_ctx_train ({}) -- the full capacity of the model will not be utilized\n",
                 __func__, cparams.n_ctx_seq, hparams.n_ctx_train);
     }
 
     if (cparams.n_ctx_seq > hparams.n_ctx_train) {
-        LOG_WARN("%s: n_ctx_seq (%u) > n_ctx_train (%u) -- possible training context overflow\n",
+        LOG_WARN("{}: n_ctx_seq ({}) > n_ctx_train ({}) -- possible training context overflow\n",
                 __func__, cparams.n_ctx_seq, hparams.n_ctx_train);
     }
 
@@ -402,7 +405,7 @@ lhm_context::~lhm_context() {
                 LOG_DEBUG("%s: %10s compute buffer size is %8.4f MiB, matches expectation of %8.4f MiB\n",
                     __func__, ggml_backend_buft_name(buft), size_act / (1024.0*1024.0), size_exp / (1024.0*1024.0));
             } else {
-                LOG_WARN("%s: %10s compute buffer size of %8.4f MiB, does not match expectation of %8.4f MiB\n",
+                LOG_WARN("{}: {} compute buffer size of {:.4f} MiB, does not match expectation of {:.4f} MiB\n",
                     __func__, ggml_backend_buft_name(buft), size_act / (1024.0*1024.0), size_exp / (1024.0*1024.0));
             }
         }
@@ -470,8 +473,8 @@ void lhm_context::sched_reserve() {
             const int il = std::stoi(n->name + prefix_len);
             ggml_backend_dev_t device_kv = model.dev_layer(il);
             if (device_fa != device_kv) {
-                LOG_WARN("%s: layer %d is assigned to device %s but the Flash Attention tensor "
-                        "is assigned to device %s (usually due to missing support)\n",
+                LOG_WARN("{}: layer {} is assigned to device {} but the Flash Attention tensor "
+                        "is assigned to device {} (usually due to missing support)\n",
                         __func__, il, ggml_backend_dev_name(device_kv), ggml_backend_dev_name(device_fa));
                 // FIXME: fa_device_mismatch logic is wrong for --no-kv-offload, but this is broken anyways
                 fa_device_mismatch = true;
@@ -481,10 +484,10 @@ void lhm_context::sched_reserve() {
 
         if (fa_device_mismatch) {
             cparams.flash_attn = false;
-            LOG_WARN("%s: Flash Attention was auto, set to disabled\n", __func__);
+            LOG_WARN("{}: Flash Attention was auto, set to disabled\n", __func__);
         } else {
             cparams.flash_attn = true;
-            LOG_INFO("%s: Flash Attention was auto, set to enabled\n", __func__);
+            LOG_INFO("{}: Flash Attention was auto, set to enabled\n", __func__);
         }
 
         cparams.auto_fa = false;
@@ -512,8 +515,8 @@ void lhm_context::sched_reserve() {
                 const int il = std::stoi(n->name + prefix_len);
                 ggml_backend_dev_t device_kv = model.dev_layer(il);
                 if (device_gdn != device_kv) {
-                    LOG_WARN("%s: layer %d is assigned to device %s but the fused Gated Delta Net tensor "
-                            "is assigned to device %s (usually due to missing support)\n",
+                    LOG_WARN("{}: layer {} is assigned to device {} but the fused Gated Delta Net tensor "
+                            "is assigned to device {} (usually due to missing support)\n",
                             __func__, il, ggml_backend_dev_name(device_kv), ggml_backend_dev_name(device_gdn));
                     gdn_device_mismatch = true;
                     break;
@@ -522,9 +525,9 @@ void lhm_context::sched_reserve() {
 
             if (gdn_device_mismatch) {
                 cparams.fused_gdn_ar = false;
-                LOG_WARN("%s: fused Gated Delta Net (autoregressive) not supported, set to disabled\n", __func__);
+                LOG_WARN("{}: fused Gated Delta Net (autoregressive) not supported, set to disabled\n", __func__);
             } else {
-                LOG_INFO("%s: fused Gated Delta Net (autoregressive) enabled\n", __func__);
+                LOG_INFO("{}: fused Gated Delta Net (autoregressive) enabled\n", __func__);
             }
         }
 
@@ -553,8 +556,8 @@ void lhm_context::sched_reserve() {
                 const int il = std::stoi(n->name + prefix_len);
                 ggml_backend_dev_t device_kv = model.dev_layer(il);
                 if (device_gdn != device_kv) {
-                    LOG_WARN("%s: layer %d is assigned to device %s but the fused Gated Delta Net tensor "
-                            "is assigned to device %s (usually due to missing support)\n",
+                    LOG_WARN("{}: layer {} is assigned to device {} but the fused Gated Delta Net tensor "
+                            "is assigned to device {} (usually due to missing support)\n",
                             __func__, il, ggml_backend_dev_name(device_kv), ggml_backend_dev_name(device_gdn));
                     gdn_device_mismatch = true;
                     break;
@@ -563,9 +566,9 @@ void lhm_context::sched_reserve() {
 
             if (gdn_device_mismatch) {
                 cparams.fused_gdn_ch = false;
-                LOG_WARN("%s: fused Gated Delta Net (chunked) not supported, set to disabled\n", __func__);
+                LOG_WARN("{}: fused Gated Delta Net (chunked) not supported, set to disabled\n", __func__);
             } else {
-                LOG_INFO("%s: fused Gated Delta Net (chunked) enabled\n", __func__);
+                LOG_INFO("{}: fused Gated Delta Net (chunked) enabled\n", __func__);
             }
         }
 
@@ -587,7 +590,7 @@ void lhm_context::sched_reserve() {
                 model.hparams.no_alloc, model.hparams.no_alloc ? backend_buf_exp_size.data() : nullptr);
         if (!gf) {
             if (cparams.pipeline_parallel) {
-                LOG_WARN("%s: compute buffer allocation failed, retrying without pipeline parallelism\n", __func__);
+                LOG_WARN("{}: compute buffer allocation failed, retrying without pipeline parallelism\n", __func__);
                 cparams.pipeline_parallel = false;
                 sched.reset(ggml_backend_sched_new(backend_ptrs.data(), backend_buft.data(), backend_ptrs.size(), max_nodes, false, cparams.op_offload));
                 gf = graph_reserve(n_tokens, n_seqs, n_outputs_pp, mctx.get());
@@ -753,7 +756,7 @@ bool lhm_context::memory_update(bool optimize) {
             case LHM_MEMORY_STATUS_FAILED_PREPARE:
             case LHM_MEMORY_STATUS_FAILED_COMPUTE:
                 {
-                    LHM_LOG_ERROR("%s: failed to prepare memory update\n", __func__);
+                    LOG_ERROR("%s: failed to prepare memory update\n", __func__);
                     return false;
                 }
         }
@@ -764,7 +767,7 @@ bool lhm_context::memory_update(bool optimize) {
         gf_res_prev->reset();
 
         if (!mctx->apply()) {
-            LHM_LOG_ERROR("%s: failed to apply memory update\n", __func__);
+            LOG_ERROR("%s: failed to apply memory update\n", __func__);
         }
     }
 
@@ -782,7 +785,7 @@ bool lhm_context::memory_update(bool optimize) {
 
         auto * gf = graph_reserve(n_tokens, n_seqs, n_outputs_max, mctx.get());
         if (!gf) {
-            LHM_LOG_ERROR("%s: failed to reserve graph after the memory update\n", __func__);
+            LOG_ERROR("%s: failed to reserve graph after the memory update\n", __func__);
         }
     }
 
@@ -839,7 +842,7 @@ float * lhm_context::get_logits_ith(int32_t i) {
         const int64_t j = output_resolve_row(i);
         return logits.data + j*model.vocab.n_tokens();
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: invalid logits id %d, reason: %s\n", __func__, i, err.what());
+        LOG_ERROR("%s: invalid logits id %d, reason: %s\n", __func__, i, err.what());
 #ifndef NDEBUG
         GGML_ABORT("fatal error");
 #else
@@ -870,7 +873,7 @@ float * lhm_context::get_embeddings_ith(int32_t i) {
         const uint32_t n_embd_out = model.hparams.n_embd_out();
         return embd.data + j*n_embd_out;
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: invalid embeddings id %d, reason: %s\n", __func__, i, err.what());
+        LOG_ERROR("%s: invalid embeddings id %d, reason: %s\n", __func__, i, err.what());
 #ifndef NDEBUG
         GGML_ABORT("fatal error");
 #else
@@ -915,7 +918,7 @@ float * lhm_context::get_embeddings_nextn_ith(int32_t i) {
         const int64_t j = output_resolve_row(i);
         return embd_nextn.data + j*n_embd;
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: invalid nextn embeddings id %d, reason: %s\n", __func__, i, err.what());
+        LOG_ERROR("%s: invalid nextn embeddings id %d, reason: %s\n", __func__, i, err.what());
 #ifndef NDEBUG
         GGML_ABORT("fatal error");
 #else
@@ -944,7 +947,7 @@ lhm_token lhm_context::get_sampled_token_ith(int32_t idx) {
         LHM_ASSERT(row < (int64_t) sampling.sampled.size);
         return sampling.sampled.data[row];
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: invalid backend sampled token id %d, reason: %s\n", __func__, idx, err.what());
+        LOG_ERROR("%s: invalid backend sampled token id %d, reason: %s\n", __func__, idx, err.what());
         return LHM_TOKEN_NULL;
     }
 }
@@ -963,7 +966,7 @@ float * lhm_context::get_sampled_probs_ith(int32_t idx) {
         }
         return sampling.probs.data + row*model.vocab.n_tokens();
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: invalid backend sampled probs id %d, reason: %s\n", __func__, idx, err.what());
+        LOG_ERROR("%s: invalid backend sampled probs id %d, reason: %s\n", __func__, idx, err.what());
         return nullptr;
     }
 }
@@ -982,7 +985,7 @@ float * lhm_context::get_sampled_logits_ith(int32_t idx) {
         }
         return sampling.logits.data + row*model.vocab.n_tokens();
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: invalid backend sampled logits id %d, reason: %s\n", __func__, idx, err.what());
+        LOG_ERROR("%s: invalid backend sampled logits id %d, reason: %s\n", __func__, idx, err.what());
         return nullptr;
     }
 }
@@ -1019,7 +1022,7 @@ size_t lhm_context::get_sampled_candidates_count(int32_t idx) {
         }
         return sampling.candidates_count[row];
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: invalid backend sampled candidates count id %d, reason: %s\n", __func__, idx, err.what());
+        LOG_ERROR("%s: invalid backend sampled candidates count id %d, reason: %s\n", __func__, idx, err.what());
         return 0;
     }
 }
@@ -1038,7 +1041,7 @@ size_t lhm_context::get_sampled_logits_count(int32_t idx) {
         }
         return sampling.logits_count[row];
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: invalid backend sampled logits count id %d, reason: %s\n", __func__, idx, err.what());
+        LOG_ERROR("%s: invalid backend sampled logits count id %d, reason: %s\n", __func__, idx, err.what());
         return 0;
     }
 }
@@ -1057,7 +1060,7 @@ size_t lhm_context::get_sampled_probs_count(int32_t idx) {
         }
         return sampling.probs_count[row];
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: invalid backend sampled probs count id %d, reason: %s\n", __func__, idx, err.what());
+        LOG_ERROR("%s: invalid backend sampled probs count id %d, reason: %s\n", __func__, idx, err.what());
         return 0;
     }
 }
@@ -1165,7 +1168,7 @@ bool lhm_context::set_sampler(lhm_seq_id seq_id, lhm_sampler * sampler) {
     if (sampler && model.split_mode() == LHM_SPLIT_MODE_TENSOR) {
         static bool warned = false;
         if (!warned) {
-            LOG_WARN("%s: backend sampling not supported with SPLIT_MODE_TENSOR; using CPU\n", __func__);
+            LOG_WARN("{}: backend sampling not supported with SPLIT_MODE_TENSOR; using CPU\n", __func__);
             warned = true;
         }
         if (sampling.samplers.count(seq_id) > 0) {
@@ -1194,7 +1197,7 @@ bool lhm_context::set_sampler(lhm_seq_id seq_id, lhm_sampler * sampler) {
     }
 
     if (sampler && !can_offload) {
-        LOG_WARN("%s: sampler '%s' for seq_id = %d, cannot be offloaded to the backend\n", __func__, lhm_sampler_name(sampler), seq_id);
+        LOG_WARN("{}: sampler '{}' for seq_id = {}, cannot be offloaded to the backend\n", __func__, lhm_sampler_name(sampler), seq_id);
 
         if (sampling.samplers.count(seq_id) > 0) {
             sched_need_reserve = true;
@@ -1273,7 +1276,7 @@ bool lhm_context::set_adapter_cvec(
 
 llm_graph_result * lhm_context::process_ubatch(const lhm_ubatch & ubatch, llm_graph_type gtype, lhm_memory_context_i * mctx, ggml_status & ret) {
     if (mctx && !mctx->apply()) {
-        LHM_LOG_ERROR("%s: failed to apply memory context\n", __func__);
+        LOG_ERROR("%s: failed to apply memory context\n", __func__);
         ret = GGML_STATUS_FAILED;
         return nullptr;
     }
@@ -1309,13 +1312,13 @@ llm_graph_result * lhm_context::process_ubatch(const lhm_ubatch & ubatch, llm_gr
         //LOG_INFO("graph build time: %.3f ms\n", (ggml_time_us() - t_start_us)/1000.0);
 
         if (!gf) {
-            LHM_LOG_ERROR("%s: failed to initialize graph\n", __func__);
+            LOG_ERROR("%s: failed to initialize graph\n", __func__);
             ret = GGML_STATUS_FAILED;
             return nullptr;
         }
 
         if (!ggml_backend_sched_alloc_graph(sched.get(), gf)) {
-            LHM_LOG_ERROR("%s: failed to allocate graph\n", __func__);
+            LOG_ERROR("%s: failed to allocate graph\n", __func__);
             ret = GGML_STATUS_ALLOC_FAILED;
             return nullptr;
         }
@@ -1333,7 +1336,7 @@ llm_graph_result * lhm_context::process_ubatch(const lhm_ubatch & ubatch, llm_gr
 
     const auto status = graph_compute(res->get_gf(), ubatch.n_tokens > 1);
     if (status != GGML_STATUS_SUCCESS) {
-        LHM_LOG_ERROR("%s: failed to compute graph, compute status: %d\n", __func__, status);
+        LOG_ERROR("{}: failed to compute graph, compute status: {}\n", __func__, int(status));
         ret = status;
         return nullptr;
     }
@@ -1349,7 +1352,7 @@ int lhm_context::encode(const lhm_batch & batch_inp) {
     LHM_ASSERT(batch_inp.token || batch_inp.embd);
 
     if (batch_inp.n_tokens == 0) {
-        LHM_LOG_ERROR("%s: n_tokens == 0\n", __func__);
+        LOG_ERROR("%s: n_tokens == 0\n", __func__);
         return -1;
     }
 
@@ -1361,7 +1364,7 @@ int lhm_context::encode(const lhm_batch & batch_inp) {
 
     // note: during encode, we always pass the full sequence starting from pos = 0
     if (!balloc->init(batch_inp, model.vocab, nullptr, n_embd, cparams.kv_unified ? LHM_MAX_SEQ : cparams.n_seq_max, true)) {
-        LHM_LOG_ERROR("%s: failed to initialize batch\n", __func__);
+        LOG_ERROR("%s: failed to initialize batch\n", __func__);
         return -1;
     }
 
@@ -1387,7 +1390,7 @@ int lhm_context::encode(const lhm_batch & batch_inp) {
 
     // reserve output buffer
     if (output_reserve(n_tokens) < n_tokens) {
-        LHM_LOG_ERROR("%s: could not reserve space for batch with %u outputs\n", __func__, n_tokens);
+        LOG_ERROR("%s: could not reserve space for batch with %u outputs\n", __func__, n_tokens);
         return -2;
     };
 
@@ -1632,7 +1635,7 @@ int lhm_context::decode(const lhm_batch & batch_inp) {
     }
 
     if (batch_inp.n_tokens == 0) {
-        LHM_LOG_ERROR("%s: n_tokens == 0\n", __func__);
+        LOG_ERROR("%s: n_tokens == 0\n", __func__);
         return -1;
     }
 
@@ -1664,7 +1667,7 @@ int lhm_context::decode(const lhm_batch & batch_inp) {
 
                 seq_output_count[seq_id]++;
                 if (seq_output_count[seq_id] > 1) {
-                    LHM_LOG_ERROR("%s: backend sampling requires at most one output token per sequence (seq_id %d had %d)\n",
+                    LOG_ERROR("%s: backend sampling requires at most one output token per sequence (seq_id %d had %d)\n",
                             __func__, seq_id, seq_output_count[seq_id]);
                     return -1;
                 }
@@ -1673,7 +1676,7 @@ int lhm_context::decode(const lhm_batch & batch_inp) {
     }
 
     if (!balloc->init(batch_inp, vocab, memory.get(), n_embd, n_seq_max, output_all)) {
-        LHM_LOG_ERROR("%s: failed to initialize batch\n", __func__);
+        LOG_ERROR("%s: failed to initialize batch\n", __func__);
         return -1;
     }
 
@@ -1683,7 +1686,7 @@ int lhm_context::decode(const lhm_batch & batch_inp) {
     if (output_all) {
         // require that all tokens are output
         if (n_outputs_all != n_tokens_all) {
-            LHM_LOG_ERROR("%s: pooled embedding requires that all tokens are output (n_outputs_all = %d, n_tokens_all = %d)\n",
+            LOG_ERROR("%s: pooled embedding requires that all tokens are output (n_outputs_all = %d, n_tokens_all = %d)\n",
                     __func__, n_outputs_all, n_tokens_all);
             return -1;
         }
@@ -1723,7 +1726,7 @@ int lhm_context::decode(const lhm_batch & batch_inp) {
                 } break;
             case LHM_MEMORY_STATUS_NO_UPDATE:
                 {
-                    LHM_LOG_ERROR("%s: unexpected memory context status: %d\n", __func__, mctx->get_status());
+                    LOG_ERROR("{}: unexpected memory context status: {}\n", __func__, int(mctx->get_status()));
 
                     return -2;
                 }
@@ -1739,13 +1742,13 @@ int lhm_context::decode(const lhm_batch & batch_inp) {
                         }
                     }
 
-                    LOG_WARN("%s: failed to find a memory slot for batch of size %d\n", __func__, balloc->get_n_tokens());
+                    LOG_WARN("{}: failed to find a memory slot for batch of size %d\n", __func__, balloc->get_n_tokens());
 
                     return 1;
                 }
             case LHM_MEMORY_STATUS_FAILED_COMPUTE:
                 {
-                    LHM_LOG_ERROR("%s: compute failed while preparing batch of size %d\n", __func__, balloc->get_n_tokens());
+                    LOG_ERROR("%s: compute failed while preparing batch of size %d\n", __func__, balloc->get_n_tokens());
 
                     return -2;
                 }
@@ -1756,7 +1759,7 @@ int lhm_context::decode(const lhm_batch & batch_inp) {
 
     // reserve output buffer
     if (output_reserve(n_outputs_all) < n_outputs_all) {
-        LHM_LOG_ERROR("%s: could not reserve space for batch with %d outputs\n", __func__, n_outputs_all);
+        LOG_ERROR("%s: could not reserve space for batch with %d outputs\n", __func__, n_outputs_all);
         return -2;
     };
 
@@ -1804,7 +1807,7 @@ int lhm_context::decode(const lhm_batch & batch_inp) {
                     continue;
                 }
 
-                LOG_WARN("%s: removing memory module entries for seq_id = %d, pos = [%d, +inf)\n", __func__, s, pos_min[s]);
+                LOG_WARN("{}: removing memory module entries for seq_id = {}, pos = [{}, +inf)\n", __func__, s, pos_min[s]);
 
                 memory->seq_rm(s, pos_min[s], -1);
             }
@@ -2084,7 +2087,7 @@ uint32_t lhm_context::output_reserve(int32_t n_outputs) {
         }
         buf_output.reset(ggml_backend_buft_alloc_buffer(buft, new_size));
         if (buf_output == nullptr) {
-            LHM_LOG_ERROR("%s: failed to allocate output buffer of size %.2f MiB\n", __func__, new_size / (1024.0 * 1024.0));
+            LOG_ERROR("%s: failed to allocate output buffer of size %.2f MiB\n", __func__, new_size / (1024.0 * 1024.0));
             return 0;
         }
         ggml_backend_buffer_clear(buf_output.get(), 0);
@@ -2325,7 +2328,7 @@ ggml_cgraph * lhm_context::graph_reserve(
         }
     } else if (!ggml_backend_sched_reserve(sched.get(), gf)) {
         LHM_ASSERT(!sizes);
-        LHM_LOG_ERROR("%s: failed to allocate compute buffers\n", __func__);
+        LOG_ERROR("%s: failed to allocate compute buffers\n", __func__);
         return nullptr;
     }
 
@@ -2377,7 +2380,7 @@ ggml_status lhm_context::graph_compute(
 
     auto status = ggml_backend_sched_graph_compute_async(sched.get(), gf);
     if (status != GGML_STATUS_SUCCESS) {
-        LHM_LOG_ERROR("%s: ggml_backend_sched_graph_compute_async failed with error %d\n", __func__, status);
+        LOG_ERROR("{}: ggml_backend_sched_graph_compute_async failed with error {}\n", __func__, int(status));
     }
 
     // fprintf(stderr, "splits: %d\n", ggml_backend_sched_get_n_splits(sched));
@@ -2822,7 +2825,7 @@ size_t lhm_context::state_get_size() {
     try {
         return state_write_data(io);
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: error getting state size: %s\n", __func__, err.what());
+        LOG_ERROR("%s: error getting state size: %s\n", __func__, err.what());
         return 0;
     }
 }
@@ -2832,7 +2835,7 @@ size_t lhm_context::state_get_data(uint8_t * dst, size_t size) {
     try {
         return state_write_data(io);
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: error saving state: %s\n", __func__, err.what());
+        LOG_ERROR("%s: error saving state: %s\n", __func__, err.what());
         return 0;
     }
 }
@@ -2842,7 +2845,7 @@ size_t lhm_context::state_set_data(const uint8_t * src, size_t size) {
     try {
         return state_read_data(io);
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: error loading state: %s\n", __func__, err.what());
+        LOG_ERROR("%s: error loading state: %s\n", __func__, err.what());
         return 0;
     }
 }
@@ -2857,7 +2860,7 @@ size_t lhm_context::state_seq_get_size(lhm_seq_id seq_id, lhm_state_seq_flags fl
 
         return state_seq_write_data(io, seq_id, flags);
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: error getting state size: %s\n", __func__, err.what());
+        LOG_ERROR("%s: error getting state size: %s\n", __func__, err.what());
         return 0;
     }
 }
@@ -2876,7 +2879,7 @@ size_t lhm_context::state_seq_get_data(lhm_seq_id seq_id, uint8_t * dst, size_t 
 
         return state_seq_write_data(*io, seq_id, flags);
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: error saving state: %s\n", __func__, err.what());
+        LOG_ERROR("%s: error saving state: %s\n", __func__, err.what());
         return 0;
     }
 }
@@ -2915,7 +2918,7 @@ size_t lhm_context::state_seq_set_data(lhm_seq_id seq_id, const uint8_t * src, s
 
         return state_seq_read_data(*io, seq_id, flags);
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: error loading state: %s\n", __func__, err.what());
+        LOG_ERROR("%s: error loading state: %s\n", __func__, err.what());
         return 0;
     }
 }
@@ -2929,7 +2932,7 @@ bool lhm_context::state_load_file(const char * filepath, lhm_token * tokens_out,
         const uint32_t version = file.read_u32();
 
         if (magic != LHM_SESSION_MAGIC || version != LHM_SESSION_VERSION) {
-            LHM_LOG_ERROR("%s: unknown (magic, version) for session file: %08x, %08x\n", __func__, magic, version);
+            LOG_ERROR("%s: unknown (magic, version) for session file: %08x, %08x\n", __func__, magic, version);
             return false;
         }
     }
@@ -2939,7 +2942,7 @@ bool lhm_context::state_load_file(const char * filepath, lhm_token * tokens_out,
         const uint32_t n_token_count = file.read_u32();
 
         if (n_token_count > n_token_capacity) {
-            LHM_LOG_ERROR("%s: token count in session file exceeded capacity! %u > %zu\n", __func__, n_token_count, n_token_capacity);
+            LOG_ERROR("%s: token count in session file exceeded capacity! %u > %zu\n", __func__, n_token_count, n_token_capacity);
             return false;
         }
 
@@ -2955,7 +2958,7 @@ bool lhm_context::state_load_file(const char * filepath, lhm_token * tokens_out,
         const size_t n_read = state_read_data(io);
 
         if (n_read != n_state_size_cur) {
-            LHM_LOG_ERROR("%s: did not read all of the session file data! size %zu, got %zu\n", __func__, n_state_size_cur, n_read);
+            LOG_ERROR("%s: did not read all of the session file data! size %zu, got %zu\n", __func__, n_state_size_cur, n_read);
             return false;
         }
     }
@@ -2989,7 +2992,7 @@ size_t lhm_context::state_seq_load_file(lhm_seq_id seq_id, const char * filepath
         const uint32_t version = file.read_u32();
 
         if (magic != LHM_STATE_SEQ_MAGIC || version != LHM_STATE_SEQ_VERSION) {
-            LHM_LOG_ERROR("%s: unknown (magic, version) for sequence state file: %08x, %08x\n", __func__, magic, version);
+            LOG_ERROR("%s: unknown (magic, version) for sequence state file: %08x, %08x\n", __func__, magic, version);
             return 0;
         }
     }
@@ -2999,7 +3002,7 @@ size_t lhm_context::state_seq_load_file(lhm_seq_id seq_id, const char * filepath
         const uint32_t n_token_count = file.read_u32();
 
         if (n_token_count > n_token_capacity) {
-            LHM_LOG_ERROR("%s: token count in sequence state file exceeded capacity! %u > %zu\n", __func__, n_token_count, n_token_capacity);
+            LOG_ERROR("%s: token count in sequence state file exceeded capacity! %u > %zu\n", __func__, n_token_count, n_token_capacity);
             return 0;
         }
 
@@ -3013,7 +3016,7 @@ size_t lhm_context::state_seq_load_file(lhm_seq_id seq_id, const char * filepath
         lhm_io_read_file io(&file);
         const size_t nread = state_seq_read_data(io, seq_id, 0);
         if (!nread) {
-            LHM_LOG_ERROR("%s: failed to restore sequence state\n", __func__);
+            LOG_ERROR("%s: failed to restore sequence state\n", __func__);
             return 0;
         }
         LHM_ASSERT(nread <= state_size);
@@ -3250,7 +3253,7 @@ void lhm_context::opt_epoch_iter(
         }
 
         if (!balloc->init(batch, model.vocab, nullptr, model.hparams.n_embd_inp(), cparams.kv_unified ? LHM_MAX_SEQ : cparams.n_seq_max, true)) {
-            LHM_LOG_ERROR("%s: failed to initialize batch\n", __func__);
+            LOG_ERROR("%s: failed to initialize batch\n", __func__);
             return;
         }
 
@@ -3264,13 +3267,13 @@ void lhm_context::opt_epoch_iter(
 
         auto mctx = memory->init_batch(*balloc, cparams.n_ubatch, true);
         if (!mctx || mctx->get_status() != LHM_MEMORY_STATUS_SUCCESS) {
-            LHM_LOG_ERROR("%s: could not initialize batch\n", __func__);
+            LOG_ERROR("%s: could not initialize batch\n", __func__);
             break;
         }
 
         // reserve output buffer
         if (output_reserve(n_outputs_all) < n_outputs_all) {
-            LHM_LOG_ERROR("%s: could not reserve space for batch with %d outputs\n", __func__, n_outputs_all);
+            LOG_ERROR("%s: could not reserve space for batch with %d outputs\n", __func__, n_outputs_all);
             GGML_ABORT("TODO: handle this error");
         };
 
@@ -3281,7 +3284,7 @@ void lhm_context::opt_epoch_iter(
             n_outputs = ubatch.n_tokens;
 
             if (!mctx->apply()) {
-                LHM_LOG_ERROR("%s: failed to update the memory context\n", __func__);
+                LOG_ERROR("%s: failed to update the memory context\n", __func__);
                 break;
             }
 
@@ -3429,17 +3432,17 @@ lhm_context * lhm_init_from_model(
                  lhm_model * model,
         lhm_context_params   params) {
     if (!model) {
-        LHM_LOG_ERROR("%s: model cannot be NULL\n", __func__);
+        LOG_ERROR("%s: model cannot be NULL\n", __func__);
         return nullptr;
     }
 
     if (params.n_batch == 0 && params.n_ubatch == 0) {
-        LHM_LOG_ERROR("%s: n_batch and n_ubatch cannot both be zero\n", __func__);
+        LOG_ERROR("%s: n_batch and n_ubatch cannot both be zero\n", __func__);
         return nullptr;
     }
 
     if (params.n_ctx == 0 && model->hparams.n_ctx_train == 0) {
-        LHM_LOG_ERROR("%s: n_ctx and model->hparams.n_ctx_train cannot both be zero\n", __func__);
+        LOG_ERROR("%s: n_ctx and model->hparams.n_ctx_train cannot both be zero\n", __func__);
         return nullptr;
     }
 
@@ -3449,7 +3452,7 @@ lhm_context * lhm_init_from_model(
             params.flash_attn_type = LHM_FLASH_ATTN_TYPE_ENABLED;
         }
         if (params.flash_attn_type != LHM_FLASH_ATTN_TYPE_ENABLED) {
-            LHM_LOG_ERROR("%s: SPLIT_MODE_TENSOR requires flash_attn to be enabled\n", __func__);
+            LOG_ERROR("%s: SPLIT_MODE_TENSOR requires flash_attn to be enabled\n", __func__);
             return nullptr;
         }
     }
@@ -3458,7 +3461,7 @@ lhm_context * lhm_init_from_model(
         const uint32_t blck_size = ggml_blck_size(params.type_k);
         for (uint32_t il = 0; il < model->hparams.n_layer(); ++il) {
             if (model->hparams.n_embd_head_k(il) % blck_size != 0) {
-                LHM_LOG_ERROR("%s: K cache type %s with block size %u does not divide n_embd_head_k=%u\n",
+                LOG_ERROR("%s: K cache type %s with block size %u does not divide n_embd_head_k=%u\n",
                     __func__, ggml_type_name(params.type_k), blck_size, model->hparams.n_embd_head_k(il));
                 return nullptr;
             }
@@ -3469,7 +3472,7 @@ lhm_context * lhm_init_from_model(
         const uint32_t blck_size = ggml_blck_size(params.type_v);
         for (uint32_t il = 0; il < model->hparams.n_layer(); ++il) {
             if (model->hparams.n_embd_head_v(il) % blck_size != 0) {
-                LHM_LOG_ERROR("%s: V cache type %s with block size %u does not divide n_embd_head_v=%u\n",
+                LOG_ERROR("%s: V cache type %s with block size %u does not divide n_embd_head_v=%u\n",
                     __func__, ggml_type_name(params.type_v), blck_size, model->hparams.n_embd_head_v(il));
                 return nullptr;
             }
@@ -3477,20 +3480,20 @@ lhm_context * lhm_init_from_model(
     }
 
     if (ggml_is_quantized(params.type_v) && params.flash_attn_type == LHM_FLASH_ATTN_TYPE_DISABLED) {
-        LHM_LOG_ERROR("%s: V cache quantization requires flash_attn\n", __func__);
+        LOG_ERROR("%s: V cache quantization requires flash_attn\n", __func__);
         return nullptr;
     }
 
     if (params.pooling_type != LHM_POOLING_TYPE_UNSPECIFIED &&
         params.pooling_type != model->hparams.pooling_type) {
         //user-specified pooling-type is different from the model default
-        LOG_WARN("%s: model default pooling_type is [%d], but [%d] was specified\n", __func__,
-                       model->hparams.pooling_type, params.pooling_type);
+        LOG_WARN("{}: model default pooling_type is [{}], but [{}] was specified\n", __func__,
+                       int(model->hparams.pooling_type), int(params.pooling_type));
     }
 
     if (params.ctx_type == LHM_CONTEXT_TYPE_MTP &&
         model->hparams.n_layer_nextn == 0) {
-        LOG_WARN("%s: context type MTP requested but model doesn't contain MTP layers\n", __func__);
+        LOG_WARN("{}: context type MTP requested but model doesn't contain MTP layers\n", __func__);
         return nullptr;
     }
 
@@ -3498,7 +3501,7 @@ lhm_context * lhm_init_from_model(
         auto * ctx = new lhm_context(*model, params);
         return ctx;
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: failed to initialize the context: %s\n", __func__, err.what());
+        LOG_ERROR("%s: failed to initialize the context: %s\n", __func__, err.what());
     }
 
     return nullptr;
@@ -3902,7 +3905,7 @@ bool lhm_state_load_file(lhm_context * ctx, const char * path_session, lhm_token
     try {
         return ctx->state_load_file(path_session, tokens_out, n_token_capacity, n_token_count_out);
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: error loading session file: %s\n", __func__, err.what());
+        LOG_ERROR("%s: error loading session file: %s\n", __func__, err.what());
         return false;
     }
 }
@@ -3913,7 +3916,7 @@ bool lhm_state_save_file(lhm_context * ctx, const char * path_session, const lhm
     try {
         return ctx->state_save_file(path_session, tokens, n_token_count);
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: error saving session file: %s\n", __func__, err.what());
+        LOG_ERROR("%s: error saving session file: %s\n", __func__, err.what());
         return false;
     }
 }
@@ -3951,7 +3954,7 @@ size_t lhm_state_seq_save_file(lhm_context * ctx, const char * filepath, lhm_seq
     try {
         return ctx->state_seq_save_file(seq_id, filepath, tokens, n_token_count);
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: error saving sequence state file: %s\n", __func__, err.what());
+        LOG_ERROR("%s: error saving sequence state file: %s\n", __func__, err.what());
         return 0;
     }
 }
@@ -3962,7 +3965,7 @@ size_t lhm_state_seq_load_file(lhm_context * ctx, const char * filepath, lhm_seq
     try {
         return ctx->state_seq_load_file(dest_seq_id, filepath, tokens_out, n_token_capacity, n_token_count_out);
     } catch (const std::exception & err) {
-        LHM_LOG_ERROR("%s: error loading sequence state file: %s\n", __func__, err.what());
+        LOG_ERROR("%s: error loading sequence state file: %s\n", __func__, err.what());
         return 0;
     }
 }
@@ -3974,7 +3977,7 @@ int32_t lhm_encode(
           lhm_batch   batch) {
     const int ret = ctx->encode(batch);
     if (ret != 0) {
-        LHM_LOG_ERROR("%s: failed to encode, ret = %d\n", __func__, ret);
+        LOG_ERROR("%s: failed to encode, ret = %d\n", __func__, ret);
     }
 
     return ret;
@@ -3985,7 +3988,7 @@ int32_t lhm_decode(
           lhm_batch   batch) {
     const int ret = ctx->decode(batch);
     if (ret != 0 && ret != 1) {
-        LHM_LOG_ERROR("%s: failed to decode, ret = %d\n", __func__, ret);
+        LOG_ERROR("%s: failed to decode, ret = %d\n", __func__, ret);
     }
 
     return ret;

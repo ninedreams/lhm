@@ -1,0 +1,2 @@
+/usr/bin/ar qc liblhm_params.a CMakeFiles/lhm_params.dir/lhm_cparams.cpp.o CMakeFiles/lhm_params.dir/lhm_hparams.cpp.o
+/usr/bin/ranlib liblhm_params.a
