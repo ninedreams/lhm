@@ -3,7 +3,7 @@
 #include "lhm.h"
 #include "chat.h"
 #include "base64.hpp"
-#include "lhm_assert.h"
+#include "lassert.h"
 
 #include "server_common.h"
 

@@ -3,7 +3,7 @@
 #include "ggml.h"
 #include "gguf.h"
 
-#include "lhm_assert.h"
+#include "lassert.h"
 #include "lhm_arch.h"
 #include "lhm.h"
 #include "lhm_hparams.h"

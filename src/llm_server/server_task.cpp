@@ -1,5 +1,5 @@
 #include "server_task.h"
-#include "lhm_assert.h"
+#include "lassert.h"
 #include "server_chat.h"
 #include "chat.h"
 #include "common.h"

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lhm.h"
+#include "lhm_cpp.h"
 
 #include "common.h"
 
@@ -106,11 +107,11 @@ std::string common_sampler_print(const struct common_sampler * gsmpl);
 // get a string representation of the last accepted tokens
 std::string common_sampler_prev_str(common_sampler * gsmpl, lhm_context * ctx, int n);
 
-char        common_sampler_type_to_chr(enum common_sampler_type cnstr);
-std::string common_sampler_type_to_str(enum common_sampler_type cnstr);
+char        common_sampler_type_to_chr(common_sampler_type cnstr);
+std::string common_sampler_type_to_str(common_sampler_type cnstr);
 
-std::vector<enum common_sampler_type> common_sampler_types_from_names(const std::vector<std::string> & names);
-std::vector<enum common_sampler_type> common_sampler_types_from_chars(const std::string & chars);
+std::vector<common_sampler_type> common_sampler_types_from_names(const std::vector<std::string> & names);
+std::vector<common_sampler_type> common_sampler_types_from_chars(const std::string & chars);
 
 lhm_sampler * lhm_sampler_init_llg(const lhm_vocab * vocab,
                 const char * grammar_kind, const char * grammar_data);

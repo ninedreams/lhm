@@ -7,7 +7,7 @@
 #include "ggml.h"
 #include "json_schema_to_grammar.h"
 #include "log.h"
-#include "lhm_assert.h"
+#include "lassert.h"
 
 #include "jinja/value.h"
 #include "jinja/runtime.h"

@@ -23,7 +23,7 @@ if (BUILD_SHARED_LIBS)
 endif()
 
 target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR})
-target_link_libraries(${TARGET} PUBLIC lhm_common lhm_models ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(${TARGET} PUBLIC common lhm_models ${CMAKE_THREAD_LIBS_INIT})
 
 # llm_server-impl: server logic, reusable by app
 set(TARGET llm_server_impl)

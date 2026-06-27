@@ -1,6 +1,6 @@
 #include "lhm_memory_recurrent.h"
 
-#include "lhm_assert.h"
+#include "lassert.h"
 #include "ggml-backend.h"
 #include "lhm_impl.h"
 #include "lhm_io.h"

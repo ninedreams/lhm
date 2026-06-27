@@ -5,8 +5,11 @@
 #endif
 
 #include <memory>
+#include <vector>
 
 #include "lhm.h"
+
+using lhm_tokens = std::vector<lhm_token>;
 
 struct lhm_model_deleter {
     void operator()(lhm_model * model) { lhm_model_free(model); }

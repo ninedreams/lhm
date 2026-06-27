@@ -6,7 +6,7 @@
 #include "server_queue.h"
 #include "server_schema.h"
 
-#include "lhm_assert.h"
+#include "lassert.h"
 #include "common.h"
 #include "fit.h"
 #include "lhm.h"

@@ -1,7 +1,7 @@
 #include "fit.h"
 
 #include "log.h"
-#include "lhm_assert.h"
+#include "lassert.h"
 
 #include "lhm_ext.h"
 

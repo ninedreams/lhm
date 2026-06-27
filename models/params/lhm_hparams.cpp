@@ -2,7 +2,7 @@
 
 #include <ggml.h>
 
-#include "lhm_assert.h"
+#include "lassert.h"
 #include "lhm_hparams.h"
 
 

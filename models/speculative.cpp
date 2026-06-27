@@ -1,6 +1,6 @@
 #include "speculative.h"
 
-#include "lhm_assert.h"
+#include "lassert.h"
 #include "common.h"
 #include "ggml.h"
 #include "lhm.h"

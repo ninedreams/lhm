@@ -1,6 +1,6 @@
 #include "lhm_sampler.h"
 
-#include "lhm_assert.h"
+#include "lassert.h"
 #include "lhm_impl.h"
 #include "lhm_vocab.h"
 #include "lhm_grammar.h"

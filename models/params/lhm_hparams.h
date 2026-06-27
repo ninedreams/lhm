@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lhm_assert.h"
+#include "lassert.h"
 #include "lhm.h"
 
 #include <array>

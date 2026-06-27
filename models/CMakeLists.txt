@@ -58,7 +58,7 @@ target_include_directories(${TARGET} PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/spdlo
 target_compile_features(${TARGET} PRIVATE cxx_std_17) # don't bump
 
 target_link_libraries(${TARGET} PUBLIC
-    lhm_common
+    common
     lhm_params
     lhm_kvcache
     lhm_memory

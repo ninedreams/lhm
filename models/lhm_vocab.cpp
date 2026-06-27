@@ -3,7 +3,7 @@
 #include "ggml.h"
 #include "gguf.h"
 #include "lhm_impl.h"
-#include "lhm_model-loader.h"
+#include "lhm_model_loader.h"
 
 #include "unicode.h"
 

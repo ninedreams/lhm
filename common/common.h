@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "lhm_assert.h"
+#include "lassert.h"
 #include "lhm_cpp.h"
 
 #include "ggml-opt.h"
@@ -47,8 +47,6 @@ struct common_adapter_lora_info {
 
     struct lhm_adapter_lora * ptr;
 };
-
-using lhm_tokens = std::vector<lhm_token>;
 
 struct common_control_vector_load_info;
 

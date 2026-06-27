@@ -1,6 +1,6 @@
 #include "lhm_model.h"
 
-#include "lhm_assert.h"
+#include "lassert.h"
 #include "lhm_arch.h"
 #include "lhm_ext.h"
 #include "lhm_hparams.h"

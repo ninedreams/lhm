@@ -6,10 +6,7 @@
 #include <spdlog/common.h>
 #include <spdlog/spdlog.h>
 
-
-std::shared_ptr<spdlog::logger> g_logger; // global logger instance
 static const spdlog::level::level_enum default_log_level = spdlog::level::info;
-extern spdlog::level::level_enum g_log_level;
 
 #define LOG_CLR_TO_EOL "\033[K\r"
 #define LOG_COL_DEFAULT "\033[0m"
@@ -23,6 +20,9 @@ extern spdlog::level::level_enum g_log_level;
 #define LOG_COL_WHITE "\033[37m"
 
 namespace lhm {
+
+std::shared_ptr<spdlog::logger> g_logger; // global logger instance
+spdlog::level::level_enum g_log_level;
 
 enum log_colors {
   LOG_COLORS_AUTO = -1,
@@ -59,19 +59,19 @@ template<spdlog::level::level_enum Lvl, typename... Args>
 void lhm_log_impl(fmt::format_string<Args...> fmt, Args&&... args)
 {
     if constexpr (Lvl < spdlog::level::n_levels) {
-        if (Lvl >= g_log_level && g_logger) {
+        if (Lvl >= lhm::g_log_level && lhm::g_logger) {
             if constexpr (Lvl == spdlog::level::trace) {
-                g_logger->trace(fmt, std::forward<Args>(args)...);
+                lhm::g_logger->trace(fmt, std::forward<Args>(args)...);
             } else if constexpr (Lvl == spdlog::level::debug) {
-                g_logger->debug(fmt, std::forward<Args>(args)...);
+                lhm::g_logger->debug(fmt, std::forward<Args>(args)...);
             } else if constexpr (Lvl == spdlog::level::info) {
-                g_logger->info(fmt, std::forward<Args>(args)...);
+                lhm::g_logger->info(fmt, std::forward<Args>(args)...);
             } else if constexpr (Lvl == spdlog::level::warn) {
-                g_logger->warn(fmt, std::forward<Args>(args)...);
+                lhm::g_logger->warn(fmt, std::forward<Args>(args)...);
             } else if constexpr (Lvl == spdlog::level::err) {
-                g_logger->error(fmt, std::forward<Args>(args)...);
+                lhm::g_logger->error(fmt, std::forward<Args>(args)...);
             } else if constexpr (Lvl == spdlog::level::critical) {
-                g_logger->critical(fmt, std::forward<Args>(args)...);
+                lhm::g_logger->critical(fmt, std::forward<Args>(args)...);
             }
         }
     }
