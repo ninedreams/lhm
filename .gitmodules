@@ -13,3 +13,9 @@
 [submodule "thirdparty/rapidjson"]
 	path = thirdparty/rapidjson
 	url = https://github.com/Tencent/rapidjson.git
+[submodule "thirdparty/llama.cpp"]
+	path = thirdparty/llama.cpp
+	url = https://github.com/ggml-org/llama.cpp.git
+[submodule "thirdparty/subprocess.h"]
+	path = thirdparty/subprocess.h
+	url = https://github.com/sheredom/subprocess.h.git
