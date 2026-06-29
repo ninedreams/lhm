@@ -25,8 +25,8 @@ static const spdlog::level::level_enum default_log_level = spdlog::level::info;
 
 namespace lhm {
 
-std::shared_ptr<spdlog::logger> g_logger; // global logger instance
-spdlog::level::level_enum g_log_level;
+static std::shared_ptr<spdlog::logger> g_logger; // global logger instance
+static spdlog::level::level_enum g_log_level;
 
 enum log_colors {
   LOG_COLORS_AUTO = -1,

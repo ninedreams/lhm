@@ -65,4 +65,19 @@ set(TARGET llm_server)
 add_executable(${TARGET} main.cpp)
 install(TARGETS ${TARGET} RUNTIME)
 
-target_link_libraries(${TARGET} PRIVATE llm_server_impl fmt::fmt spdlog::spdlog gflags ggml)
+target_link_libraries(${TARGET} PRIVATE
+    llm_server_impl 
+    common
+    lhm_models
+    lhm_models 
+    lhm_params
+    lhm_kvcache
+    lhm_memory
+    lhm_loader
+    lhm_llm
+    lhm_chat
+    fmt::fmt
+    spdlog::spdlog
+    gflags
+    ggml
+)

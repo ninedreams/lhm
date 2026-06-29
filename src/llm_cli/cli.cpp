@@ -8,6 +8,7 @@
 
 #include "chat/chat.h"
 #include "common.h"
+#include "common_params.h"
 #include "config.h"
 #include "console.h"
 #include "fit.h"
@@ -97,8 +98,8 @@ struct cli_context {
 
             // reasoning budget sampler
             if (!chat_params.thinking_end_tag.empty()) {
-                const llm_vocab * vocab = llm_model_get_vocab(
-                    llm_get_model(ctx_server.get_lhm_context()));
+                const lhm_vocab * vocab = lhm_model_get_vocab(
+                    lhm_get_model(ctx_server.get_lhm_context()));
 
                 task.params.sampling.reasoning_budget_tokens = defaults.sampling.reasoning_budget_tokens;
                 task.params.sampling.generation_prompt = chat_params.generation_prompt;
@@ -354,10 +355,8 @@ static constexpr size_t FILE_GLOB_MAX_RESULTS = 100;
 
 
 int llm_cli() {
-    lhm::common_params params;
-
-    params.log_level = g_log_level;
-
+    common_params params;
+    fill_common_params(params);
 
     // TODO: maybe support it later?
     if (params.conversation_mode == COMMON_CONVERSATION_MODE_DISABLED) {
@@ -411,12 +410,6 @@ int llm_cli() {
 
     auto inf = ctx_cli.ctx_server.get_meta();
     std::string modalities = "text";
-    if (inf.has_inp_image) {
-        modalities += ", vision";
-    }
-    if (inf.has_inp_audio) {
-        modalities += ", audio";
-    }
 
     auto add_system_prompt = [&]() {
         if (!params.system_prompt.empty()) {
@@ -442,15 +435,9 @@ int llm_cli() {
     lhm::console::log("  /clear              clear the chat history\n");
     lhm::console::log("  /read <file>        add a text file\n");
     lhm::console::log("  /glob <pattern>     add text files using globbing pattern\n");
-    if (inf.has_inp_image) {
-        lhm::console::log("  /image <file>       add an image file\n");
-    }
-    if (inf.has_inp_audio) {
-        lhm::console::log("  /audio <file>       add an audio file\n");
-    }
-    if (inf.has_inp_video) {
-        lhm::console::log("  /video <file>       add a video file\n");
-    }
+    lhm::console::log("  /image <file>       add an image file\n"); // TODO support
+    lhm::console::log("  /audio <file>       add an audio file\n"); // TODO support
+    lhm::console::log("  /video <file>       add an video file\n"); // TODO support
     lhm::console::log("\n");
 
     // interactive loop
@@ -462,7 +449,7 @@ int llm_cli() {
             lhm::console::error("file does not exist or cannot be opened: '%s'\n", fname.c_str());
             return false;
         }
-        if (inf.fim_sep_token != llm_TOKEN_NULL) {
+        if (inf.fim_sep_token != LHM_TOKEN_NULL) {
             cur_msg += common_token_to_piece(ctx_cli.ctx_server.get_lhm_context(), inf.fim_sep_token, true);
             cur_msg += fname;
             cur_msg.push_back('\n');
@@ -488,16 +475,6 @@ int llm_cli() {
                 buffer += line;
             } while (another_line);
         } else {
-            // process input prompt from args
-            for (auto & fname : params.image) {
-                std::string marker = ctx_cli.load_input_file(fname, true);
-                if (marker.empty()) {
-                    lhm::console::error("file does not exist or cannot be opened: '%s'\n", fname.c_str());
-                    break;
-                }
-                lhm::console::log("Loaded media from '%s'\n", fname.c_str());
-                cur_msg += marker;
-            }
             buffer = params.prompt;
             if (buffer.size() > 500) {
                 lhm::console::log("\n> %s ... (truncated)\n", buffer.substr(0, 500).c_str());
@@ -545,21 +522,22 @@ int llm_cli() {
             ctx_cli.input_files.clear();
             lhm::console::log("Chat history cleared.\n");
             continue;
-        } else if (
-                (string_starts_with(buffer, "/image ") && inf.has_inp_image) ||
-                (string_starts_with(buffer, "/audio ") && inf.has_inp_audio) ||
-                (string_starts_with(buffer, "/video ") && inf.has_inp_video)) {
-            // just in case (bad copy-paste for example), we strip all trailing/leading spaces
-            std::string fname = string_strip(buffer.substr(7));
-            std::string marker = ctx_cli.load_input_file(fname, true);
-            if (marker.empty()) {
-                lhm::console::error("file does not exist or cannot be opened: '%s'\n", fname.c_str());
-                continue;
-            }
-            cur_msg += marker;
-            lhm::console::log("Loaded media from '%s'\n", fname.c_str());
-            continue;
-        } else if (string_starts_with(buffer, "/read ")) {
+        } 
+        // else if ((string_starts_with(buffer, "/image ")) ||
+        //         (string_starts_with(buffer, "/audio ")) ||
+        //         (string_starts_with(buffer, "/video "))) {
+        //     // just in case (bad copy-paste for example), we strip all trailing/leading spaces
+        //     std::string fname = string_strip(buffer.substr(7));
+        //     std::string marker = ctx_cli.load_input_file(fname, true);
+        //     if (marker.empty()) {
+        //         lhm::console::error("file does not exist or cannot be opened: '%s'\n", fname.c_str());
+        //         continue;
+        //     }
+        //     cur_msg += marker;
+        //     lhm::console::log("Loaded media from '%s'\n", fname.c_str());
+        //     continue;
+        // } 
+        else if (string_starts_with(buffer, "/read ")) {
             std::string fname = string_strip(buffer.substr(6));
             add_text_file(fname);
             continue;
@@ -656,7 +634,6 @@ int llm_cli() {
     inference_thread.join();
 
     // bump the log level to display timings
-    common_log_set_verbosity_thold(LOG_LEVEL_INFO);
     common_memory_breakdown_print(ctx_cli.ctx_server.get_lhm_context());
 
     return 0;
