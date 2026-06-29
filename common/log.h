@@ -4,6 +4,7 @@
 
 #include <map>
 #include <memory>
+#include <string>
 
 #include <fmt/core.h>
 #include <fmt/format.h>
@@ -34,7 +35,7 @@ enum log_colors {
   LOG_COLORS_ENABLED = 1,
 };
 
-void init_logger();
+void init_logger(const std::string& log_name="lhm");
 
 static std::map<std::string, spdlog::level::level_enum> log_level_map = {
     {"trace", spdlog::level::trace},

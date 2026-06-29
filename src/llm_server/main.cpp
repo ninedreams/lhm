@@ -16,7 +16,7 @@ int main(int argc, char ** argv) {
     common_params params;
     fill_common_params(params);
 
-    init_logger();
+    init_logger("server");
 
     return llm_server(params, orig_argc, orig_argv);
 }
