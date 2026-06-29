@@ -43,14 +43,6 @@ static std::string server_model_status_to_string(server_model_status status) {
     }
 }
 
-static std::string server_model_source_to_string(server_model_source source) {
-    switch (source) {
-        case SERVER_MODEL_SOURCE_PRESET:     return "preset";
-        case SERVER_MODEL_SOURCE_MODELS_DIR: return "models_dir";
-        default:                             return "unknown";
-    }
-}
-
 // Simple model preset: a name + key-value options map
 // Replaces the old common_preset which depended on arg.h/common_arg
 struct model_preset {
@@ -118,11 +110,9 @@ struct server_model_meta {
     void update_args(std::string bin_path);
     void update_caps();
 };
-struct server_models_routes;
 struct server_subproc; // defined in server_models.cpp
 
 struct server_models {
-    friend struct server_models_routes;
 
 private:
     struct instance_t {
@@ -152,9 +142,6 @@ private:
     model_preset base_preset; // base preset from lhm_server CLI args
 
     void update_meta(const std::string & name, const server_model_meta & meta);
-
-    // unload least recently used models if the limit is reached
-    void unload_lru();
 
     // not thread-safe, caller must hold mutex
     void add_model(server_model_meta && meta);
@@ -208,9 +195,6 @@ public:
     // otherwise, load the model and blocking wait until it's ready, then return true (meta may need to be refreshed)
     bool ensure_model_ready(const std::string & name);
 
-    // proxy an HTTP request to the model instance
-    server_http_res_ptr proxy_request(const server_http_req & req, const std::string & method, const std::string & name, bool update_last_used);
-
     // return true if the current process is a child server instance
     static bool is_child_server();
 
@@ -220,63 +204,4 @@ public:
 
     // notify the router server that the sleeping state has changed
     static void notify_router_sleeping_state(bool sleeping);
-};
-
-struct server_models_routes {
-    common_params params;
-    json ui_settings = json::object();     // Primary: new name
-    json webui_settings = json::object();  // Deprecated: use ui_settings (kept for compat)
-    std::atomic<bool> stopping = false;    // for graceful disconnecting SSE clients during shutdown
-    server_models models;
-    server_models_routes(const common_params & params, int argc, char ** argv)
-            : params(params), models(params, argc, argv) {
-        init_routes();
-    }
-
-    void init_routes();
-    // handlers using lambda function, so that they can capture `this` without `std::bind`
-    server_http_context::handler_t get_router_props;
-    server_http_context::handler_t proxy_get;
-    server_http_context::handler_t proxy_post;
-    server_http_context::handler_t get_router_models;
-    server_http_context::handler_t post_router_models_load;
-    server_http_context::handler_t post_router_models_unload;
-    // management API
-    server_http_context::handler_t get_router_models_sse;
-    server_http_context::handler_t post_router_models;
-    server_http_context::handler_t del_router_models;
-};
-
-/**
- * A simple HTTP proxy that forwards requests to another server
- * and relays the responses back.
- */
-struct server_http_proxy : server_http_res {
-    std::function<void()> cleanup = nullptr;
-public:
-    server_http_proxy(const std::string & method,
-                      const std::string & scheme,
-                      const std::string & host,
-                      int port,
-                      const std::string & path,
-                      const std::map<std::string, std::string> & headers,
-                      const std::string & body,
-                      const std::map<std::string, uploaded_file> & files,
-                      const std::function<bool()> should_stop,
-                      int32_t timeout_read,
-                      int32_t timeout_write
-                      );
-    ~server_http_proxy() {
-        if (cleanup) {
-            cleanup();
-        }
-    }
-private:
-    std::thread thread;
-    struct msg_t {
-        std::map<std::string, std::string> headers;
-        int status = 0;
-        std::string data;
-        std::string content_type;
-    };
 };

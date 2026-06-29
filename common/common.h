@@ -619,17 +619,9 @@ struct common_params {
     // enable built-in tools
     std::vector<std::string> server_tools;
 
-    // router server configs
-    std::string models_dir    = "";     // directory containing models for the router server
-    std::string models_preset = "";     // directory containing model presets for the router server
-    int models_max = 4;                 // maximum number of models to load simultaneously
-    bool models_autoload = true;        // automatically load models when requested via the router server
-    std::string models_preset_hf = "";  // show a warning about remote presets on router loaded (if not empty)
-
     bool log_json = false;
 
     std::string slot_save_path;
-    std::string media_path; // path to directory for loading media files
 
     float slot_prompt_similarity = 0.1f;
 

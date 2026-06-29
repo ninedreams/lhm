@@ -1180,26 +1180,6 @@ void fill_common_params(common_params & params) {
         params.slot_save_path = FLAGS_slot_save_path;
     }
 
-    if (is_set(FLAGS_media_path)) {
-        params.media_path = FLAGS_media_path;
-    }
-
-    if (is_set(FLAGS_models_dir)) {
-        params.models_dir = FLAGS_models_dir;
-    }
-
-    if (is_set(FLAGS_models_preset)) {
-        params.models_preset = FLAGS_models_preset;
-    }
-
-    if (FLAGS_models_max != 4) {
-        params.models_max = FLAGS_models_max;
-    }
-
-    if (!FLAGS_models_autoload) {
-        params.models_autoload = false;
-    }
-
     if (!FLAGS_jinja) {
         params.use_jinja = false;
     }
