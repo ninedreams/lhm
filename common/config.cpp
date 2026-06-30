@@ -288,7 +288,7 @@ DEFINE_bool(slots, true, "enable slots endpoint");
 DEFINE_string(slot_save_path, "", "path to save slot data");
 DEFINE_bool(jinja, true, "use Jinja2 chat template");
 DEFINE_string(reasoning_format, "", "reasoning format (deepseek, etc.)");
-DEFINE_string(reasoning, "", "enable reasoning content (on/off/auto)");
+DEFINE_string(reasoning, "off", "enable reasoning content (on/off/auto)");
 DEFINE_int32(reasoning_budget, -1, "reasoning budget in tokens");
 DEFINE_string(reasoning_budget_message, "", "reasoning budget message");
 DEFINE_string(chat_template, "", "chat template string");

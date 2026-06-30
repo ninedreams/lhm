@@ -3,6 +3,7 @@
 #include "server_tools.h"
 
 #include "common.h"
+#include "common_params.h"
 #include "config.h"
 #include "fit.h"
 #include "lhm.h"
@@ -68,8 +69,11 @@ static server_http_context::handler_t ex_wrapper(server_http_context::handler_t 
     };
 }
 
-int llm_server(common_params & params, int argc, char ** argv) {
+int llm_server() {
     std::setlocale(LC_NUMERIC, "C");
+
+    common_params params;
+    fill_common_params(params);
 
     common_init();
 
