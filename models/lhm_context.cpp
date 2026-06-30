@@ -6,14 +6,14 @@
 
 #include <ggml.h>
 
-#include "lhm_context.h"
+#include "graph/lhm_graph.h"
+#include "memory/lhm_memory.h"
 
+#include "lhm_context.h"
 #include "lhm_arch.h"
-#include "lhm_graph.h"
 #include "lhm_impl.h"
 #include "lhm_batch.h"
 #include "lhm_io.h"
-#include "memory/lhm_memory.h"
 #include "lhm_mmap.h"
 #include "lhm_model.h"
 #include "lhm_ext.h"
@@ -2262,7 +2262,9 @@ void lhm_context::output_reorder() {
 //
 
 uint32_t lhm_context::graph_max_nodes(uint32_t n_tokens) const {
-    if (model.arch == LLM_ARCH_QWEN35 || model.arch == LLM_ARCH_QWEN35MOE) {
+    if (model.arch == LLM_ARCH_QWEN35 ||
+        model.arch == LLM_ARCH_QWEN35MOE ||
+        model.arch == LLM_ARCH_DEEPSEEK4) {
         return std::max<uint32_t>(n_tokens * 40, 32u * model.n_tensors());
     }
     uint32_t res = std::max<uint32_t>(1024u, 8u*model.n_tensors());

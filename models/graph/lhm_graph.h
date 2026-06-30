@@ -1,16 +1,17 @@
 #pragma once
 
-#include "lhm_arch.h"
-#include "lhm_batch.h"
-#include "params/lhm_hparams.h"
-#include "lhm_adapter.h"
-
 #include <cstdint>
 #include <vector>
 #include <memory>
 #include <set>
 #include <functional>
 #include <map>
+
+#include "params/lhm_hparams.h"
+
+#include "lhm_arch.h"
+#include "lhm_batch.h"
+#include "lhm_adapter.h"
 
 struct ggml_cgraph;
 struct ggml_context;
@@ -27,6 +28,7 @@ class lhm_kv_cache_iswa_context;
 class lhm_memory_recurrent_context;
 class lhm_memory_hybrid_context;
 class lhm_memory_hybrid_iswa_context;
+class llm_graph_input_dsv4;
 
 // certain models (typically multi-modal) can produce different types of graphs
 enum llm_graph_type {
@@ -85,8 +87,6 @@ struct llm_graph_params;
 class llm_graph_input_i {
 public:
     llm_graph_input_i() {
-        const char * LHM_GRAPH_INPUT_DEBUG = getenv("LHM_GRAPH_INPUT_DEBUG");
-        debug = LHM_GRAPH_INPUT_DEBUG ? atoi(LHM_GRAPH_INPUT_DEBUG) : 0;
     }
 
     virtual ~llm_graph_input_i() = default;
@@ -101,9 +101,6 @@ public:
         GGML_UNUSED(params);
         return false;
     }
-protected:
-    // env: LHM_GRAPH_INPUT_DEBUG
-    int debug = 0;
 };
 
 using llm_graph_input_ptr = std::unique_ptr<llm_graph_input_i>;
@@ -759,9 +756,6 @@ private:
     // we will use this to determine whether the graph can be reused by comparing them with the new parameters
     // note: these are updated after constructing the new graph
     llm_graph_params params;
-
-    // env: LHM_GRAPH_RESULT_DEBUG
-    int debug = 0;
 };
 
 using llm_graph_result_ptr = std::unique_ptr<llm_graph_result>;
@@ -913,7 +907,8 @@ struct llm_graph_context {
              ggml_tensor * gate_up_exps = nullptr,
              ggml_tensor * up_exps_s = nullptr,
              ggml_tensor * gate_exps_s = nullptr,
-             ggml_tensor * down_exps_s = nullptr) const;
+             ggml_tensor * down_exps_s = nullptr,
+             ggml_tensor * selected_experts_in = nullptr) const;
 
     ggml_tensor * build_moe_ffn(
              ggml_tensor * cur,
@@ -938,7 +933,8 @@ struct llm_graph_context {
              ggml_tensor * gate_up_exps_b = nullptr,
              ggml_tensor * up_exps_s = nullptr,
              ggml_tensor * gate_exps_s = nullptr,
-             ggml_tensor * down_exps_s = nullptr) const;
+             ggml_tensor * down_exps_s = nullptr,
+             ggml_tensor * selected_experts_in = nullptr) const;
 
     //
     // inputs
@@ -1037,6 +1033,8 @@ struct llm_graph_context {
                     int   il) const;
 
     llm_graph_input_attn_kv_iswa * build_attn_inp_kv_iswa() const;
+
+    llm_graph_input_dsv4 * build_inp_dsv4() const;
 
     // note: if k_cur or v_cur are not provided, they will not be stored in the memory
     ggml_tensor * build_attn(

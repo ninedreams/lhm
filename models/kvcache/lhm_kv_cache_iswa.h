@@ -1,8 +1,11 @@
 #pragma once
 
+#include <vector>
+
+#include "params/lhm_hparams.h"
 #include "lhm_kv_cache.h"
 
-#include <vector>
+struct lhm_hparams;
 
 //
 // lhm_kv_cache_iswa
@@ -15,6 +18,24 @@ class lhm_kv_cache_iswa : public lhm_memory_i {
 public:
     lhm_kv_cache_iswa(
             const lhm_model & model,
+                    ggml_type   type_k,
+                    ggml_type   type_v,
+                         bool   v_trans,
+                         bool   offload,
+                         bool   swa_full,
+                         bool   unified,
+                     uint32_t   kv_size,
+                     uint32_t   n_seq_max,
+                     uint32_t   n_ubatch,
+                     uint32_t   n_pad,
+               lhm_memory_t   mem_other,
+        const layer_filter_cb & filter,
+        const  layer_reuse_cb & reuse,
+        const  layer_share_cb & share);
+
+    lhm_kv_cache_iswa(
+            const lhm_model & model,
+            const lhm_hparams & hparams,
                     ggml_type   type_k,
                     ggml_type   type_v,
                          bool   v_trans,
@@ -73,8 +94,6 @@ public:
     lhm_kv_cache * get_swa () const;
 
 private:
-    const lhm_hparams & hparams;
-
     const bool unified;
 
     std::unique_ptr<lhm_kv_cache> kv_base;

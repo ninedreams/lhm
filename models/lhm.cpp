@@ -22,7 +22,6 @@
 #include "lhm_mmap.h"
 #include "lhm_vocab.h"
 #include "loader/lhm_model_loader.h"
-#include "loader/lhm_model_saver.h"
 #include "lhm_model.h"
 
 
@@ -452,13 +451,6 @@ struct lhm_model * lhm_model_load_from_file_ptr(FILE * file, struct lhm_model_pa
     std::string path_model;
     std::vector<std::string> splits = {};
     return lhm_model_load_from_file_impl(nullptr, nullptr, nullptr, path_model, splits, file, params);
-}
-
-void lhm_model_save_to_file(const struct lhm_model * model, const char * path_model) {
-    lhm_model_saver ms(model);
-    ms.add_kv_from_model();
-    ms.add_tensors_from_model();
-    ms.save(path_model);
 }
 
 //

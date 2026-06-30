@@ -21,6 +21,7 @@
 #include "kvcache/lhm_kv_cache.h"
 #include "kvcache/lhm_kv_cache_iswa.h"
 #include "kvcache/lhm_kv_cache_dsa.h"
+#include "kvcache/lhm_kv_cache_dsv4.h"
 #include "memory/lhm_memory_hybrid.h"
 #include "memory/lhm_memory_hybrid_iswa.h"
 #include "memory/lhm_memory_recurrent.h"
@@ -39,6 +40,8 @@ static lhm_model * lhm_model_mapping(llm_arch arch, const lhm_model_params & par
             return new lhm_model_qwen35(params);
         case LLM_ARCH_QWEN35MOE:
             return new lhm_model_qwen35moe(params);
+        case LLM_ARCH_DEEPSEEK4:
+            return new lhm_model_deepseek4(params);
         default:
             throw std::runtime_error(std::string("unsupported model architecture: '") + llm_arch_name(arch) + "'");
     }
@@ -549,6 +552,7 @@ static const char * lhm_expert_gating_func_name(lhm_expert_gating_func_type type
     switch (type) {
         case LHM_EXPERT_GATING_FUNC_TYPE_SOFTMAX: return "softmax";
         case LHM_EXPERT_GATING_FUNC_TYPE_SIGMOID: return "sigmoid";
+        case LHM_EXPERT_GATING_FUNC_TYPE_SQRT_SOFTPLUS: return "sqrtsoftplus";
         default:                                    return "unknown";
     }
 }
@@ -1625,10 +1629,9 @@ lhm_memory_i * lhm_model::create_memory(const lhm_memory_params & params, const 
     lhm_memory_i * res;
 
     switch (arch) {
-        case LLM_ARCH_QWEN35:
-        case LLM_ARCH_QWEN35MOE:
+        default:
             {
-                // The MTP head is dense-attention only on hybrid Qwen3.5/3.6, so use a plain
+                // The MTP head is dense-attention only on hybrid Qwen3.5/3.6/deepseekv4, so use a plain
                 // attention KV cache for the MTP context instead of the hybrid wrapper.
                 const bool mtp_on_hybrid_qwen35 =
                     params.ctx_type == LHM_CONTEXT_TYPE_MTP &&
@@ -1707,7 +1710,25 @@ lhm_memory_i * lhm_model::create_memory(const lhm_memory_params & params, const 
                         filter = [&](uint32_t il) { return il >= hparams.n_layer(); };
                     }
 
-                    if (hparams.swa_type != LHM_SWA_TYPE_NONE) {
+
+                    if (arch == LLM_ARCH_DEEPSEEK4) {
+                        GGML_ASSERT(hparams.swa_type != LHM_SWA_TYPE_NONE);
+
+                        res = new lhm_kv_cache_dsv4(
+                                *this,
+                                params.type_k,
+                                params.type_v,
+                                !cparams.flash_attn,
+                                cparams.offload_kqv,
+                                params.swa_full,
+                                cparams.kv_unified,
+                                cparams.n_ctx_seq,
+                                cparams.n_seq_max,
+                                cparams.n_ubatch,
+                                1,
+                                filter,
+                                reuse);
+                    } else if (hparams.swa_type != LHM_SWA_TYPE_NONE) {
                         LHM_ASSERT(hparams.is_swa_any());
 
                         {
@@ -1751,9 +1772,6 @@ lhm_memory_i * lhm_model::create_memory(const lhm_memory_params & params, const 
                     }
                 }
             }
-            break;
-        default:
-            throw std::runtime_error("Can not create memory");
     }
 
     return res;
@@ -1812,10 +1830,6 @@ const lhm_vocab * lhm_model_get_vocab(const lhm_model * model) {
     return &model->vocab;
 }
 
-void lhm_free_model(lhm_model * model) {
-    lhm_model_free(model);
-}
-
 void lhm_model_free(lhm_model * model) {
     delete model;
 }
@@ -1849,6 +1863,11 @@ int32_t lhm_model_n_head_kv(const lhm_model * model) {
 }
 
 int32_t lhm_model_n_swa(const lhm_model * model) {
+    // dsv4 kv-cache has SWA but it cannot be used as a rollback because of
+    // other compression ratios, so we return 0 here
+    if (model->arch == LLM_ARCH_DEEPSEEK4) {
+        return 0;
+    }
     return model->hparams.n_swa;
 }
 
@@ -1890,6 +1909,8 @@ lhm_rope_type lhm_model_rope_type(const lhm_model * model) {
         case LLM_ARCH_QWEN35:
         case LLM_ARCH_QWEN35MOE:
             return LHM_ROPE_TYPE_IMROPE;
+        case LLM_ARCH_DEEPSEEK4:
+            return LHM_ROPE_TYPE_NORM;
         // all model arches should be listed explicitly here
         case LLM_ARCH_UNKNOWN:
             GGML_ABORT("unknown architecture");
@@ -1971,14 +1992,8 @@ const char * lhm_model_chat_template(const lhm_model * model, const char * name)
     const auto key = name ? LLM_KV(model->arch, name)(LLM_KV_TOKENIZER_CHAT_TEMPLATE)
         : LLM_KV(model->arch)(LLM_KV_TOKENIZER_CHAT_TEMPLATE);
     const auto & it = model->gguf_kv.find(key);
-    if (it == model->gguf_kv.end()) {
-        // one-off fix for very popular models (so we are not flooded with issues)
-        // do not extend this list unless absolutely necessary
-        // Mistral-Small-2503 does not have built-in chat template
-        lhm_vocab_pre_type pre_type = model->vocab.get_pre_type();
-
+    if (it == model->gguf_kv.end())
         return nullptr;
-    }
 
     return it->second.c_str();
 }
@@ -1987,23 +2002,18 @@ uint64_t lhm_model_n_params(const lhm_model * model) {
     return model->n_elements();
 }
 
+// llm just have decoder
 bool lhm_model_has_encoder(const lhm_model * model) {
     switch (model->arch) {
-        case LLM_ARCH_QWEN35:
-        case LLM_ARCH_QWEN35MOE:
-            return false;
         default:
-            return true;
+            return false;
     }
 }
 
 bool lhm_model_has_decoder(const lhm_model * model) {
     switch (model->arch) {
-        case LLM_ARCH_QWEN35:
-        case LLM_ARCH_QWEN35MOE:
-            return true;
         default:
-            return false;
+            return true;
     }
 }
 

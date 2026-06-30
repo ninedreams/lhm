@@ -69,7 +69,7 @@ target_link_libraries(${TARGET} PRIVATE
     llm_server_impl 
     common
     lhm_models
-    lhm_models 
+    lhm_graph 
     lhm_params
     lhm_kvcache
     lhm_memory

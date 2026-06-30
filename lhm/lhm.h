@@ -496,10 +496,6 @@ extern "C" {
                                  size_t    n_paths,
               struct lhm_model_params    params);
 
-    void lhm_model_save_to_file(
-            const struct lhm_model * model,
-                        const char * path_model);
-
     void lhm_model_free(struct lhm_model * model);
 
     struct lhm_context * lhm_init_from_model(

@@ -3,12 +3,13 @@ lhm_add_compile_flags()
 #
 # sub-directory libraries
 #
-add_subdirectory(params)
-add_subdirectory(kvcache)
-add_subdirectory(memory)
-add_subdirectory(loader)
-add_subdirectory(llm)
 add_subdirectory(chat)
+add_subdirectory(graph)
+add_subdirectory(kvcache)
+add_subdirectory(llm)
+add_subdirectory(loader)
+add_subdirectory(memory)
+add_subdirectory(params)
 
 #
 # main library: lhm
@@ -32,8 +33,6 @@ add_library(${TARGET} STATIC
     lhm_ext.h
     lhm_grammar.cpp
     lhm_grammar.h
-    lhm_graph.cpp
-    lhm_graph.h
     lhm_impl.cpp
     lhm_impl.h
     lhm_io.cpp
@@ -72,5 +71,6 @@ target_link_libraries(${TARGET} PUBLIC
     lhm_memory
     lhm_loader
     lhm_llm
+    lhm_graph
     lhm_chat
 )

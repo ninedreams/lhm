@@ -1,12 +1,13 @@
 #pragma once
 
-#include "lhm_batch.h"
-#include "lhm_graph.h"
-#include "lhm_memory.h"
-
 #include <map>
 #include <set>
 #include <vector>
+
+#include "graph/lhm_graph.h"
+
+#include "lhm_batch.h"
+#include "lhm_memory.h"
 
 //
 // lhm_memory_recurrent
