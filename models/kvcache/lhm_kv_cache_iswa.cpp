@@ -1,11 +1,10 @@
-#include "lhm_kv_cache_iswa.h"
+#include <algorithm>
+#include <cassert>
 
+#include "lhm_kv_cache_iswa.h"
 #include "lhm_impl.h"
 #include "lhm_batch.h"
 #include "lhm_model.h"
-
-#include <algorithm>
-#include <cassert>
 
 //
 // lhm_kv_cache_iswa
@@ -26,7 +25,28 @@ lhm_kv_cache_iswa::lhm_kv_cache_iswa(
            lhm_memory_t   mem_other,
     const layer_filter_cb & filter,
     const  layer_reuse_cb & reuse,
-    const  layer_share_cb & share) : hparams(model.hparams), unified(unified) {
+    const  layer_share_cb & share) :
+    lhm_kv_cache_iswa(model, model.hparams, type_k, type_v, v_trans, offload, swa_full, unified,
+            kv_size, n_seq_max, n_ubatch, n_pad, mem_other, filter, reuse, share) {
+}
+
+lhm_kv_cache_iswa::lhm_kv_cache_iswa(
+        const lhm_model & model,
+        const lhm_hparams & hparams,
+                ggml_type   type_k,
+                ggml_type   type_v,
+                     bool   v_trans,
+                     bool   offload,
+                     bool   swa_full,
+                     bool   unified,
+                 uint32_t   kv_size,
+                 uint32_t   n_seq_max,
+                 uint32_t   n_ubatch,
+                 uint32_t   n_pad,
+           lhm_memory_t   mem_other,
+    const layer_filter_cb & filter,
+    const  layer_reuse_cb & reuse,
+    const  layer_share_cb & share) : unified(unified) {
 
     // chain filters
     const layer_filter_cb filter_base = [&](int32_t il) {
@@ -48,13 +68,12 @@ lhm_kv_cache_iswa::lhm_kv_cache_iswa(
     const uint32_t size_base = kv_size;
 
     // note: the SWA cache is always padded to 256 for performance
-    //       https://github.com/ggml-org/lhm.cpp/issues/17037
     uint32_t size_swa = GGML_PAD(std::min(size_base, hparams.n_swa*(unified ? n_seq_max : 1) + n_ubatch), 256);
 
     // when using full-size SWA cache, we set the SWA cache size to be equal to the base cache size
     if (swa_full) {
         LOG_WARN("%s: using full-size SWA cache (ref: %s)\n",
-                __func__, "https://github.com/ggml-org/lhm.cpp/pull/13194#issuecomment-2868343055");
+                __func__, "https://github.com/ggml-org/llama.cpp/pull/13194#issuecomment-2868343055");
 
         size_swa = size_base;
     }

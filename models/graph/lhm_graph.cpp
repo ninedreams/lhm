@@ -1,9 +1,9 @@
-#include "lhm_graph.h"
-
-#include "lhm_impl.h"
-#include "lhm_model.h"
-#include "lhm_batch.h"
-#include "lhm_cparams.h"
+#include <cassert>
+#include <cmath>
+#include <cstring>
+#include <numeric>
+#include <sstream>
+#include <unordered_set>
 
 #include "kvcache/lhm_kv_cache.h"
 #include "kvcache/lhm_kv_cache_iswa.h"
@@ -12,12 +12,12 @@
 #include "memory/lhm_memory_hybrid_iswa.h"
 #include "memory/lhm_memory_recurrent.h"
 
-#include <cassert>
-#include <cmath>
-#include <cstring>
-#include <numeric>
-#include <sstream>
-#include <unordered_set>
+#include "lhm_graph.h"
+#include "lhm_graph_dsv4.h"
+#include "lhm_impl.h"
+#include "lhm_model.h"
+#include "lhm_batch.h"
+#include "lhm_cparams.h"
 
 // dedup helpers
 
@@ -455,9 +455,7 @@ void llm_graph_input_attn_no_cache::set_input(const lhm_ubatch * ubatch) {
             }
         }
 
-        if (debug) {
-            print_mask(data, n_tokens, n_kv, n_swa, swa_type);
-        }
+        LOG_TRACE("{} {} {} {}", n_tokens, n_kv, n_swa, int(swa_type));
     };
 
     LHM_ASSERT(self_kq_mask);
@@ -561,7 +559,9 @@ void llm_graph_input_attn_kv_iswa::set_input(const lhm_ubatch * ubatch) {
     // base tensors may not be allocated if there are no non-SWA attention layers
     if (self_k_idxs && self_k_idxs->buffer) {
         mctx->get_base()->set_input_k_idxs(self_k_idxs, ubatch);
-        mctx->get_base()->set_input_v_idxs(self_v_idxs, ubatch);
+        if (self_v_idxs) {
+            mctx->get_base()->set_input_v_idxs(self_v_idxs, ubatch);
+        }
     }
 
     // the kq mask guards on its own buffer: shared cells leave idxs unbacked while the mask stays live
@@ -572,7 +572,9 @@ void llm_graph_input_attn_kv_iswa::set_input(const lhm_ubatch * ubatch) {
     // swa tensors may not be allocated if there are no SWA attention layers
     if (self_k_idxs_swa && self_k_idxs_swa->buffer) {
         mctx->get_swa()->set_input_k_idxs(self_k_idxs_swa, ubatch);
-        mctx->get_swa()->set_input_v_idxs(self_v_idxs_swa, ubatch);
+        if (self_v_idxs_swa) {
+            mctx->get_swa()->set_input_v_idxs(self_v_idxs_swa, ubatch);
+        }
     }
 
     if (self_kq_mask_swa && self_kq_mask_swa->buffer) {
@@ -886,9 +888,6 @@ bool llm_graph_input_sampling::can_reuse(const llm_graph_params & params) {
 
 llm_graph_result::llm_graph_result(int64_t max_nodes) : max_nodes(max_nodes) {
     reset();
-
-    const char * LHM_GRAPH_RESULT_DEBUG = getenv("LHM_GRAPH_RESULT_DEBUG");
-    debug = LHM_GRAPH_RESULT_DEBUG ? atoi(LHM_GRAPH_RESULT_DEBUG) : 0;
 }
 
 int64_t llm_graph_result::get_max_nodes() const {
@@ -979,32 +978,24 @@ void llm_graph_result::set_outputs(const llm_graph_params & params) {
 
 bool llm_graph_result::can_reuse(const llm_graph_params & params) {
     if (!this->params.allow_reuse(params)) {
-        if (debug > 1) {
-            LOG_DEBUG("%s: cannot reuse graph due to incompatible graph parameters\n", __func__);
-        }
+        LOG_TRACE("%s: cannot reuse graph due to incompatible graph parameters\n", __func__);
 
         return false;
     }
 
-    if (debug > 1) {
-        LOG_DEBUG("%s: checking compatibility of %d inputs:\n", __func__, (int) inputs.size());
-    }
+    LOG_TRACE("%s: checking compatibility of %d inputs:\n", __func__, (int) inputs.size());
 
     bool res = true;
 
     for (auto & input : inputs) {
         const bool cur = input->can_reuse(params);
 
-        if (debug > 1) {
-            LOG_DEBUG("%s: can_reuse = %d\n", "placeholder", cur);
-        }
+        LOG_TRACE("%s: can_reuse = %d\n", "placeholder", cur);
 
         res = res && cur;
     }
 
-    if (debug > 0) {
-        LOG_DEBUG("%s: can reuse graph = %d\n", __func__, res);
-    }
+    LOG_TRACE("%s: can reuse graph = %d\n", __func__, res);
 
     return res;
 }
@@ -1262,20 +1253,20 @@ llm_graph_qkv llm_graph_context::build_qkv(
 
 
 ggml_tensor * llm_graph_context::build_ffn(
-         ggml_tensor * cur,
-         ggml_tensor * up,
-         ggml_tensor * up_b,
-         ggml_tensor * up_s,
-         ggml_tensor * gate,
-         ggml_tensor * gate_b,
-         ggml_tensor * gate_s,
-         ggml_tensor * down,
-         ggml_tensor * down_b,
-         ggml_tensor * down_s,
-         ggml_tensor * act_scales,
-     llm_ffn_op_type   type_op,
-   llm_ffn_gate_type   type_gate,
-                 int   il) const {
+        ggml_tensor * cur,
+        ggml_tensor * up,
+        ggml_tensor * up_b,
+        ggml_tensor * up_s,
+        ggml_tensor * gate,
+        ggml_tensor * gate_b,
+        ggml_tensor * gate_s,
+        ggml_tensor * down,
+        ggml_tensor * down_b,
+        ggml_tensor * down_s,
+        ggml_tensor * act_scales,
+        llm_ffn_op_type type_op,
+        llm_ffn_gate_type type_gate,
+        int il) const {
     // NVFP4 support is currently restricted to
     // 1) LORA absence (*_s would be applied after LORA residual, which is incorrect)
     // 2) bias absense (*_s would be applied after bias addition, which is incorrect)
@@ -1343,6 +1334,30 @@ ggml_tensor * llm_graph_context::build_ffn(
     switch (type_op) {
         case LLM_FFN_SILU:
             if (gate && type_gate == LLM_FFN_PAR) {
+                if (il >= 0) {
+                    const float limit = hparams.swiglu_clamp_shexp[il];
+                    constexpr float eps = 1e-6f;
+                    if (limit > eps) {
+                        tmp = ggml_clamp(ctx0, tmp, -limit, limit);
+                        cb(tmp, "ffn_up_clamped", il);
+
+                        if (arch == LLM_ARCH_DEEPSEEK4) {
+                            cur = ggml_clamp(ctx0, cur, -INFINITY, limit);
+                            cb(cur, "ffn_gate_clamped", il);
+                            cur = ggml_swiglu_split(ctx0, cur, tmp);
+                        } else {
+                            ggml_tensor * gate_act = ggml_silu(ctx0, cur);
+                            cb(gate_act, "ffn_silu", il);
+                            gate_act = ggml_clamp(ctx0, gate_act, -INFINITY, limit);
+                            cb(gate_act, "ffn_silu_clamped", il);
+                            cur = ggml_mul(ctx0, gate_act, tmp);
+                        }
+                        cb(cur, "ffn_swiglu_limited", il);
+                        type_gate = LLM_FFN_SEQ;
+                        break;
+                    }
+                }
+
                 cur = ggml_swiglu_split(ctx0, cur, tmp);
                 cb(cur, "ffn_swiglu", il);
                 type_gate = LLM_FFN_SEQ;
@@ -1442,7 +1457,8 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
          ggml_tensor * gate_up_exps,
          ggml_tensor * up_exps_s,
          ggml_tensor * gate_exps_s,
-         ggml_tensor * down_exps_s) const {
+         ggml_tensor * down_exps_s,
+         ggml_tensor * selected_experts_in) const {
     return build_moe_ffn(
         cur,
         gate_inp,  /* gate_inp_b  */ nullptr,
@@ -1462,7 +1478,8 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
         /* gate_up_exps_b */ nullptr,
         up_exps_s,
         gate_exps_s,
-        down_exps_s
+        down_exps_s,
+        selected_experts_in
     );
 }
 
@@ -1489,7 +1506,8 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
          ggml_tensor * gate_up_exps_b,
          ggml_tensor * up_exps_s,
          ggml_tensor * gate_exps_s,
-         ggml_tensor * down_exps_s) const {
+         ggml_tensor * down_exps_s,
+         ggml_tensor * selected_experts_in) const {
     const int64_t n_embd   = cur->ne[0];
     const int64_t n_tokens = cur->ne[1];
     const bool weight_before_ffn = false; // for llama4, we apply the sigmoid-ed weights before the FFN
@@ -1498,6 +1516,9 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
 
     if (probs_in == nullptr) {
         logits = build_lora_mm(gate_inp, cur); // [n_expert, n_tokens]
+        if (gating_op == LHM_EXPERT_GATING_FUNC_TYPE_SQRT_SOFTPLUS) {
+            ggml_mul_mat_set_prec(logits, GGML_PREC_F32);
+        }
         cb(logits, "ffn_moe_logits", il);
     } else {
         logits = probs_in;
@@ -1521,6 +1542,10 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
         case LHM_EXPERT_GATING_FUNC_TYPE_SOFTMAX_WEIGHT:
             {
                 probs = logits; // [n_expert, n_tokens]
+            } break;
+        case LHM_EXPERT_GATING_FUNC_TYPE_SQRT_SOFTPLUS:
+            {
+                probs = ggml_sqrt(ctx0, ggml_softplus(ctx0, logits)); // [n_expert, n_tokens]
             } break;
         default:
             GGML_ABORT("fatal error");
@@ -1561,8 +1586,11 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
     }
 
     // select experts
-    ggml_tensor * selected_experts = ggml_argsort_top_k(ctx0, selection_probs, n_expert_used); // [n_expert_used, n_tokens]
-    cb(selected_experts->src[0], "ffn_moe_argsort", il);
+    ggml_tensor * selected_experts = selected_experts_in;
+    if (selected_experts == nullptr) {
+        selected_experts = ggml_argsort_top_k(ctx0, selection_probs, n_expert_used); // [n_expert_used, n_tokens]
+        cb(selected_experts->src[0], "ffn_moe_argsort", il);
+    }
     cb(selected_experts, "ffn_moe_topk", il);
 
     probs = ggml_reshape_3d(ctx0, probs, 1, n_expert, n_tokens);
@@ -1668,7 +1696,28 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
     switch (type_op) {
         case LLM_FFN_SILU:
             if (gate_exps) {
-                // pass
+                if (il >= 0) {
+                    const float limit = hparams.swiglu_clamp_exp[il];
+                    constexpr float eps = 1e-6f;
+                    if (limit > eps) {
+                        up = ggml_clamp(ctx0, up, -limit, limit);
+                        cb(up, "ffn_moe_up_clamped", il);
+
+                        if (arch == LLM_ARCH_DEEPSEEK4) {
+                            cur = ggml_clamp(ctx0, cur, -INFINITY, limit);
+                            cb(cur, "ffn_moe_gate_clamped", il);
+                            cur = ggml_swiglu_split(ctx0, cur, up);
+                        } else {
+                            ggml_tensor * gate_act = ggml_silu(ctx0, cur);
+                            cb(gate_act, "ffn_moe_silu", il);
+                            gate_act = ggml_clamp(ctx0, gate_act, -INFINITY, limit);
+                            cb(gate_act, "ffn_moe_silu_clamped", il);
+                            cur = ggml_mul(ctx0, gate_act, up);
+                        }
+                        cb(cur, "ffn_moe_swiglu_limited", il);
+                        break;
+                    }
+                }
             }
 
             if (has_gate) {
@@ -2660,6 +2709,31 @@ llm_graph_input_attn_kv_iswa * llm_graph_context::build_attn_inp_kv_iswa() const
     inp->self_v_rot_swa = mctx_cur->get_swa()->build_input_v_rot(ctx0);
 
     return (llm_graph_input_attn_kv_iswa *) res->add_input(std::move(inp));
+}
+
+llm_graph_input_dsv4 * llm_graph_context::build_inp_dsv4() const {
+    const auto * mctx_cur = static_cast<const lhm_kv_cache_dsv4_context *>(mctx);
+    const auto * raw_ctx  = mctx_cur->get_raw();
+
+    auto inp_raw = std::make_unique<llm_graph_input_dsv4_raw>(cparams, raw_ctx);
+
+    const int64_t n_stream = mctx_cur->get_csa_plan(ubatch).n_stream;
+
+    GGML_ASSERT(hparams.swa_type != LHM_SWA_TYPE_NONE && "DSV4 expects SWA raw cache");
+
+    inp_raw->self_k_idxs = raw_ctx->build_input_k_idxs(ctx0, ubatch);
+    inp_raw->self_kq_mask = dsv4_build_raw_kq_mask(ctx0, raw_ctx, ubatch, cparams, n_stream);
+    inp_raw->self_kq_mask_cnv = inp_raw->self_kq_mask;
+
+    inp_raw->self_k_rot = raw_ctx->build_input_k_rot(ctx0);
+    auto inp = std::make_unique<llm_graph_input_dsv4>(cparams, std::move(inp_raw), mctx_cur);
+
+    dsv4_build_comp_inputs(ctx0, inp->inp_csa, mctx_cur->get_csa_plan(ubatch), "csa", n_stream);
+    dsv4_build_comp_inputs(ctx0, inp->inp_hca, mctx_cur->get_hca_plan(ubatch), "hca", n_stream);
+    dsv4_build_comp_inputs(ctx0, inp->inp_lid, mctx_cur->get_lid_plan(ubatch), "lid", n_stream);
+    inp->inp_lid.k_rot = mctx_cur->get_lid()->build_input_k_rot(ctx0);
+
+    return (llm_graph_input_dsv4 *) res->add_input(std::move(inp));
 }
 
 ggml_tensor * llm_graph_context::build_rs(

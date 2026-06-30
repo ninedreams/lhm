@@ -13,6 +13,7 @@
 #endif
 
 // trim whitespace from the beginning and end of a string
+// TODO change to common?
 static std::string trim(const std::string & str) {
     size_t start = 0;
     size_t end = str.size();

@@ -13,6 +13,8 @@ using lhm_files  = std::vector<std::unique_ptr<lhm_file>>;
 using lhm_mmaps  = std::vector<std::unique_ptr<lhm_mmap>>;
 using lhm_mlocks = std::vector<std::unique_ptr<lhm_mlock>>;
 
+// TODO maybe we do not need mmap?
+
 struct lhm_file {
     lhm_file(const char * fname, const char * mode, bool use_direct_io = false);
     lhm_file(FILE * file);

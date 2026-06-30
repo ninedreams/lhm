@@ -1,12 +1,13 @@
 #pragma once
 
-#include "lhm_batch.h"
-#include "lhm_graph.h"
-#include "lhm_kv_cells.h"
-#include "memory/lhm_memory.h"
-
 #include <unordered_map>
 #include <vector>
+
+#include "graph/lhm_graph.h"
+#include "memory/lhm_memory.h"
+
+#include "lhm_batch.h"
+#include "lhm_kv_cells.h"
 
 struct lhm_cparams;
 struct lhm_hparams;
@@ -160,6 +161,10 @@ public:
 
     ggml_type type_k() const;
     ggml_type type_v() const;
+
+    // for deepseek v4, the layer ids in the model may not match the layer ids in the KV cache
+    std::vector<uint32_t> get_layer_ids() const;
+    ggml_tensor * get_k_storage(int32_t il) const;
 
     //
     // graph_build API

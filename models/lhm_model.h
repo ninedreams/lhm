@@ -1,18 +1,19 @@
 #pragma once
 
-#include "lhm.h"
-#include "lhm_arch.h"
-#include "lhm_graph.h"
-#include "params/lhm_hparams.h"
-#include "memory/lhm_memory.h"
-#include "lhm_vocab.h"
-
 #include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+#include "graph/lhm_graph.h"
+#include "params/lhm_hparams.h"
+#include "memory/lhm_memory.h"
+
+#include "lhm.h"
+#include "lhm_arch.h"
+#include "lhm_vocab.h"
 
 struct lhm_cparams;
 struct lhm_ubatch;
@@ -36,6 +37,7 @@ enum llm_type {
     LLM_TYPE_160M,
     LLM_TYPE_190M,
     LLM_TYPE_220M,
+    LLM_TYPE_230M,
     LLM_TYPE_250M,
     LLM_TYPE_256M,
     LLM_TYPE_270M,
@@ -111,8 +113,8 @@ enum llm_type {
     LLM_TYPE_16x3_8B,
     LLM_TYPE_10B_128x3_66B,
     LLM_TYPE_57B_A14B,
-    LLM_TYPE_17B_16E, // lhm4 Scout
-    LLM_TYPE_17B_128E, // lhm4 Maverick
+    LLM_TYPE_17B_16E, // llama4 Scout
+    LLM_TYPE_17B_128E, // llama4 Maverick
     LLM_TYPE_A13B,
     LLM_TYPE_7B_A1B,
     LLM_TYPE_8B_A1B, // lfm2moe
@@ -254,9 +256,11 @@ struct lhm_layer {
     struct ggml_tensor * wq_b      = nullptr;
     struct ggml_tensor * wkv_a_mqa = nullptr;
     struct ggml_tensor * wkv_b     = nullptr;
+    struct ggml_tensor * wkv       = nullptr;
     struct ggml_tensor * wk_b      = nullptr;
     struct ggml_tensor * wv_b      = nullptr;
     struct ggml_tensor * wqkv_b    = nullptr;
+    struct ggml_tensor * wo_a      = nullptr;
     struct ggml_tensor * wo_b      = nullptr;
     struct ggml_tensor * wq_cross  = nullptr;
     struct ggml_tensor * wk_cross  = nullptr;
@@ -332,6 +336,7 @@ struct lhm_layer {
     struct ggml_tensor * ffn_up_b   = nullptr; // b3
     struct ggml_tensor * ffn_act    = nullptr;
     struct ggml_tensor * ffn_exp_probs_b = nullptr;
+    struct ggml_tensor * ffn_gate_tid2eid = nullptr;
 
     // mamba proj
     struct ggml_tensor * ssm_in  = nullptr;
@@ -462,6 +467,23 @@ struct lhm_layer {
     // openai-moe
     struct ggml_tensor * attn_sinks = nullptr;
 
+    // DeepSeek-V4
+    struct ggml_tensor * attn_kv_norm = nullptr;
+    struct ggml_tensor * hc_attn_fn   = nullptr;
+    struct ggml_tensor * hc_attn_base = nullptr;
+    struct ggml_tensor * hc_attn_scale = nullptr;
+    struct ggml_tensor * hc_ffn_fn    = nullptr;
+    struct ggml_tensor * hc_ffn_base  = nullptr;
+    struct ggml_tensor * hc_ffn_scale = nullptr;
+    struct ggml_tensor * attn_comp_wkv   = nullptr;
+    struct ggml_tensor * attn_comp_wgate = nullptr;
+    struct ggml_tensor * attn_comp_ape   = nullptr;
+    struct ggml_tensor * attn_comp_norm  = nullptr;
+    struct ggml_tensor * indexer_comp_wkv   = nullptr;
+    struct ggml_tensor * indexer_comp_wgate = nullptr;
+    struct ggml_tensor * indexer_comp_ape   = nullptr;
+    struct ggml_tensor * indexer_comp_norm  = nullptr;
+
     // cogvlm
     struct ggml_tensor * visexp_attn_wqkv = nullptr;
     struct ggml_tensor * visexp_attn_wo   = nullptr;
@@ -551,6 +573,11 @@ struct lhm_model {
     // NextN/MTP model-level projections
     struct ggml_tensor * nextn_proj_pre  = nullptr;
     struct ggml_tensor * nextn_proj_post = nullptr;
+
+    // DeepSeek-V4
+    struct ggml_tensor * hc_head_fn    = nullptr;
+    struct ggml_tensor * hc_head_base  = nullptr;
+    struct ggml_tensor * hc_head_scale = nullptr;
 
     // classifier
     struct ggml_tensor * cls       = nullptr;

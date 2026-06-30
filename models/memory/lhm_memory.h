@@ -1,16 +1,15 @@
 #pragma once
 
-#include "lhm.h"
-#include "lhm_graph.h"
-
 #include <map>
 #include <memory>
 #include <functional>
 
+#include "graph/lhm_graph.h"
+
+#include "lhm.h"
+
 struct lhm_ubatch;
-
 class lhm_batch_allocr;
-
 class lhm_io_write_i;
 class lhm_io_read_i;
 

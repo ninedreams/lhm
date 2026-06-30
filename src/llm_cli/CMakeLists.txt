@@ -8,7 +8,8 @@ target_include_directories(${TARGET} PUBLIC ${CMAKE_SOURCE_DIR} common)
 target_link_libraries(${TARGET} PUBLIC
     common
     server_context
-    lhm_models 
+    lhm_models
+    lhm_graph
     lhm_params
     lhm_kvcache
     lhm_memory

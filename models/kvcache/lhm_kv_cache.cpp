@@ -211,10 +211,12 @@ lhm_kv_cache::lhm_kv_cache(
             n_embd_head_k_all = -1;
         }
 
-        if (n_embd_head_v_all == 0) {
-            n_embd_head_v_all = (int32_t) hparams.n_embd_head_v(il);
-        } else if (n_embd_head_v_all > 0 && n_embd_head_v_all != (int32_t) hparams.n_embd_head_v(il)) {
-            n_embd_head_v_all = -1;
+        if (!is_mla) {
+            if (n_embd_head_v_all == 0) {
+                n_embd_head_v_all = (int32_t) hparams.n_embd_head_v(il);
+            } else if (n_embd_head_v_all > 0 && n_embd_head_v_all != (int32_t) hparams.n_embd_head_v(il)) {
+                n_embd_head_v_all = -1;
+            }
         }
 
         // [TAG_V_CACHE_VARIABLE]
@@ -335,6 +337,11 @@ lhm_kv_cache::lhm_kv_cache(
             n_embd_head_k_all > 0 &&
             ggml_is_quantized(type_k) &&
             hparams.n_embd_head_k() % 64 == 0;
+
+        // always create Hadamard rotation tensors for DeepSeek lightning indexers
+        if ((model.arch == LLM_ARCH_DEEPSEEK4) && (hparams.n_embd_head_k_full == hparams.indexer_head_size)) {
+            attn_rot_k = true;
+        }
 
         attn_rot_v =
             !attn_rot_disable &&
@@ -1209,6 +1216,23 @@ ggml_type lhm_kv_cache::type_k() const {
 
 ggml_type lhm_kv_cache::type_v() const {
     return layers[0].v->type;
+}
+
+std::vector<uint32_t> lhm_kv_cache::get_layer_ids() const {
+    std::vector<uint32_t> res;
+    res.reserve(layers.size());
+
+    for (const auto & layer : layers) {
+        res.push_back(layer.il);
+    }
+
+    return res;
+}
+
+ggml_tensor * lhm_kv_cache::get_k_storage(int32_t il) const {
+    const int32_t ikv = map_layer_ids.at(il);
+
+    return layers[ikv].k;
 }
 
 uint32_t lhm_kv_cache::get_n_kv(const slot_info & sinfo) const {

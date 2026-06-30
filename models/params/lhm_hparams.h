@@ -14,6 +14,7 @@ enum lhm_expert_gating_func_type {
     LHM_EXPERT_GATING_FUNC_TYPE_SOFTMAX        = 1,
     LHM_EXPERT_GATING_FUNC_TYPE_SIGMOID        = 2,
     LHM_EXPERT_GATING_FUNC_TYPE_SOFTMAX_WEIGHT = 3, // applied to the router weights instead of the logits
+    LHM_EXPERT_GATING_FUNC_TYPE_SQRT_SOFTPLUS  = 4,
 };
 
 enum lhm_swa_type {
@@ -226,6 +227,16 @@ struct lhm_hparams {
     uint32_t indexer_head_size = 0;
     uint32_t indexer_top_k     = 0;
 
+    // DeepSeek-V4
+    uint32_t dsv4_o_group_count        = 0;
+    uint32_t dsv4_o_lora_rank          = 0;
+    uint32_t dsv4_hc_mult              = 0;
+    uint32_t dsv4_hc_sinkhorn_iters    = 0;
+    uint32_t dsv4_hash_layer_count     = 0;
+    float    dsv4_compress_rope_base   = 0.0f;
+    float    dsv4_hc_eps               = 0.0f;
+    std::array<uint32_t, LHM_MAX_LAYERS> dsv4_compress_ratios;
+
     // qwen3vl deepstack
     // When parsed from GGUF, this implies the first N layers consume the first
     // N deepstack embeddings. Use deepstack_mapping_arr if you need a more
@@ -239,9 +250,6 @@ struct lhm_hparams {
     // -1  => no deepstack
     // >=0 => input embedding index for deepstack injection
     std::array<int32_t, LHM_MAX_LAYERS> deepstack_mapping_arr;
-
-    // gemma4 per-layer embedding
-    uint32_t n_embd_per_layer = 0;
 
     // needed by encoder-decoder models (e.g. T5, FLAN-T5)
     // ref: https://github.com/ggml-org/lhm.cpp/pull/8141

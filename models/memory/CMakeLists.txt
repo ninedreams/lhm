@@ -14,6 +14,5 @@ add_library(lhm_memory STATIC
 target_include_directories(lhm_memory PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(lhm_memory PUBLIC ${CMAKE_SOURCE_DIR}/models)
 target_include_directories(lhm_memory PUBLIC ${CMAKE_SOURCE_DIR}/lhm)
-target_compile_features(lhm_memory PRIVATE cxx_std_17) # don't bump
 
 target_link_libraries(lhm_memory PUBLIC lhm_params ggml)
