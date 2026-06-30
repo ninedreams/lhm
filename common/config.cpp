@@ -62,7 +62,7 @@ DEFINE_string(flash_attn, "auto", "set Flash Attention use ('on', 'off', or 'aut
 // ============================================================================
 DEFINE_string(prompt, "", "prompt to start generation with");
 DEFINE_string(system_prompt, "", "system prompt to use with model");
-DEFINE_bool(perf, true, "whether to enable internal libllama performance timings");
+DEFINE_bool(perf, true, "whether to enable internal performance timings");
 DEFINE_bool(show_timings, true, "whether to show timing information after each response");
 DEFINE_string(file, "", "a file containing the prompt");
 DEFINE_string(system_prompt_file, "", "a file containing the system prompt");

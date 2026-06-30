@@ -395,9 +395,6 @@ enum common_reasoning_format {
     COMMON_REASONING_FORMAT_AUTO,            // Same as deepseek, using `message.reasoning_content`
     COMMON_REASONING_FORMAT_DEEPSEEK_LEGACY, // Extract thinking tag contents and return as `message.reasoning_content`, or leave inline in <think> tags in stream mode
     COMMON_REASONING_FORMAT_DEEPSEEK,        // Extract thinking tag contents and return as `message.reasoning_content`, including in streaming deltas.
-    // do not extend this enum unless you absolutely have to
-    // in most cases, use COMMON_REASONING_FORMAT_AUTO
-    // see: https://github.com/ggml-org/llama.cpp/pull/15408
 };
 
 
@@ -540,7 +537,7 @@ struct common_params {
     bool no_perf           = false; // disable performance metrics
     bool show_timings      = true;  // show timing information on CLI
     bool ctx_shift         = false; // context shift on infinite text generation
-    bool swa_full          = false; // use full-size SWA cache (https://github.com/ggml-org/llama.cpp/pull/13194#issuecomment-2868343055)
+    bool swa_full          = false; // use full-size SWA cache
     bool kv_unified        = false; // enable unified KV cache
 
     bool input_prefix_bos  = false; // prefix BOS to user inputs, preceding input_prefix

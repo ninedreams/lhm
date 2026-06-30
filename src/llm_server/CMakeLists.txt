@@ -49,8 +49,8 @@ add_library(${TARGET} STATIC
     server.cpp
     server_http.cpp
     server_http.h
-    server_models.cpp
-    server_models.h
+    # server_models.cpp
+    # server_models.h
 )
 set_target_properties(${TARGET} PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 

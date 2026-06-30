@@ -1,6 +1,5 @@
 #include "server_context.h"
 #include "server_http.h"
-#include "server_models.h"
 #include "server_tools.h"
 
 #include "common.h"
@@ -120,8 +119,6 @@ int llm_server(common_params & params, int argc, char ** argv) {
     ctx_http.get ("/metrics",                  ex_wrapper(routes.get_metrics));
     ctx_http.get ("/props",                    ex_wrapper(routes.get_props));
     ctx_http.post("/props",                    ex_wrapper(routes.post_props));
-    ctx_http.get ("/models",                   ex_wrapper(routes.get_models)); // public endpoint (no API key check)
-    ctx_http.get ("/v1/models",                ex_wrapper(routes.get_models)); // public endpoint (no API key check)
     ctx_http.post("/completion",               ex_wrapper(routes.post_completions)); // legacy
     ctx_http.post("/completions",              ex_wrapper(routes.post_completions));
     ctx_http.post("/v1/completions",           ex_wrapper(routes.post_completions_oai));
@@ -143,7 +140,7 @@ int llm_server(common_params & params, int argc, char ** argv) {
     ctx_http.post("/v1/reranking",             ex_wrapper(routes.post_rerank));
     ctx_http.post("/tokenize",                 ex_wrapper(routes.post_tokenize));
     ctx_http.post("/detokenize",               ex_wrapper(routes.post_detokenize));
-    ctx_http.post("/apply-template",           ex_wrapper(routes.post_apply_template));
+    ctx_http.post("/apply_template",           ex_wrapper(routes.post_apply_template));
     // token counting
     ctx_http.post("/chat/completions/input_tokens",    ex_wrapper(routes.post_chat_completions_tok));
     ctx_http.post("/v1/chat/completions/input_tokens", ex_wrapper(routes.post_chat_completions_tok));
@@ -151,8 +148,8 @@ int llm_server(common_params & params, int argc, char ** argv) {
     ctx_http.post("/v1/responses/input_tokens",        ex_wrapper(routes.post_responses_tok_oai));
     ctx_http.post("/v1/messages/count_tokens",         ex_wrapper(routes.post_anthropic_count_tokens)); // anthropic token counting
     // LoRA adapters hotswap
-    ctx_http.get ("/lora-adapters",            ex_wrapper(routes.get_lora_adapters));
-    ctx_http.post("/lora-adapters",            ex_wrapper(routes.post_lora_adapters));
+    ctx_http.get ("/lora_adapters",            ex_wrapper(routes.get_lora_adapters));
+    ctx_http.post("/lora_adapters",            ex_wrapper(routes.post_lora_adapters));
     // Save & load slots
     ctx_http.get ("/slots",                    ex_wrapper(routes.get_slots));
     ctx_http.post("/slots/:id_slot",           ex_wrapper(routes.post_slots));
@@ -197,12 +194,6 @@ int llm_server(common_params & params, int argc, char ** argv) {
         // load the model
         SRV_INF("%s", "loading model\n");
 
-        if (server_models::is_child_server()) {
-            ctx_server.on_sleeping_changed([&](bool sleeping) {
-                server_models::notify_router_sleeping_state(sleeping);
-            });
-        }
-
         if (!ctx_server.load_model(params)) {
             clean_up();
             if (ctx_http.thread.joinable()) {
@@ -241,12 +232,12 @@ int llm_server(common_params & params, int argc, char ** argv) {
     {
         SRV_INF("server is listening on %s\n", ctx_http.listening_address.c_str());
 
-        // optionally, notify router server that this instance is ready
-        std::thread monitor_thread;
-        if (server_models::is_child_server()) {
-            json model_info = routes.get_model_info();
-            monitor_thread = server_models::setup_child_server(shutdown_handler, model_info);
-        }
+        // // optionally, notify router server that this instance is ready
+        // std::thread monitor_thread;
+        // if (server_models::is_child_server()) {
+        //     json model_info = routes.get_model_info();
+        //     monitor_thread = server_models::setup_child_server(shutdown_handler, model_info);
+        // }
 
         // this call blocks the main thread until queue_tasks.terminate() is called
         ctx_server.start_loop();
@@ -255,9 +246,9 @@ int llm_server(common_params & params, int argc, char ** argv) {
         if (ctx_http.thread.joinable()) {
             ctx_http.thread.join();
         }
-        if (monitor_thread.joinable()) {
-            monitor_thread.join();
-        }
+        // if (monitor_thread.joinable()) {
+        //     monitor_thread.join();
+        // }
 
         auto * ll_ctx = ctx_server.get_lhm_context();
         if (ll_ctx != nullptr) {
