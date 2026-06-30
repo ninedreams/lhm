@@ -1172,8 +1172,8 @@ struct common_init_result::impl {
 
 common_init_result::common_init_result(common_params & params, bool model_only) :
     pimpl(new impl{}) {
-    auto mparams = common_model_params_to_llama(params);
-    auto cparams = common_context_params_to_llama(params);
+    auto mparams = common_model_params_to_lhm(params);
+    auto cparams = common_context_params_to_lhm(params);
 
     if (params.fit_params) {
         LOG_INFO("%s: fitting params to device memory ...\n", __func__);
@@ -1504,7 +1504,7 @@ void common_set_adapter_lora(struct lhm_context * ctx, std::vector<common_adapte
     lhm_set_adapters_lora(ctx, loras.data(), loras.size(), scales.data());
 }
 
-struct lhm_model_params common_model_params_to_llama(common_params & params) {
+struct lhm_model_params common_model_params_to_lhm(common_params & params) {
     auto mparams = lhm_model_default_params();
 
     if (!params.devices.empty()) {
@@ -1543,7 +1543,7 @@ struct lhm_model_params common_model_params_to_llama(common_params & params) {
     return mparams;
 }
 
-struct lhm_context_params common_context_params_to_llama(const common_params & params) {
+struct lhm_context_params common_context_params_to_lhm(const common_params & params) {
     auto cparams = lhm_context_default_params();
 
     cparams.n_ctx             = params.n_ctx;

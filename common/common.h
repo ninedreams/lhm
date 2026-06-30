@@ -853,8 +853,8 @@ using common_init_result_ptr = std::unique_ptr<common_init_result>;
 
 common_init_result_ptr common_init_from_params(common_params & params, bool model_only = false);
 
-struct lhm_model_params     common_model_params_to_llama  (      common_params & params);
-struct lhm_context_params   common_context_params_to_llama(const common_params & params);
+struct lhm_model_params     common_model_params_to_lhm  (      common_params & params);
+struct lhm_context_params   common_context_params_to_lhm(const common_params & params);
 struct ggml_threadpool_params ggml_threadpool_params_from_cpu_params(const common_cpu_params & params);
 
 // clear LoRA adapters from context, then apply new list of adapters

@@ -800,8 +800,8 @@ private:
 
                 params_dft.n_outputs_max = params_base.n_parallel;
 
-                auto mparams_dft = common_model_params_to_llama(params_dft);
-                auto cparams_dft = common_context_params_to_llama(params_dft);
+                auto mparams_dft = common_model_params_to_lhm(params_dft);
+                auto cparams_dft = common_context_params_to_lhm(params_dft);
                 if (spec_mtp) {
                     cparams_dft.ctx_type = LHM_CONTEXT_TYPE_MTP;
                     cparams_dft.type_k   = params_base.speculative.draft.cache_type_k;
@@ -888,7 +888,7 @@ private:
 
             params_dft.tensor_buft_overrides = params_spec.tensor_buft_overrides;
 
-            auto mparams_dft = common_model_params_to_llama(params_dft);
+            auto mparams_dft = common_model_params_to_lhm(params_dft);
 
             model_dft.reset(lhm_model_load_from_file(params_dft.model.path.c_str(), mparams_dft));
             if (model_dft == nullptr) {
@@ -896,7 +896,7 @@ private:
                 return false;
             }
 
-            auto cparams = common_context_params_to_llama(params_dft);
+            auto cparams = common_context_params_to_lhm(params_dft);
 
             const bool spec_mtp = std::find(params_base.speculative.types.begin(),
                                             params_base.speculative.types.end(),
@@ -920,7 +920,7 @@ private:
             SRV_INF("creating MTP draft context against the target model '%s'\n",
                     params_base.model.path.c_str());
 
-            auto cparams_mtp = common_context_params_to_llama(params_base);
+            auto cparams_mtp = common_context_params_to_lhm(params_base);
             cparams_mtp.ctx_type      = LHM_CONTEXT_TYPE_MTP;
             cparams_mtp.type_k        = params_base.speculative.draft.cache_type_k;
             cparams_mtp.type_v        = params_base.speculative.draft.cache_type_v;

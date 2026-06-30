@@ -325,7 +325,6 @@ DECLARE_bool(log_timestamps);
 // ============================================================================
 // Speculative decoding parameters
 // ============================================================================
-DECLARE_string(spec_draft_hf);
 DECLARE_int32(spec_draft_threads);
 DECLARE_int32(spec_draft_threads_batch);
 DECLARE_string(spec_draft_cpu_mask);

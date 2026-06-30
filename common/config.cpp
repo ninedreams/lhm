@@ -324,7 +324,6 @@ DEFINE_bool(log_timestamps, true, "use timestamps in log output");
 // ============================================================================
 // Speculative decoding parameters
 // ============================================================================
-DEFINE_string(spec_draft_hf, "", "Hugging Face repo for draft model");
 DEFINE_int32(spec_draft_threads, 0, "number of CPU threads for draft model");
 DEFINE_int32(spec_draft_threads_batch, 0, "number of threads for draft model batch processing");
 DEFINE_string(spec_draft_cpu_mask, "", "CPU affinity mask for draft model");
