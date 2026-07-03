@@ -1,4 +1,4 @@
-#include "models.h"
+#include "base_models.h"
 
 #include "lhm_impl.h"
 #include "memory/lhm_memory_recurrent.h"

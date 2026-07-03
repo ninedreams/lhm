@@ -7,6 +7,7 @@
 
 #define LHM_MAX_SEQ 256
 
+// model inference parameters, most come from user config or some default values
 struct lhm_cparams {
     uint32_t n_ctx;           // context size used during inference
     uint32_t n_ctx_seq;       // context for a single sequence

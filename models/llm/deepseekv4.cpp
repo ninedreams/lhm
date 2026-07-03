@@ -3,9 +3,12 @@
 #include <stdexcept>
 #include <string>
 
-#include "models.h"
 #include "graph/lhm_graph.h"
 #include "kvcache/lhm_kv_cache_dsv4.h"
+
+#include "log.h"
+#include "base_models.h"
+#include "deepseekv4.h"
 
 static float dsv4_rope_attn_factor(float freq_scale, float ext_factor) {
     if (ext_factor == 0.0f) {
@@ -62,12 +65,14 @@ void lhm_model_deepseek4::load_arch_hparams(lhm_model_loader & ml) {
     }
 }
 
-void lhm_model_deepseek4::load_arch_tensors(lhm_model_loader &) {
+void lhm_model_deepseek4::load_arch_tensors(lhm_model_loader & ml) {
     LHM_LOAD_LOCALS;
 
     const int64_t q_lora_rank     = hparams.n_lora_q;
     const int64_t n_ff_exp        = hparams.n_ff_exp;
     const int64_t n_expert_shared = hparams.n_expert_shared;
+    const int64_t n_head_dim      = 512;
+    // const int64_t n_value_dim     = 512;
 
     const int64_t n_embd_head = hparams.n_embd_head_k();
     const int64_t o_groups    = hparams.dsv4_o_group_count;
@@ -75,79 +80,134 @@ void lhm_model_deepseek4::load_arch_tensors(lhm_model_loader &) {
     const int64_t hc_mult     = hparams.dsv4_hc_mult;
     const int64_t hc_dim      = hc_mult * n_embd;
     const int64_t hc_mix_dim  = (2 + hc_mult) * hc_mult;
+    const int64_t q_dim = n_head * n_head_dim;
+    const int64_t out_low_dim = o_groups * o_lora_rank;
 
-    tok_embd = create_tensor(tn(LLM_TENSOR_TOKEN_EMBD, "weight"), {n_embd, n_vocab}, 0);
+    // check if MTP
+    const bool mtp = ml.get_weight("mtp.0.hc_head_base") != nullptr;
 
-    output_norm = create_tensor(tn(LLM_TENSOR_OUTPUT_NORM, "weight"), {n_embd}, 0);
-    output      = create_tensor(tn(LLM_TENSOR_OUTPUT,      "weight"), {n_embd, n_vocab}, 0);
+    auto load_block_mtp = [&](int il) {
+        auto & layer = layers[il];
 
-    hc_head_fn    = create_tensor(tn(LLM_TENSOR_HC_HEAD_FN, "weight"),    {hc_dim, hc_mult}, 0);
-    hc_head_base  = create_tensor(tn(LLM_TENSOR_HC_HEAD_BASE, "weight"),  {hc_mult}, 0);
-    hc_head_scale = create_tensor(tn(LLM_TENSOR_HC_HEAD_SCALE, "weight"), {1}, 0);
+        layer.hc_head_fn    = create_tensor(tn(LLM_TENSOR_MTP_HC_HEAD_FN, "weight", 0),    {hc_dim, hc_mult}, GGML_TYPE_F32);
+        layer.hc_head_base  = create_tensor(tn(LLM_TENSOR_MTP_HC_HEAD_BASE, "weight", 0),  {hc_mult}, GGML_TYPE_F32);
+        layer.hc_head_scale = create_tensor(tn(LLM_TENSOR_MTP_HC_HEAD_SCALE, "weight", 0), {1}, GGML_TYPE_F32);
 
-    for (int i = 0; i < n_layer; ++i) {
-        auto & layer = layers[i];
+        // MTP block looks like a full-attention deepseek4 decoder block.
+        layer.e_proj        = create_tensor(tn(LLM_TENSOR_MTP_E_PROJ, "weight", 0), {n_embd, n_embd}, GGML_TYPE_Q8_0);
+        layer.h_proj        = create_tensor(tn(LLM_TENSOR_MTP_H_PROJ, "weight", 0), {n_embd, n_embd}, GGML_TYPE_Q8_0);
+        layer.enorm         = create_tensor(tn(LLM_TENSOR_MTP_ENORM, "weight", 0), {n_embd}, GGML_TYPE_F32);
+        layer.hnorm         = create_tensor(tn(LLM_TENSOR_MTP_HNORM, "weight", 0), {n_embd}, GGML_TYPE_F32);
+        layer.norm          = create_tensor(tn(LLM_TENSOR_MTP_NORM, "weight", 0), {n_embd}, GGML_TYPE_F32);
 
-        layer.attn_norm     = create_tensor(tn(LLM_TENSOR_ATTN_NORM,     "weight", i), {n_embd}, 0);
-        layer.attn_sinks    = create_tensor(tn(LLM_TENSOR_ATTN_SINKS,    "weight", i), {n_head}, 0);
-        layer.wq_a          = create_tensor(tn(LLM_TENSOR_ATTN_Q_A,      "weight", i), {n_embd, q_lora_rank}, 0);
-        layer.attn_q_a_norm = create_tensor(tn(LLM_TENSOR_ATTN_Q_A_NORM, "weight", i), {q_lora_rank}, 0);
-        layer.wq_b          = create_tensor(tn(LLM_TENSOR_ATTN_Q_B,      "weight", i), {q_lora_rank, n_head * n_embd_head}, 0);
-        layer.wkv           = create_tensor(tn(LLM_TENSOR_ATTN_KV,       "weight", i), {n_embd, n_embd_head}, 0);
-        layer.attn_kv_norm  = create_tensor(tn(LLM_TENSOR_ATTN_KV_NORM,  "weight", i), {n_embd_head}, 0);
-        layer.wo_a          = create_tensor(tn(LLM_TENSOR_ATTN_OUT_A,    "weight", i), {n_head * n_embd_head / o_groups, o_lora_rank * o_groups}, 0);
-        layer.wo_b          = create_tensor(tn(LLM_TENSOR_ATTN_OUT_B,    "weight", i), {o_groups * o_lora_rank, n_embd}, 0);
+        layer.hc_attn_fn      = create_tensor(tn(LLM_TENSOR_MTP_HC_ATTN_FN, "weight", 0), {hc_dim, hc_mix_dim}, GGML_TYPE_F32);
+        layer.hc_attn_scale   = create_tensor(tn(LLM_TENSOR_MTP_HC_ATTN_SCALE, "weight", 0), {3}, GGML_TYPE_F32);
+        layer.hc_attn_base    = create_tensor(tn(LLM_TENSOR_MTP_HC_ATTN_BASE, "weight", 0), {hc_mix_dim}, GGML_TYPE_F32);
+        layer.attn_norm       = create_tensor(tn(LLM_TENSOR_MTP_ATTN_NORM, "weight", 0), {n_embd}, GGML_TYPE_F32);
+        layer.attn_q_a        = create_tensor(tn(LLM_TENSOR_MTP_ATTN_Q_A, "weight", 0), {n_embd, q_lora_rank}, GGML_TYPE_Q8_0);
+        layer.attn_q_a_norm   = create_tensor(tn(LLM_TENSOR_MTP_ATTN_Q_A_NORM, "weight", 0), {q_lora_rank}, GGML_TYPE_F32);
+        layer.attn_q_b        = create_tensor(tn(LLM_TENSOR_MTP_ATTN_Q_B, "weight", 0), {q_lora_rank, q_dim}, GGML_TYPE_Q8_0);
+        layer.attn_kv         = create_tensor(tn(LLM_TENSOR_MTP_ATTN_KV, "weight", 0), {n_embd, n_head_dim}, GGML_TYPE_Q8_0);
+        layer.attn_kv_a_norm  = create_tensor(tn(LLM_TENSOR_MTP_ATTN_KV_A_NORM, "weight", 0), {n_head_dim}, GGML_TYPE_F32);
+        layer.attn_sinks      = create_tensor(tn(LLM_TENSOR_MTP_ATTN_SINKS, "weight", 0), {n_head}, GGML_TYPE_F32);
+        layer.attn_output_a   = create_tensor(tn(LLM_TENSOR_MTP_ATTN_OUTPUT_A, "weight", 0), {n_head_dim*(n_head/o_groups), out_low_dim}, GGML_TYPE_Q8_0);
+        layer.attn_output_b   = create_tensor(tn(LLM_TENSOR_MTP_ATTN_OUTPUT_B, "weight", 0), {out_low_dim, n_embd}, GGML_TYPE_Q8_0);
 
-        layer.hc_attn_fn    = create_tensor(tn(LLM_TENSOR_HC_ATTN_FN,    "weight", i), {hc_dim, hc_mix_dim}, 0);
-        layer.hc_attn_base  = create_tensor(tn(LLM_TENSOR_HC_ATTN_BASE,  "weight", i), {hc_mix_dim}, 0);
-        layer.hc_attn_scale = create_tensor(tn(LLM_TENSOR_HC_ATTN_SCALE, "weight", i), {3}, 0);
-        layer.hc_ffn_fn     = create_tensor(tn(LLM_TENSOR_HC_FFN_FN,     "weight", i), {hc_dim, hc_mix_dim}, 0);
-        layer.hc_ffn_base   = create_tensor(tn(LLM_TENSOR_HC_FFN_BASE,   "weight", i), {hc_mix_dim}, 0);
-        layer.hc_ffn_scale  = create_tensor(tn(LLM_TENSOR_HC_FFN_SCALE,  "weight", i), {3}, 0);
+        layer.hc_ffn_fn       = create_tensor(tn(LLM_TENSOR_MTP_HC_FFN_FN, "weight", 0), {hc_dim, hc_mix_dim}, GGML_TYPE_F32);
+        layer.hc_ffn_scale    = create_tensor(tn(LLM_TENSOR_MTP_HC_FFN_SCALE, "weight", 0), {3}, GGML_TYPE_F32);
+        layer.hc_ffn_base     = create_tensor(tn(LLM_TENSOR_MTP_HC_FFN_BASE, "weight", 0), {hc_mix_dim}, GGML_TYPE_F32);
+        layer.ffn_norm        = create_tensor(tn(LLM_TENSOR_MTP_FFN_NORM, "weight", 0), {n_embd}, GGML_TYPE_F32);
+        layer.ffn_gate_inp    = create_tensor(tn(LLM_TENSOR_MTP_FFN_GATE_INP, "weight", 0), {n_embd, n_ff_exp}, GGML_TYPE_F32);
+        layer.ffn_exp_probs_b = create_tensor(tn(LLM_TENSOR_MTP_FFN_EXP_PROBS_B, "bias", 0), {n_expert}, GGML_TYPE_F32);
+        layer.ffn_gate_exps   = create_tensor(tn(LLM_TENSOR_MTP_FFN_GATE_EXPS, "weight", 0), {n_embd, n_ff_exp, n_expert}, GGML_TYPE_F32);
+        layer.ffn_up_exps     = create_tensor(tn(LLM_TENSOR_MTP_FFN_UP_EXPS, "weight", 0), {n_embd, n_ff_exp, n_expert}, GGML_TYPE_F32);
+        layer.ffn_down_exps   = create_tensor(tn(LLM_TENSOR_MTP_FFN_DOWN_EXPS, "weight", 0), {n_ff_exp, n_embd, n_expert}, GGML_TYPE_F32);
+        LHM_ASSERT_MSG(layer.ffn_gate_exps->type != layer.ffn_up_exps->type, "MTP routed gate/up experts use different quant types");
 
-        const int64_t ratio = hparams.dsv4_compress_ratios[i];
-        if (ratio != 0) {
-            const int64_t coff = ratio == 4 ? 2 : 1;
+        layer.ffn_gate_shexp  = create_tensor(tn(LLM_TENSOR_MTP_FFN_GATE_SHEXP, "weight", 0), {n_embd, n_ff}, GGML_TYPE_Q8_0);
+        layer.ffn_up_shexp    = create_tensor(tn(LLM_TENSOR_MTP_FFN_UP_SHEXP, "weight", 0), {n_embd, n_ff}, GGML_TYPE_Q8_0);
+        layer.ffn_down_shexp  = create_tensor(tn(LLM_TENSOR_MTP_FFN_DOWN_SHEXP, "weight", 0), {n_ff, n_embd}, GGML_TYPE_Q8_0);
+    };
 
-            layer.attn_comp_wkv   = create_tensor(tn(LLM_TENSOR_ATTN_COMPRESSOR_WKV,   "weight", i), {n_embd, coff * n_embd_head}, 0);
-            layer.attn_comp_wgate = create_tensor(tn(LLM_TENSOR_ATTN_COMPRESSOR_WGATE, "weight", i), {n_embd, coff * n_embd_head}, 0);
-            layer.attn_comp_ape   = create_tensor(tn(LLM_TENSOR_ATTN_COMPRESSOR_APE,   "weight", i), {coff * n_embd_head, ratio}, 0);
-            layer.attn_comp_norm  = create_tensor(tn(LLM_TENSOR_ATTN_COMPRESSOR_NORM,  "weight", i), {n_embd_head}, 0);
+    if (mtp) {
+        load_block_mtp(0);
+    } else {
+        tok_embd = create_tensor(tn(LLM_TENSOR_TOKEN_EMBD, "weight"), {n_embd, n_vocab}, 0);
 
-            if (ratio == 4) {
-                const int64_t n_embd_indexer = hparams.indexer_head_size;
+        output_norm = create_tensor(tn(LLM_TENSOR_OUTPUT_NORM, "weight"), {n_embd}, 0);
+        output      = create_tensor(tn(LLM_TENSOR_OUTPUT,      "weight"), {n_embd, n_vocab}, 0);
 
-                layer.indexer_proj     = create_tensor(tn(LLM_TENSOR_INDEXER_PROJ,     "weight", i), {n_embd, hparams.indexer_n_head}, 0);
-                layer.indexer_attn_q_b = create_tensor(tn(LLM_TENSOR_INDEXER_ATTN_Q_B, "weight", i), {q_lora_rank, hparams.indexer_n_head * n_embd_indexer}, 0);
+        hc_head_fn    = create_tensor(tn(LLM_TENSOR_HC_HEAD_FN, "weight"),    {hc_dim, hc_mult}, 0);
+        hc_head_base  = create_tensor(tn(LLM_TENSOR_HC_HEAD_BASE, "weight"),  {hc_mult}, 0);
+        hc_head_scale = create_tensor(tn(LLM_TENSOR_HC_HEAD_SCALE, "weight"), {1}, 0);
 
-                layer.indexer_comp_wkv   = create_tensor(tn(LLM_TENSOR_INDEXER_COMPRESSOR_WKV,   "weight", i), {n_embd, 2 * n_embd_indexer}, 0);
-                layer.indexer_comp_wgate = create_tensor(tn(LLM_TENSOR_INDEXER_COMPRESSOR_WGATE, "weight", i), {n_embd, 2 * n_embd_indexer}, 0);
-                layer.indexer_comp_ape   = create_tensor(tn(LLM_TENSOR_INDEXER_COMPRESSOR_APE,   "weight", i), {2 * n_embd_indexer, ratio}, 0);
-                layer.indexer_comp_norm  = create_tensor(tn(LLM_TENSOR_INDEXER_COMPRESSOR_NORM,  "weight", i), {n_embd_indexer}, 0);
-            } else if (ratio != 128) {
-                throw std::runtime_error("DeepSeek-V4 loader only supports compression ratios 0, 4, and 128");
+        for (int i = 0; i < n_layer; ++i) {
+            auto & layer = layers[i];
+
+            layer.attn_norm     = create_tensor(tn(LLM_TENSOR_ATTN_NORM,     "weight", i), {n_embd}, 0);
+            layer.attn_sinks    = create_tensor(tn(LLM_TENSOR_ATTN_SINKS,    "weight", i), {n_head}, 0);
+            layer.wq_a          = create_tensor(tn(LLM_TENSOR_ATTN_Q_A,      "weight", i), {n_embd, q_lora_rank}, 0);
+            layer.attn_q_a_norm = create_tensor(tn(LLM_TENSOR_ATTN_Q_A_NORM, "weight", i), {q_lora_rank}, 0);
+            layer.wq_b          = create_tensor(tn(LLM_TENSOR_ATTN_Q_B,      "weight", i), {q_lora_rank, n_head * n_embd_head}, 0);
+            layer.wkv           = create_tensor(tn(LLM_TENSOR_ATTN_KV,       "weight", i), {n_embd, n_embd_head}, 0);
+            layer.attn_kv_norm  = create_tensor(tn(LLM_TENSOR_ATTN_KV_NORM,  "weight", i), {n_embd_head}, 0);
+            layer.wo_a          = create_tensor(tn(LLM_TENSOR_ATTN_OUT_A,    "weight", i), {n_head * n_embd_head / o_groups, o_lora_rank * o_groups}, 0);
+            layer.wo_b          = create_tensor(tn(LLM_TENSOR_ATTN_OUT_B,    "weight", i), {o_groups * o_lora_rank, n_embd}, 0);
+
+            layer.hc_attn_fn    = create_tensor(tn(LLM_TENSOR_HC_ATTN_FN,    "weight", i), {hc_dim, hc_mix_dim}, 0);
+            layer.hc_attn_base  = create_tensor(tn(LLM_TENSOR_HC_ATTN_BASE,  "weight", i), {hc_mix_dim}, 0);
+            layer.hc_attn_scale = create_tensor(tn(LLM_TENSOR_HC_ATTN_SCALE, "weight", i), {3}, 0);
+            layer.hc_ffn_fn     = create_tensor(tn(LLM_TENSOR_HC_FFN_FN,     "weight", i), {hc_dim, hc_mix_dim}, 0);
+            layer.hc_ffn_base   = create_tensor(tn(LLM_TENSOR_HC_FFN_BASE,   "weight", i), {hc_mix_dim}, 0);
+            layer.hc_ffn_scale  = create_tensor(tn(LLM_TENSOR_HC_FFN_SCALE,  "weight", i), {3}, 0);
+
+            const int64_t ratio = hparams.dsv4_compress_ratios[i];
+            if (ratio != 0) {
+                const int64_t coff = ratio == 4 ? 2 : 1;
+
+                layer.attn_comp_wkv   = create_tensor(tn(LLM_TENSOR_ATTN_COMPRESSOR_WKV,   "weight", i), {n_embd, coff * n_embd_head}, 0);
+                layer.attn_comp_wgate = create_tensor(tn(LLM_TENSOR_ATTN_COMPRESSOR_WGATE, "weight", i), {n_embd, coff * n_embd_head}, 0);
+                layer.attn_comp_ape   = create_tensor(tn(LLM_TENSOR_ATTN_COMPRESSOR_APE,   "weight", i), {coff * n_embd_head, ratio}, 0);
+                layer.attn_comp_norm  = create_tensor(tn(LLM_TENSOR_ATTN_COMPRESSOR_NORM,  "weight", i), {n_embd_head}, 0);
+
+                if (ratio == 4) {
+                    const int64_t n_embd_indexer = hparams.indexer_head_size;
+
+                    layer.indexer_proj     = create_tensor(tn(LLM_TENSOR_INDEXER_PROJ,     "weight", i), {n_embd, hparams.indexer_n_head}, 0);
+                    layer.indexer_attn_q_b = create_tensor(tn(LLM_TENSOR_INDEXER_ATTN_Q_B, "weight", i), {q_lora_rank, hparams.indexer_n_head * n_embd_indexer}, 0);
+
+                    layer.indexer_comp_wkv   = create_tensor(tn(LLM_TENSOR_INDEXER_COMPRESSOR_WKV,   "weight", i), {n_embd, 2 * n_embd_indexer}, 0);
+                    layer.indexer_comp_wgate = create_tensor(tn(LLM_TENSOR_INDEXER_COMPRESSOR_WGATE, "weight", i), {n_embd, 2 * n_embd_indexer}, 0);
+                    layer.indexer_comp_ape   = create_tensor(tn(LLM_TENSOR_INDEXER_COMPRESSOR_APE,   "weight", i), {2 * n_embd_indexer, ratio}, 0);
+                    layer.indexer_comp_norm  = create_tensor(tn(LLM_TENSOR_INDEXER_COMPRESSOR_NORM,  "weight", i), {n_embd_indexer}, 0);
+                } else if (ratio != 128) {
+                    throw std::runtime_error("DeepSeek-V4 loader only supports compression ratios 0, 4, and 128");
+                }
             }
+
+            layer.ffn_gate_inp = create_tensor(tn(LLM_TENSOR_FFN_GATE_INP, "weight", i), {n_embd, n_expert}, 0);
+            if ((uint32_t) i < hparams.dsv4_hash_layer_count) {
+                layer.ffn_gate_tid2eid = create_tensor(tn(LLM_TENSOR_FFN_GATE_TID2EID, "weight", i), {n_expert_used, n_vocab}, 0);
+            } else {
+                layer.ffn_exp_probs_b = create_tensor(tn(LLM_TENSOR_FFN_EXP_PROBS_B, "bias", i), {n_expert}, 0);
+            }
+            layer.ffn_norm = create_tensor(tn(LLM_TENSOR_FFN_NORM, "weight", i), {n_embd}, 0);
+
+            layer.ffn_gate_exps = create_tensor(tn(LLM_TENSOR_FFN_GATE_EXPS, "weight", i), {n_embd,   n_ff_exp, n_expert}, 0);
+            layer.ffn_down_exps = create_tensor(tn(LLM_TENSOR_FFN_DOWN_EXPS, "weight", i), {n_ff_exp, n_embd,   n_expert}, 0);
+            layer.ffn_up_exps   = create_tensor(tn(LLM_TENSOR_FFN_UP_EXPS,   "weight", i), {n_embd,   n_ff_exp, n_expert}, 0);
+
+            layer.ffn_gate_shexp = create_tensor(tn(LLM_TENSOR_FFN_GATE_SHEXP, "weight", i), {n_embd,                     n_ff_exp * n_expert_shared}, 0);
+            layer.ffn_down_shexp = create_tensor(tn(LLM_TENSOR_FFN_DOWN_SHEXP, "weight", i), {n_ff_exp * n_expert_shared, n_embd                    }, 0);
+            layer.ffn_up_shexp   = create_tensor(tn(LLM_TENSOR_FFN_UP_SHEXP,   "weight", i), {n_embd,                     n_ff_exp * n_expert_shared}, 0);
         }
-
-        layer.ffn_gate_inp = create_tensor(tn(LLM_TENSOR_FFN_GATE_INP, "weight", i), {n_embd, n_expert}, 0);
-        if ((uint32_t) i < hparams.dsv4_hash_layer_count) {
-            layer.ffn_gate_tid2eid = create_tensor(tn(LLM_TENSOR_FFN_GATE_TID2EID, "weight", i), {n_expert_used, n_vocab}, 0);
-        } else {
-            layer.ffn_exp_probs_b = create_tensor(tn(LLM_TENSOR_FFN_EXP_PROBS_B, "bias", i), {n_expert}, 0);
-        }
-        layer.ffn_norm = create_tensor(tn(LLM_TENSOR_FFN_NORM, "weight", i), {n_embd}, 0);
-
-        layer.ffn_gate_exps = create_tensor(tn(LLM_TENSOR_FFN_GATE_EXPS, "weight", i), {n_embd,   n_ff_exp, n_expert}, 0);
-        layer.ffn_down_exps = create_tensor(tn(LLM_TENSOR_FFN_DOWN_EXPS, "weight", i), {n_ff_exp, n_embd,   n_expert}, 0);
-        layer.ffn_up_exps   = create_tensor(tn(LLM_TENSOR_FFN_UP_EXPS,   "weight", i), {n_embd,   n_ff_exp, n_expert}, 0);
-
-        layer.ffn_gate_shexp = create_tensor(tn(LLM_TENSOR_FFN_GATE_SHEXP, "weight", i), {n_embd,                     n_ff_exp * n_expert_shared}, 0);
-        layer.ffn_down_shexp = create_tensor(tn(LLM_TENSOR_FFN_DOWN_SHEXP, "weight", i), {n_ff_exp * n_expert_shared, n_embd                    }, 0);
-        layer.ffn_up_shexp   = create_tensor(tn(LLM_TENSOR_FFN_UP_SHEXP,   "weight", i), {n_embd,                     n_ff_exp * n_expert_shared}, 0);
     }
 }
 
 std::unique_ptr<llm_graph_context> lhm_model_deepseek4::build_arch_graph(const llm_graph_params & params) const {
+    if (params.gtype == LLM_GRAPH_TYPE_DECODER_MTP) {
+        return std::make_unique<graph_mtp>(*this, params);
+    }
     return std::make_unique<graph>(*this, params);
 }
 
@@ -884,7 +944,6 @@ ggml_tensor * lhm_model_deepseek4::graph::build_attention(
         ggml_tensor * ape_rows = ggml_get_rows(ctx0, ape, inp_dsv4->get_hca().state_pos);
         hca_state_score = ggml_add(ctx0, hca_state_score, ape_rows);
         cb(hca_state_score, "hca_state_score_ape", il);
-
     }
 
     if (ratio == DSV4_CSA_RATIO && inp_dsv4->get_csa().state_pos) {
@@ -1094,6 +1153,120 @@ lhm_model_deepseek4::graph::graph(const lhm_model & model, const llm_graph_param
     cb(inpL, "hc_init", -1);
 
     for (int il = 0; il < n_layer; ++il) {
+        ggml_tensor * residual = inpL;
+        ggml_tensor * post = nullptr;
+        ggml_tensor * comb = nullptr;
+
+        cur = build_hc_pre(inpL,
+                model.layers[il].hc_attn_fn,
+                model.layers[il].hc_attn_scale,
+                model.layers[il].hc_attn_base,
+                &post, &comb, il);
+        cb(cur, "hc_attn_pre", il);
+
+        cur = build_norm(cur, model.layers[il].attn_norm, nullptr, LLM_NORM_RMS, il);
+        cb(cur, "attn_norm", il);
+
+        cur = build_attention(model, inp_dsv4, cur, inp_pos, il);
+
+        inpL = build_hc_post(cur, residual, post, comb, il);
+        cb(inpL, "hc_attn_post", il);
+
+        residual = inpL;
+        cur = build_hc_pre(inpL,
+                model.layers[il].hc_ffn_fn,
+                model.layers[il].hc_ffn_scale,
+                model.layers[il].hc_ffn_base,
+                &post, &comb, il);
+        cb(cur, "hc_ffn_pre", il);
+
+        cur = build_norm(cur, model.layers[il].ffn_norm, nullptr, LLM_NORM_RMS, il);
+        cb(cur, "ffn_norm", il);
+
+        const auto & layer = model.layers[il];
+        ggml_tensor * selected_experts = nullptr;
+        ggml_tensor * exp_probs_b = layer.ffn_exp_probs_b;
+        if ((uint32_t) il < hparams.dsv4_hash_layer_count) {
+            selected_experts = ggml_get_rows(ctx0, layer.ffn_gate_tid2eid, res->t_inp_tokens);
+            exp_probs_b = nullptr;
+        }
+
+        ggml_tensor * moe_out = build_moe_ffn(cur,
+                layer.ffn_gate_inp,
+                layer.ffn_up_exps,
+                layer.ffn_gate_exps,
+                layer.ffn_down_exps,
+                exp_probs_b,
+                n_expert, hparams.n_expert_used,
+                LLM_FFN_SILU, hparams.expert_weights_norm,
+                hparams.expert_weights_scale,
+                (lhm_expert_gating_func_type) hparams.expert_gating_func,
+                il,
+                nullptr,
+                nullptr,
+                nullptr,
+                nullptr,
+                nullptr,
+                selected_experts);
+        cb(moe_out, "ffn_moe_out", il);
+
+        ggml_tensor * ffn_shexp = build_ffn(cur,
+                layer.ffn_up_shexp, nullptr, nullptr,
+                layer.ffn_gate_shexp, nullptr, nullptr,
+                layer.ffn_down_shexp, nullptr, nullptr,
+                nullptr, LLM_FFN_SILU, LLM_FFN_PAR, il);
+        cb(ffn_shexp, "ffn_shexp", il);
+
+        cur = ggml_add(ctx0, moe_out, ffn_shexp);
+        cb(cur, "ffn_out", il);
+
+        inpL = build_hc_post(cur, residual, post, comb, il);
+        inpL = build_cvec(inpL, il);
+        cb(inpL, "l_out", il);
+    }
+
+    if (inp_out_ids) {
+        ggml_tensor * flat = ggml_reshape_2d(ctx0, inpL, n_embd*hc, n_tokens);
+        flat = ggml_get_rows(ctx0, flat, inp_out_ids);
+        inpL = ggml_reshape_3d(ctx0, flat, n_embd, hc, n_outputs);
+    }
+
+    cur = build_hc_head(inpL, model.hc_head_fn, model.hc_head_scale, model.hc_head_base);
+    cb(cur, "hc_head", -1);
+
+    cur = build_norm(cur, model.output_norm, nullptr, LLM_NORM_RMS, -1);
+    cb(cur, "result_norm", -1);
+    res->t_embd = cur;
+
+    cur = ggml_mul_mat(ctx0, model.output, cur);
+    cb(cur, "result_output", -1);
+    res->t_logits = cur;
+
+    ggml_build_forward_expand(gf, cur);
+}
+
+// LLM_GRAPH_TYPE_DECODER_MTP draft head for deepseek4
+// download: hf/antirez-deepseek-v4-gguf,DeepSeek-V4-Flash-MTP-Q4K-Q8_0-F32.gguf
+lhm_model_deepseek4::graph_mtp::graph_mtp(const lhm_model & model, const llm_graph_params & params)
+    : graph(model, params) {
+    // TODO maybe some different for MTP
+    ggml_tensor * cur;
+
+    ggml_tensor * inp = build_inp_embd(model.tok_embd);
+    ggml_tensor * inp_pos = build_inp_pos();
+    ggml_tensor * inp_out_ids = build_inp_out_ids();
+    llm_graph_input_dsv4 * inp_dsv4 = build_inp_dsv4();
+    llm_graph_input_dsv4_raw * inp_attn = inp_dsv4->get_raw();
+    ggml_build_forward_expand(gf, inp_attn->self_kq_mask);
+
+    const int64_t hc = hparams.dsv4_hc_mult;
+    ggml_tensor * inpL = ggml_reshape_3d(ctx0, inp, n_embd, 1, n_tokens);
+    inpL = ggml_repeat_4d(ctx0, inpL, n_embd, hc, n_tokens, 1);
+    cb(inpL, "hc_init", -1);
+
+    // mtp just one layer for now
+    {
+        int il = 0;
         ggml_tensor * residual = inpL;
         ggml_tensor * post = nullptr;
         ggml_tensor * comb = nullptr;

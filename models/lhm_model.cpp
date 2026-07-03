@@ -45,7 +45,6 @@ static lhm_model * lhm_model_mapping(llm_arch arch, const lhm_model_params & par
         default:
             throw std::runtime_error(std::string("unsupported model architecture: '") + llm_arch_name(arch) + "'");
     }
-
 }
 
 lhm_model * lhm_model_create(llm_arch arch, const lhm_model_params & params) {
@@ -1015,6 +1014,7 @@ bool lhm_model_base::load_tensors(lhm_model_loader & ml) {
     // create tensors for the weights
     {
         // TODO: move to a separate function
+        // TODO stupid, change to fmt
         const auto tn = LLM_TN(arch);
 
         const int64_t n_expert      = hparams.n_expert;

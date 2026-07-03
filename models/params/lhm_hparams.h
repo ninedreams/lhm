@@ -37,6 +37,8 @@ struct lhm_hparams_convnext {
     uint32_t n_layer;
 };
 
+// model parameters, come from load_arch_hparams()
+
 struct lhm_hparams {
     // note: use the `_impl` suffix to avoid name conflict between members and getters
     //       for example: n_embd_out() vs n_embd_out_impl

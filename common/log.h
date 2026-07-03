@@ -108,3 +108,10 @@ template<typename... Args>
             LHM_ABORT("LHM_ASSERT(%s) failed", #x);                     \
         }                                                               \
     } while (0)
+
+#define LHM_ASSERT_MSG(x, msg)                                          \
+    do {                                                                \
+        if (!(x)) {                                                     \
+            LHM_ABORT("LHM_ASSERT(%s) failed, msg: %s", #x, msg);       \
+        }                                                               \
+    } while (0)

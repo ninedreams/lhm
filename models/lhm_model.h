@@ -484,6 +484,22 @@ struct lhm_layer {
     struct ggml_tensor * indexer_comp_ape   = nullptr;
     struct ggml_tensor * indexer_comp_norm  = nullptr;
 
+    // DeepSeek-V4 MTP
+    struct ggml_tensor * hc_head_fn    = nullptr;
+    struct ggml_tensor * hc_head_base  = nullptr;
+    struct ggml_tensor * hc_head_scale = nullptr;
+    struct ggml_tensor * e_proj        = nullptr;
+    struct ggml_tensor * h_proj        = nullptr;
+    struct ggml_tensor * enorm         = nullptr;
+    struct ggml_tensor * hnorm         = nullptr;
+    struct ggml_tensor * norm          = nullptr;
+    struct ggml_tensor * attn_output_a = nullptr;
+    struct ggml_tensor * attn_output_b = nullptr;
+    struct ggml_tensor * attn_kv       = nullptr;
+    struct ggml_tensor * attn_q_a      = nullptr;    
+    struct ggml_tensor * attn_q_b      = nullptr;
+    struct ggml_tensor * ffn_exp_probs   = nullptr;
+
     // cogvlm
     struct ggml_tensor * visexp_attn_wqkv = nullptr;
     struct ggml_tensor * visexp_attn_wo   = nullptr;

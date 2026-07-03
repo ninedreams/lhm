@@ -1,11 +1,15 @@
 lhm_add_compile_flags()
 
 add_library(lhm_llm STATIC
+    base_models.h
     models.h
     delta_net_base.cpp
     qwen35.cpp
+    qwen35.h
     qwen35moe.cpp
+    qwen35moe.h
     deepseekv4.cpp
+    deepseekv4.h
 )
 
 target_include_directories(lhm_llm PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

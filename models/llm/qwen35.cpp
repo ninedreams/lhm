@@ -1,4 +1,5 @@
-#include "models.h"
+#include "base_models.h"
+#include "qwen35.h"
 #include "memory/lhm_memory_recurrent.h"
 
 void lhm_model_qwen35::load_arch_hparams(lhm_model_loader & ml) {
