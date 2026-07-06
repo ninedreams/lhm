@@ -250,19 +250,19 @@ static std::vector<std::pair<std::string, size_t>> auto_completion_callback(std:
     std::string cmd;
 
     if (line.length() > 1 && line.front() == '/' && !std::any_of(cmds.begin(), cmds.end(), [line](std::string_view prefix) {
-        return string_starts_with(line, prefix);
+        return line.starts_with(prefix);
     })) {
         auto it = cmds.begin();
 
         while ((it = std::find_if(it, cmds.end(), [line](std::string_view cmd_line) {
-            return string_starts_with(cmd_line, line);
+            return cmd_line.starts_with(line);
         })) != cmds.end()) {
             matches.emplace_back(*it, it->length());
             ++it;
         }
     } else {
         auto it = std::find_if(cmds.begin(), cmds.end(), [line](std::string_view prefix) {
-            return prefix.back() == ' ' && string_starts_with(line, prefix);
+            return prefix.back() == ' ' && line.starts_with(prefix);
         });
 
         if (it != cmds.end()) {
@@ -278,13 +278,13 @@ static std::vector<std::pair<std::string, size_t>> auto_completion_callback(std:
         std::string expanded_prefix = path_prefix;
 
 #if !defined(_WIN32)
-        if (string_starts_with(path_prefix, '~')) {
+        if (path_prefix.starts_with('~')) {
             const char * home = std::getenv("HOME");
             if (home && home[0]) {
                 expanded_prefix = home + path_prefix.substr(1);
             }
         }
-        if (string_starts_with(expanded_prefix, '/')) {
+        if (expanded_prefix.starts_with('/')) {
 #else
         if (std::isalpha(expanded_prefix[0]) && expanded_prefix.find(':') == 1) {
 #endif
@@ -305,13 +305,13 @@ static std::vector<std::pair<std::string, size_t>> auto_completion_callback(std:
             }
 
             const std::string path_full = entry.path().string();
-            std::string path_entry = !cur_dir_str.empty() && string_starts_with(path_full, cur_dir_str) ? path_full.substr(cur_dir_str.length() + 1) : path_full;
+            std::string path_entry = !cur_dir_str.empty() && path_full.starts_with(cur_dir_str) ? path_full.substr(cur_dir_str.length() + 1) : path_full;
 
             if (entry.is_directory(ec)) {
                 path_entry.push_back(std::filesystem::path::preferred_separator);
             }
 
-            if (expanded_prefix.empty() || string_starts_with(path_entry, expanded_prefix)) {
+            if (expanded_prefix.empty() || path_entry.starts_with(expanded_prefix)) {
                 const std::string updated_line = cmd + path_entry;
                 matches.emplace_back(updated_line + path_postfix, updated_line.length());
             }
@@ -504,9 +504,9 @@ int llm_cli() {
         bool add_user_msg = true;
 
         // process commands
-        if (string_starts_with(buffer, "/exit")) {
+        if (buffer.starts_with("/exit")) {
             break;
-        } else if (string_starts_with(buffer, "/regen")) {
+        } else if (buffer.starts_with("/regen")) {
             if (ctx_cli.messages.size() >= 2) {
                 size_t last_idx = ctx_cli.messages.size() - 1;
                 ctx_cli.messages.erase(last_idx);
@@ -515,7 +515,7 @@ int llm_cli() {
                 lhm::console::error("No message to regenerate.\n");
                 continue;
             }
-        } else if (string_starts_with(buffer, "/clear")) {
+        } else if (buffer.starts_with("/clear")) {
             ctx_cli.messages.clear();
             add_system_prompt();
 
@@ -523,25 +523,25 @@ int llm_cli() {
             lhm::console::log("Chat history cleared.\n");
             continue;
         } 
-        // else if ((string_starts_with(buffer, "/image ")) ||
-        //         (string_starts_with(buffer, "/audio ")) ||
-        //         (string_starts_with(buffer, "/video "))) {
-        //     // just in case (bad copy-paste for example), we strip all trailing/leading spaces
-        //     std::string fname = string_strip(buffer.substr(7));
-        //     std::string marker = ctx_cli.load_input_file(fname, true);
-        //     if (marker.empty()) {
-        //         lhm::console::error("file does not exist or cannot be opened: '%s'\n", fname.c_str());
-        //         continue;
-        //     }
-        //     cur_msg += marker;
-        //     lhm::console::log("Loaded media from '%s'\n", fname.c_str());
-        //     continue;
-        // } 
-        else if (string_starts_with(buffer, "/read ")) {
+        else if ((buffer.starts_with("/image ")) ||
+                (buffer.starts_with("/audio ")) ||
+                (buffer.starts_with("/video "))) {
+            // just in case (bad copy-paste for example), we strip all trailing/leading spaces
+            std::string fname = string_strip(buffer.substr(7));
+            std::string marker = ctx_cli.load_input_file(fname, true);
+            if (marker.empty()) {
+                lhm::console::error("file does not exist or cannot be opened: '%s'\n", fname.c_str());
+                continue;
+            }
+            cur_msg += marker;
+            lhm::console::log("Loaded media from '%s'\n", fname.c_str());
+            continue;
+        } 
+        else if (buffer.starts_with("/read ")) {
             std::string fname = string_strip(buffer.substr(6));
             add_text_file(fname);
             continue;
-        } else if (string_starts_with(buffer, "/glob ")) {
+        } else if (buffer.starts_with("/glob ")) {
             std::error_code ec;
             size_t count = 0;
             auto curdir = std::filesystem::current_path();
@@ -554,7 +554,7 @@ int llm_cli() {
                 if (endpath != std::string::npos) {
                     std::string rel_pattern = pattern.substr(0, endpath);
 #if !defined(_WIN32)
-                    if (string_starts_with(rel_pattern, '~')) {
+                    if (rel_pattern.starts_with('~')) {
                         const char * home = std::getenv("HOME");
                         if (home && home[0]) {
                             rel_pattern = home + rel_pattern.substr(1);

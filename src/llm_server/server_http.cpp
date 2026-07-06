@@ -307,7 +307,7 @@ bool server_http_context::start() {
     const auto & srv = pimpl->srv;
     auto was_bound = false;
     auto is_sock = false;
-    if (string_ends_with(std::string(hostname), ".sock")) {
+    if (std::string(hostname).ends_with(".sock")) {
         is_sock = true;
         SRV_INF("%s", "setting address family to AF_UNIX\n");
         srv->set_address_family(AF_UNIX);

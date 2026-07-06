@@ -56,8 +56,8 @@ static std::string string_diff(const std::string & last, const std::string & cur
     if (last.empty()) {
         return current;
     }
-    if (!string_starts_with(current, last)) {
-        if (string_starts_with(last, current)) {
+    if (!current.starts_with(last)) {
+        if (last.starts_with(current)) {
             // This happens if the last generation ended on a partial stop word (not erased),
             // and the current ended on a stop word (erased).
             return "";
@@ -872,10 +872,10 @@ static std::string common_chat_template_direct_apply_impl(
     std::string result = parts->as_string().str();
 
     // TODO: improve this later
-    if (inputs.add_bos && string_starts_with(result, tmpl.bos_token())) {
+    if (inputs.add_bos && result.ends_with(tmpl.bos_token())) {
         result = result.substr(tmpl.bos_token().size());
     }
-    if (inputs.add_eos && string_ends_with(result, tmpl.eos_token())) {
+    if (inputs.add_eos && result.ends_with(tmpl.eos_token())) {
         result = result.substr(0, result.size() - tmpl.eos_token().size());
     }
     return result;
@@ -1221,7 +1221,7 @@ static common_chat_params common_chat_params_init_gemma4(const common_chat_templ
     data.prompt            = common_chat_template_direct_apply_impl(tmpl, inputs);
     data.generation_prompt = common_chat_template_generation_prompt_impl(tmpl, inputs);
 
-    if (inputs.add_generation_prompt && string_ends_with(data.prompt, "<turn|>\n")) {
+    if (inputs.add_generation_prompt && data.prompt.ends_with("<turn|>\n")) {
         // This may happen if the model generates content + tool_call, the
         // template does not add the model's next turn and confuses the model
         // from emitting its proper reasoning token sequence.
@@ -1250,7 +1250,7 @@ static common_chat_params common_chat_params_init_gemma4(const common_chat_templ
     if (inputs.has_continuation()) {
         const auto & msg = inputs.continue_msg;
 
-        data.generation_prompt = string_ends_with(data.prompt, "<turn|>\n") ? "<|turn>model\n" : "";
+        data.generation_prompt = data.prompt.ends_with("<turn|>\n") ? "<|turn>model\n" : "";
         data.generation_prompt += "<|channel>thought\n" + msg.reasoning_content;
         if (inputs.continue_final_message == COMMON_CHAT_CONTINUATION_CONTENT) {
             data.generation_prompt += "<channel|>" + msg.render_content();

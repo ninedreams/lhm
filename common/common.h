@@ -746,25 +746,8 @@ inline std::vector<std::string> string_split<std::string>(const std::string & st
     return parts;
 }
 
-// remove when moving to c++20
-inline bool string_starts_with(std::string_view str, std::string_view prefix) {
-    return str.size() >= prefix.size() &&
-           str.compare(0, prefix.size(), prefix) == 0;
-}
-
-// remove when moving to c++20
-inline bool string_starts_with(std::string_view str, char prefix) {
-    return !str.empty() && str.front() == prefix;
-}
-
-// remove when moving to c++20
-inline bool string_ends_with(std::string_view str, std::string_view suffix) {
-    return str.size() >= suffix.size() &&
-           str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
-}
-
 inline bool string_remove_suffix(std::string & str, std::string_view suffix) {
-    if (string_ends_with(str, suffix)) {
+    if (str.ends_with(suffix)) {
         str.resize(str.size() - suffix.size());
         return true;
     }
@@ -777,7 +760,7 @@ inline size_t string_find_partial_stop(std::string_view str, std::string_view st
         const char last_char = str.back();
         for (size_t len = max_len; len > 0; --len) {
             if (stop[len - 1] == last_char) {
-                if (string_ends_with(str, stop.substr(0, len))) {
+                if (str.ends_with(stop.substr(0, len))) {
                     return str.size() - len;
                 }
             }

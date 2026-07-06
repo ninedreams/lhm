@@ -523,14 +523,14 @@ void analyze_reasoning::compare_thinking_enabled() {
     std::string right_trimmed = trim_whitespace(diff.right);
 
     if (left_trimmed.empty() && !diff.right.empty()) {
-        if (!right_trimmed.empty() && string_ends_with(comparison->output_B, right_trimmed)) {
+        if (!right_trimmed.empty() && comparison->output_B.ends_with(right_trimmed)) {
             if (start.empty()) {
                 start = diff.right;
                 mode  = reasoning_mode::TAG_BASED;
             }
         }
     } else if (right_trimmed.empty() && !diff.left.empty()) {
-        if (!left_trimmed.empty() && string_ends_with(comparison->output_A, left_trimmed)) {
+        if (!left_trimmed.empty() && comparison->output_A.ends_with(left_trimmed)) {
             if (end.empty()) {
                 auto seg = prune_whitespace_segments(segmentize_markers(comparison->output_A));
                 if (seg.size() >= 2 && seg[seg.size() - 1].value == left_trimmed && seg[seg.size() - 2].type == segment_type::MARKER) {
