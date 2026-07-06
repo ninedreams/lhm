@@ -1,8 +1,13 @@
 .vscode
+.vscode/
 .codefree
+.codefree/
 logs
+logs/
 build
+build/
 build_check
+build_check/
 .DS_Store
 */.DS_Store
 */*/.DS_Store
