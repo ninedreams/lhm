@@ -19,3 +19,6 @@
 [submodule "thirdparty/subprocess.h"]
 	path = thirdparty/subprocess.h
 	url = https://github.com/sheredom/subprocess.h.git
+[submodule "thirdparty/Mooncake"]
+	path = thirdparty/Mooncake
+	url = https://github.com/kvcache-ai/Mooncake

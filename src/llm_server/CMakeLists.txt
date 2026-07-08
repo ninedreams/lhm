@@ -49,15 +49,13 @@ add_library(${TARGET} STATIC
     server.cpp
     server_http.cpp
     server_http.h
-    # server_models.cpp
-    # server_models.h
 )
 set_target_properties(${TARGET} PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 target_include_directories(${TARGET} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR})
 target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR}/thirdparty/subprocess.h)
-target_link_libraries(${TARGET} PUBLIC server_context httplib gflags ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(${TARGET} PRIVATE server_context httplib gflags ${CMAKE_THREAD_LIBS_INIT})
 
 # llm_server executable
 set(TARGET llm_server)
