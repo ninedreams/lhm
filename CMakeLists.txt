@@ -7,6 +7,8 @@ set(CMAKE_WARN_UNUSED_CLI YES)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+# mooncake use gflags
+set(CMAKE_POSITION_INDEPENDENT_CODE ON CACHE BOOL "Enable -fPIC")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -83,6 +85,9 @@ option(LHM_BUILD_APP "lhm: build the unified binary" ${LHM_STANDALONE})
 
 option(LHM_TESTS_INSTALL "lhm: install tests" OFF)
 
+# enable mooncake as kvcache
+option(LHM_ENABLE_MOONCAKE "lhm: enable build mooncake as kvcache" OFF)
+
 if(NOT DEFINED GGML_LHMFILE)
     set(GGML_LHMFILE_DEFAULT ON)
 endif()
@@ -113,14 +118,23 @@ set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "")
 set(SPDLOG_BUILD_BENCH OFF CACHE BOOL "")
 add_subdirectory(thirdparty/spdlog)
 
-option(GFLAGS_BUILD_TESTING OFF)
-add_subdirectory(thirdparty/gflags)
-
 option(RAPIDJSON_BUILD_TESTS OFF)
 option(RAPIDJSON_BUILD_EXAMPLES OFF)
 add_subdirectory(thirdparty/rapidjson)
 
 add_subdirectory(thirdparty/llama.cpp/ggml)
+
+# mooncake, depends see build.md in Mooncake
+if (LHM_ENABLE_MOONCAKE)
+    set(BUILD_UNIT_TESTS OFF CACHE BOOL "")
+    set(BUILD_BENCHMARK OFF CACHE BOOL "")
+    set(BUILD_EXAMPLES OFF CACHE BOOL "")
+    add_subdirectory(thirdparty/Mooncake)
+endif()
+
+# must after mooncake, mooncake depends on system gflags
+option(GFLAGS_BUILD_TESTING OFF)
+add_subdirectory(thirdparty/gflags)
 
 # Project include dirs
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lhm)
