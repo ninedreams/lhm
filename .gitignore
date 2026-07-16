@@ -2,6 +2,8 @@
 .vscode/
 .codefree
 .codefree/
+.codefree-mem
+.codefree-mem/
 logs
 logs/
 build
