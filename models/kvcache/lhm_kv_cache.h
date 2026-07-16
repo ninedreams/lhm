@@ -219,7 +219,7 @@ public:
     void set_input_k_rot(ggml_tensor * dst) const;
     void set_input_v_rot(ggml_tensor * dst) const;
 
-private:
+protected:
     const lhm_model & model;
     const lhm_hparams & hparams;
 

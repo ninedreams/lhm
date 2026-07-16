@@ -153,6 +153,15 @@ DECLARE_string(cache_type_v);
 DECLARE_string(defrag_thold);
 
 // ============================================================================
+// Use mooncake to KV cache / offload parameters
+// ============================================================================
+DECLARE_bool(enable_mooncake);
+DECLARE_string(mooncake_protocol);
+DECLARE_string(mooncake_engine_meta_url);
+DECLARE_string(mooncake_master_server_entry);
+DECLARE_string(mooncake_device_name);
+
+// ============================================================================
 // Parallel / batching
 // ============================================================================
 DECLARE_int32(parallel);
