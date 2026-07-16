@@ -153,7 +153,7 @@ struct llm_tokenizer_spm_session {
             left_sym.n += right_sym.n;
             right_sym.n = 0;
 
-            //LOG_INFO("left = '%*s' size = %zu\n", (int) left_sym.n, left_sym.text, bigram.size);
+            //LOG_INFO("left = '%*s' size = %zu", (int) left_sym.n, left_sym.text, bigram.size);
 
             // remove the right sym from the chain
             left_sym.next = right_sym.next;
@@ -332,16 +332,14 @@ struct llm_tokenizer_bpe_session {
 
     void check_double_bos_eos(const std::vector<lhm_token> & output) const {
         if (vocab.get_add_bos() && output.size() >= 2 && output[1] == vocab.token_bos()) {
-            LOG_WARN(
-                "%s: Added a BOS token to the prompt as specified by the model but the prompt "
+            LOG_WARN("Added a BOS token to the prompt as specified by the model but the prompt "
                 "also starts with a BOS token. So now the final prompt starts with 2 BOS tokens. "
-                "Are you sure this is what you want?\n", __FUNCTION__);
+                "Are you sure this is what you want?", __FUNCTION__);
         }
         if (vocab.get_add_eos() && output.size() >= 2 && *(output.end()-2) == vocab.token_eos()) {
-            LOG_WARN(
-                "%s: Added a EOS token to the prompt as specified by the model but the prompt "
+            LOG_WARN("Added a EOS token to the prompt as specified by the model but the prompt "
                 "also ends with a EOS token. So now the final prompt ends with 2 EOS tokens. "
-                "Are you sure this is what you want?\n", __FUNCTION__);
+                "Are you sure this is what you want?", __FUNCTION__);
         }
     }
 
@@ -1673,7 +1671,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
             // read vocab size from metadata
             uint32_t n_tokens = 0;
             if (ml.get_key(LLM_KV_VOCAB_SIZE, n_tokens, false)) {
-                LOG_WARN("%s: adding %u dummy tokens\n", __func__, n_tokens);
+                LOG_WARN("adding {:d} dummy tokens", n_tokens);
                 id_to_token.resize(n_tokens);
             }
 
@@ -1715,7 +1713,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
                     throw std::runtime_error("cannot find tokenizer merges in model file\n");
                 }
                 // Kimi-K2 doesn't need merges, skip
-                LOG_INFO("%s: Kimi-K2 tokenizer detected, skipping BPE merges\n", __func__);
+                LOG_INFO("Kimi-K2 tokenizer detected, skipping BPE merges");
             } else {
                 const int n_merges = gguf_get_arr_n(ctx, merges_keyidx);
                 for (int i = 0; i < n_merges; i++) {
@@ -1830,7 +1828,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
 
             tokenizer_pre = "gemma4";
         } else {
-            throw std::runtime_error(format("unknown tokenizer: '%s'", tokenizer_model.c_str()));
+            throw std::runtime_error(fmt::format("unknown tokenizer: '%s'", tokenizer_model.c_str()));
         }
 
         // for now, only BPE models have pre-tokenizers
@@ -1839,13 +1837,13 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
             escape_whitespaces = false;
             clean_spaces = true;
             if (tokenizer_pre.empty()) {
-                LOG_WARN("%s: missing pre-tokenizer type, using: 'default'\n", __func__);
-                LOG_WARN("%s:                                             \n", __func__);
-                LOG_WARN("%s: ************************************        \n", __func__);
-                LOG_WARN("%s: GENERATION QUALITY WILL BE DEGRADED!        \n", __func__);
-                LOG_WARN("%s: CONSIDER REGENERATING THE MODEL             \n", __func__);
-                LOG_WARN("%s: ************************************        \n", __func__);
-                LOG_WARN("%s:                                             \n", __func__);
+                LOG_WARN("missing pre-tokenizer type, using: 'default'");
+                LOG_WARN("                                            ");
+                LOG_WARN("************************************        ");
+                LOG_WARN("GENERATION QUALITY WILL BE DEGRADED!        ");
+                LOG_WARN("CONSIDER REGENERATING THE MODEL             ");
+                LOG_WARN("************************************        ");
+                LOG_WARN("                                            ");
                 pre_type = LHM_VOCAB_PRE_TYPE_DEFAULT;
             } else if (tokenizer_pre == "default") {
                 pre_type = LHM_VOCAB_PRE_TYPE_DEFAULT;
@@ -1854,7 +1852,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
                 pre_type = LHM_VOCAB_PRE_TYPE_QWEN35;
                 clean_spaces = false;
             } else {
-                throw std::runtime_error(format("unknown pre-tokenizer type: '%s'", tokenizer_pre.c_str()));
+                throw std::runtime_error(fmt::format("unknown pre-tokenizer type: '%s'", tokenizer_pre.c_str()));
             }
         } else if (type == LHM_VOCAB_TYPE_SPM) {
             pre_type = LHM_VOCAB_PRE_TYPE_DEFAULT;
@@ -1919,7 +1917,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
     for (uint32_t i = 0; i < n_tokens; i++) {
         std::string word = gguf_get_arr_str(ctx, token_idx, i);
         if (word.empty()) {
-            LOG_WARN("%s: empty token at index %u\n", __func__, i);
+            LOG_WARN("empty token at index {:d}", i);
             word = "[EMPTY_" + std::to_string(i) + "]";
         }
 
@@ -1970,21 +1968,21 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
         try {
             linefeed_id = vocab.byte_to_token('\n');
         } catch (const std::exception & e) {
-            LOG_WARN("%s: SPM vocabulary, but newline token not found: %s! Using special_pad_id instead.", __func__, e.what());
+            LOG_WARN("SPM vocabulary, but newline token not found: {}! Using special_pad_id instead.", e.what());
             linefeed_id = special_pad_id;
         }
     } else if (type == LHM_VOCAB_TYPE_WPM) {
         linefeed_id = special_pad_id;
     } else if (type == LHM_VOCAB_TYPE_RWKV) {
-        const std::vector<int> ids = tokenize("\n", false);
+        const std::vector<int> ids = tokenize("", false);
         LHM_ASSERT(!ids.empty() && "model vocab missing newline token");
         linefeed_id = ids[0];
     } else {
-        const std::vector<int> ids = tokenize("\n", false);
+        const std::vector<int> ids = tokenize("", false);
 
         //LHM_ASSERT(!ids.empty() && "model vocab missing newline token");
         if (ids.empty()) {
-            LOG_WARN("%s: model vocab missing newline token, using special_pad_id instead\n", __func__);
+            LOG_WARN("model vocab missing newline token, using special_pad_id instead");
             linefeed_id = special_pad_id;
         } else {
             linefeed_id = ids[0];
@@ -2024,8 +2022,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
                 continue;
             }
             if (new_id >= id_to_token.size()) {
-                LOG_WARN("%s: bad special token: '%s' = %u, using default id %d\n",
-                    __func__, key.c_str(), new_id, id);
+                LOG_WARN("bad special token: '{}' = {:d}, using default id {:d}", key.c_str(), new_id, id);
             } else {
                 id = new_id;
             }
@@ -2085,8 +2082,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
                    ) {
                     special_eot_id = t.second;
                     if ((attr & LHM_TOKEN_ATTR_CONTROL) == 0) {
-                        LOG_WARN("%s: control-looking token: %6d '%s' was not control-type; this is probably a bug in the model. its type will be overridden\n",
-                                __func__, t.second, t.first.c_str());
+                        LOG_WARN("control-looking token: {:6d} '{}' was not control-type; this is probably a bug in the model. its type will be overridden", t.second, t.first.c_str());
                         attr = (lhm_token_attr) (attr | LHM_TOKEN_ATTR_CONTROL);
                     }
                 }
@@ -2099,8 +2095,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
                         ) {
                     special_eom_id = t.second;
                     if ((attr & LHM_TOKEN_ATTR_CONTROL) == 0) {
-                        LOG_WARN("%s: control-looking token: %6d '%s' was not control-type; this is probably a bug in the model. its type will be overridden\n",
-                                __func__, t.second, t.first.c_str());
+                        LOG_WARN("control-looking token: {:6d} '{}' was not control-type; this is probably a bug in the model. its type will be overridden", t.second, t.first.c_str());
                         attr = (lhm_token_attr) (attr | LHM_TOKEN_ATTR_CONTROL);
                     }
                 }
@@ -2120,8 +2115,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
                         ) {
                     special_fim_pre_id = t.second;
                     if ((attr & LHM_TOKEN_ATTR_CONTROL) == 0) {
-                        LOG_WARN("%s: control-looking token: %6d '%s' was not control-type; this is probably a bug in the model. its type will be overridden\n",
-                                __func__, t.second, t.first.c_str());
+                        LOG_WARN("control-looking token: {:6d} '{}' was not control-type; this is probably a bug in the model. its type will be overridden", t.second, t.first.c_str());
                         attr = (lhm_token_attr) (attr | LHM_TOKEN_ATTR_CONTROL);
                     }
                 }
@@ -2141,8 +2135,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
                         ) {
                     special_fim_suf_id = t.second;
                     if ((attr & LHM_TOKEN_ATTR_CONTROL) == 0) {
-                        LOG_WARN("%s: control-looking token: %6d '%s' was not control-type; this is probably a bug in the model. its type will be overridden\n",
-                                __func__, t.second, t.first.c_str());
+                        LOG_WARN("control-looking token: {:6d} '{}' was not control-type; this is probably a bug in the model. its type will be overridden", t.second, t.first.c_str());
                         attr = (lhm_token_attr) (attr | LHM_TOKEN_ATTR_CONTROL);
                     }
                 }
@@ -2162,8 +2155,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
                         ) {
                     special_fim_mid_id = t.second;
                     if ((attr & LHM_TOKEN_ATTR_CONTROL) == 0) {
-                        LOG_WARN("%s: control-looking token: %6d '%s' was not control-type; this is probably a bug in the model. its type will be overridden\n",
-                                __func__, t.second, t.first.c_str());
+                        LOG_WARN("control-looking token: {:6d} '{}' was not control-type; this is probably a bug in the model. its type will be overridden", t.second, t.first.c_str());
                         attr = (lhm_token_attr) (attr | LHM_TOKEN_ATTR_CONTROL);
                     }
                 }
@@ -2180,8 +2172,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
                         ) {
                     special_fim_pad_id = t.second;
                     if ((attr & LHM_TOKEN_ATTR_CONTROL) == 0) {
-                        LOG_WARN("%s: control-looking token: %6d '%s' was not control-type; this is probably a bug in the model. its type will be overridden\n",
-                                __func__, t.second, t.first.c_str());
+                        LOG_WARN("control-looking token: {:6d} '{}' was not control-type; this is probably a bug in the model. its type will be overridden", t.second, t.first.c_str());
                         attr = (lhm_token_attr) (attr | LHM_TOKEN_ATTR_CONTROL);
                     }
                 }
@@ -2198,8 +2189,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
                         ) {
                     special_fim_rep_id = t.second;
                     if ((attr & LHM_TOKEN_ATTR_CONTROL) == 0) {
-                        LOG_WARN("%s: control-looking token: %6d '%s' was not control-type; this is probably a bug in the model. its type will be overridden\n",
-                                __func__, t.second, t.first.c_str());
+                        LOG_WARN("control-looking token: {:6d} '{}' was not control-type; this is probably a bug in the model. its type will be overridden", t.second, t.first.c_str());
                         attr = (lhm_token_attr) (attr | LHM_TOKEN_ATTR_CONTROL);
                     }
                 }
@@ -2212,8 +2202,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
                         ) {
                     special_fim_sep_id = t.second;
                     if ((attr & LHM_TOKEN_ATTR_CONTROL) == 0) {
-                        LOG_WARN("%s: control-looking token: %6d '%s' was not control-type; this is probably a bug in the model. its type will be overridden\n",
-                                __func__, t.second, t.first.c_str());
+                        LOG_WARN("control-looking token: {:6d} '{}' was not control-type; this is probably a bug in the model. its type will be overridden", t.second, t.first.c_str());
                         attr = (lhm_token_attr) (attr | LHM_TOKEN_ATTR_CONTROL);
                     }
                 }
@@ -2243,7 +2232,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
                 }
             }
 
-            LOG_INFO("%s: %u unused tokens\n", __func__, n_unused);
+            LOG_INFO("{:d} unused tokens", n_unused);
         }
 
         // maintain a list of tokens that cause end-of-generation
@@ -2291,16 +2280,14 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
                ) {
                 special_eog_ids.insert(t.second);
                 if ((attr & LHM_TOKEN_ATTR_CONTROL) == 0) {
-                    LOG_WARN("%s: control-looking token: %6d '%s' was not control-type; this is probably a bug in the model. its type will be overridden\n",
-                            __func__, t.second, t.first.c_str());
+                    LOG_WARN("control-looking token: {:6d} '{}' was not control-type; this is probably a bug in the model. its type will be overridden", t.second, t.first.c_str());
                     attr = (lhm_token_attr) (attr | LHM_TOKEN_ATTR_CONTROL);
                 }
             } else {
                 if (attr & LHM_TOKEN_ATTR_CONTROL && !(attr & LHM_TOKEN_ATTR_UNUSED)) {
                     // token is control, but not marked as EOG -> print a debug log
                     if (special_eog_ids.count(t.second) == 0) {
-                        LOG_DEBUG("%s: control token: %6d '%s' is not marked as EOG\n",
-                                __func__, t.second, t.first.c_str());
+                        LOG_DEBUG("control token: {:6d} '{}' is not marked as EOG", t.second, t.first.c_str());
                     }
                 }
             }
@@ -2311,8 +2298,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
             auto & attr = id_to_token[t.second].attr;
 
             if (t.first == "<|channel|>" || t.first == "<|message|>" || t.first == "<|start|>" || t.first == "<|constrain|>") {
-                LOG_WARN("%s: setting token '%s' (%d) attribute to USER_DEFINED (%u), old attributes: %u\n",
-                        __func__, t.first.c_str(), int(t.second), int(LHM_TOKEN_ATTR_USER_DEFINED), int(attr));
+                LOG_WARN("setting token '{}' ({:d}) attribute to USER_DEFINED ({:d}), old attributes: {:d}", t.first.c_str(), int(t.second), int(LHM_TOKEN_ATTR_USER_DEFINED), int(attr));
 
                 attr = LHM_TOKEN_ATTR_USER_DEFINED;
             }
@@ -2321,17 +2307,17 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
         // sanity checks
         if (special_eos_id != LHM_TOKEN_NULL && special_eog_ids.count(special_eos_id) == 0) {
             special_eog_ids.insert(special_eos_id);
-            LOG_WARN("%s: special_eos_id is not in special_eog_ids - the tokenizer config may be incorrect\n", __func__);
+            LOG_WARN("special_eos_id is not in special_eog_ids - the tokenizer config may be incorrect");
         }
 
         if (special_eot_id != LHM_TOKEN_NULL && special_eog_ids.count(special_eot_id) == 0) {
             special_eog_ids.insert(special_eot_id);
-            LOG_WARN("%s: special_eot_id is not in special_eog_ids - the tokenizer config may be incorrect\n", __func__);
+            LOG_WARN("special_eot_id is not in special_eog_ids - the tokenizer config may be incorrect");
         }
 
         if (special_eom_id != LHM_TOKEN_NULL && special_eog_ids.count(special_eom_id) == 0) {
             special_eog_ids.insert(special_eom_id);
-            LOG_WARN("%s: special_eom_id is not in special_eog_ids - the tokenizer config may be incorrect\n", __func__);
+            LOG_WARN("special_eom_id is not in special_eog_ids - the tokenizer config may be incorrect");
         }
 
         // TODO: workaround for o200k_harmony and solar-open tokenizer: the "<|end|>" token should not be EOG
@@ -2345,11 +2331,11 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
 
             lhm_token end_id = LHM_TOKEN_NULL;
 
-            LOG_INFO("%s: printing all EOG tokens:\n", __func__);
+            LOG_INFO("printing all EOG tokens:");
             for (auto tid : special_eog_ids) {
                 auto & text = id_to_token[tid].text;
 
-                LOG_INFO("%s:   - %d ('%s')\n", __func__, tid, text.c_str());
+                LOG_INFO("  - {:d} ('{}')", tid, text.c_str());
 
                 if (text == "<|return|>") {
                     has_return = true;
@@ -2369,7 +2355,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
                 auto & attr = id_to_token[end_id].attr;
                 attr = LHM_TOKEN_ATTR_USER_DEFINED;
 
-                LOG_WARN("%s: special_eog_ids contains both '<|return|>' and '<|call|>', or '<|calls|>' and '<|flush|>' tokens, removing '<|end|>' token from EOG list\n", __func__);
+                LOG_WARN("special_eog_ids contains both '<|return|>' and '<|call|>', or '<|calls|>' and '<|flush|>' tokens, removing '<|end|>' token from EOG list");
             }
         }
 
@@ -2396,7 +2382,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
                 auto & attr = id_to_token[s_id].attr;
                 attr = LHM_TOKEN_ATTR_NORMAL;
 
-                LOG_WARN("%s: special_eog_ids contains '<|tool_response>', removing '</s>' token from EOG list\n", __func__);
+                LOG_WARN("special_eog_ids contains '<|tool_response>', removing '</s>' token from EOG list");
             }
         }
     }
@@ -2415,7 +2401,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
             }
         );
 
-        LOG_INFO("%s: special tokens cache size = %u\n", __func__, (uint32_t) cache_special_tokens.size());
+        LOG_INFO("special tokens cache size = {:d}", (uint32_t) cache_special_tokens.size());
     }
 
     // build token to piece cache
@@ -2432,7 +2418,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
 
         std::swap(cache_token_to_piece, cache);
 
-        LOG_INFO("%s: token to piece cache size = %.4f MB\n", __func__, size_cache / 1024.0 / 1024.0);
+        LOG_INFO("token to piece cache size = {:.4f} MB", size_cache / 1024.0 / 1024.0);
     }
 
     // Handle per token attributes
@@ -2480,7 +2466,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
                 || _contains_any(general_arch, {"nomic-bert-moe", "jina-bert-v3"})
            ) {
             if (token_to_id.count("<mask>") == 0) {
-                LOG_WARN("%s: Mask token is missing in vocab, please reconvert model!\n", __func__);
+                LOG_WARN("Mask token is missing in vocab, please reconvert model!");
             } else {
                 _set_token_attr("<mask>", LHM_TOKEN_ATTR_LSTRIP, true);
             }
@@ -2496,7 +2482,7 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
             }
         } else if (_contains_any(model_name, {"modern-bert"})) {
             if (token_to_id.count("[MASK]") == 0 ) {
-                LOG_WARN("%s: Mask token missing in vocab!\n", __func__);
+                LOG_WARN("Mask token missing in vocab!");
             }
             else {
                 _set_token_attr("[MASK]", LHM_TOKEN_ATTR_LSTRIP, true);
@@ -2572,10 +2558,10 @@ uint8_t lhm_vocab::impl::token_to_byte(lhm_token id) const {
             return strtol(buf.c_str(), NULL, 16);
         }
         case LHM_VOCAB_TYPE_WPM: {
-            GGML_ABORT("fatal error");
+            LHM_ABORT("fatal error");
         }
         default:
-            GGML_ABORT("fatal error");
+            LHM_ABORT("fatal error");
     }
 }
 
@@ -2585,7 +2571,7 @@ lhm_token_attr lhm_vocab::impl::token_get_attr(lhm_token id) const {
 }
 
 void lhm_vocab::impl::init_tokenizer(enum lhm_vocab_type type) {
-    LOG_DEBUG("%s: initializing tokenizer for type %d\n", __func__, int(type));
+    LOG_DEBUG("initializing tokenizer for type {:d}", int(type));
 
     switch (type) {
         case LHM_VOCAB_TYPE_SPM:
@@ -2607,7 +2593,7 @@ void lhm_vocab::impl::init_tokenizer(enum lhm_vocab_type type) {
             tokenizer = std::make_unique<llm_tokenizer_plamo2>(vocab);
             break;
         default:
-            GGML_ABORT("unsupported vocab type");
+            LHM_ABORT("unsupported vocab type");
     }
 }
 
@@ -2655,7 +2641,7 @@ void lhm_vocab::impl::tokenizer_st_partition(std::forward_list<fragment_buffer_v
                     if (match == std::string::npos) break;
 
 #ifdef PRETOKENIZERDEBUG
-                    LOG_WARN("FF: (%ld %ld %ld) '%s'\n", raw_text->length(), raw_text_base_offset, raw_text_base_length, raw_text->substr(raw_text_base_offset, raw_text_base_length).c_str());
+                    LOG_WARN("FF: ({:d} {:d} {:d}) '{}'", raw_text->length(), raw_text_base_offset, raw_text_base_length, raw_text->substr(raw_text_base_offset, raw_text_base_length).c_str());
 #endif
                     auto source = std::distance(buffer.begin(), it);
 
@@ -2678,7 +2664,7 @@ void lhm_vocab::impl::tokenizer_st_partition(std::forward_list<fragment_buffer_v
                         }
 
 #ifdef PRETOKENIZERDEBUG
-                        LOG_WARN("FL: (%ld %ld) '%s'\n", left_reminder_offset, left_reminder_length, raw_text->substr(left_reminder_offset, left_reminder_length).c_str());
+                        LOG_WARN("FL: ({:d} {:d}) '{}'", left_reminder_offset, left_reminder_length, raw_text->substr(left_reminder_offset, left_reminder_length).c_str());
 #endif
                     }
 
@@ -2704,7 +2690,7 @@ void lhm_vocab::impl::tokenizer_st_partition(std::forward_list<fragment_buffer_v
                         }
 
 #ifdef PRETOKENIZERDEBUG
-                        LOG_WARN("FR: (%ld %ld) '%s'\n", right_reminder_offset, right_reminder_length, raw_text->substr(right_reminder_offset, right_reminder_length).c_str());
+                        LOG_WARN("FR: ({:d} {:d}) '{}'", right_reminder_offset, right_reminder_length, raw_text->substr(right_reminder_offset, right_reminder_length).c_str());
 #endif
 
                         if (source == 0) {
@@ -2718,7 +2704,7 @@ void lhm_vocab::impl::tokenizer_st_partition(std::forward_list<fragment_buffer_v
                         raw_text_base_length = right_reminder_length;
 
 #ifdef PRETOKENIZERDEBUG
-                        LOG_WARN("RR: (%ld %ld) '%s'\n", raw_text_base_offset, raw_text_base_length, raw_text->substr(raw_text_base_offset, raw_text_base_length).c_str());
+                        LOG_WARN("RR: ({:d} {:d}) '{}'", raw_text_base_offset, raw_text_base_length, raw_text->substr(raw_text_base_offset, raw_text_base_length).c_str());
 #endif
                     } else {
                         if (source == 0) {
@@ -2822,7 +2808,7 @@ std::vector<lhm_token> lhm_vocab::impl::tokenize(
                         text += fragment.raw_text.substr(fragment.offset, fragment.length);
 
 #ifdef PRETOKENIZERDEBUG
-                        LOG_WARN("TT: (%ld %ld %ld) '%s'\n", text.length(), fragment.offset, fragment.length, text.c_str());
+                        LOG_WARN("TT: ({:d} {:d} {:d}) '{}'", text.length(), fragment.offset, fragment.length, text.c_str());
 #endif
                         lhm_escape_whitespace(text);
                         llm_tokenizer_spm_session session(vocab);
@@ -2835,10 +2821,9 @@ std::vector<lhm_token> lhm_vocab::impl::tokenize(
                 }
 
                 if (add_special && add_bos && output.size() >= 2 && output[1] == special_bos_id) {
-                    LOG_WARN(
-                        "%s: Added a BOS token to the prompt as specified by the model but the prompt "
+                    LOG_WARN("Added a BOS token to the prompt as specified by the model but the prompt "
                         "also starts with a BOS token. So now the final prompt starts with 2 BOS tokens. "
-                        "Are you sure this is what you want?\n", __FUNCTION__);
+                        "Are you sure this is what you want?", __FUNCTION__);
                 }
 
                 if (add_special && add_eos) {
@@ -2873,7 +2858,7 @@ std::vector<lhm_token> lhm_vocab::impl::tokenize(
                         }
 
 #ifdef PRETOKENIZERDEBUG
-                        LOG_WARN("TT: (%ld %ld %ld) '%s'\n", text.length(), fragment.offset, fragment.length, text.c_str());
+                        LOG_WARN("TT: ({:d} {:d} {:d}) '{}'", text.length(), fragment.offset, fragment.length, text.c_str());
 #endif
                         session->tokenize(text, output);
                     } else { // if (fragment.type == FRAGMENT_BUFFER_VARIANT_TYPE_TOKEN)
@@ -2900,7 +2885,7 @@ std::vector<lhm_token> lhm_vocab::impl::tokenize(
                         std::string text = fragment.raw_text.substr(fragment.offset, fragment.length);
 
 #ifdef PRETOKENIZERDEBUG
-                        LOG_WARN("TT: (%ld %ld %ld) '%s'\n", text.length(), fragment.offset, fragment.length, text.c_str());
+                        LOG_WARN("TT: ({:d} {:d} {:d}) '{}'", text.length(), fragment.offset, fragment.length, text.c_str());
 #endif
                         session.tokenize(text, output);
                     } else { // if (fragment.type == FRAGMENT_BUFFER_VARIANT_TYPE_TOKEN)
@@ -2925,7 +2910,7 @@ std::vector<lhm_token> lhm_vocab::impl::tokenize(
                     if (fragment.type == FRAGMENT_BUFFER_VARIANT_TYPE_RAW_TEXT) {
                         std::string text = fragment.raw_text.substr(fragment.offset, fragment.length);
 #ifdef PRETOKENIZERDEBUG
-                        LOG_WARN("TT: (%ld %ld %ld) '%s'\n", text.length(), fragment.offset, fragment.length, text.c_str());
+                        LOG_WARN("TT: ({:d} {:d} {:d}) '{}'", text.length(), fragment.offset, fragment.length, text.c_str());
 #endif
                         session.tokenize(text, output);
                     } else { // if (fragment.type == FRAGMENT_BUFFER_VARIANT_TYPE_TOKEN)
@@ -2934,10 +2919,9 @@ std::vector<lhm_token> lhm_vocab::impl::tokenize(
                 }
 
                 if (add_special && add_bos && output.size() >= 2 && output[1] == special_bos_id) {
-                    LOG_WARN(
-                        "%s: Added a BOS token to the prompt as specified by the model but the prompt "
+                    LOG_WARN("Added a BOS token to the prompt as specified by the model but the prompt "
                         "also starts with a BOS token. So now the final prompt starts with 2 BOS tokens. "
-                        "Are you sure this is what you want?\n", __FUNCTION__);
+                        "Are you sure this is what you want?", __FUNCTION__);
                 }
 
                 if (add_special && add_eos) {
@@ -2953,7 +2937,7 @@ std::vector<lhm_token> lhm_vocab::impl::tokenize(
                         std::string text = fragment.raw_text.substr(fragment.offset, fragment.length);
 
 #ifdef PRETOKENIZERDEBUG
-                        LOG_WARN("TT: (%ld %ld %ld) '%s'\n", text.length(), fragment.offset, fragment.length, text.c_str());
+                        LOG_WARN("TT: ({:d} {:d} {:d}) '{}'", text.length(), fragment.offset, fragment.length, text.c_str());
 #endif
 
                         session.tokenize(text, output);
@@ -2970,7 +2954,7 @@ std::vector<lhm_token> lhm_vocab::impl::tokenize(
                         std::string text = fragment.raw_text.substr(fragment.offset, fragment.length);
 
 #ifdef PRETOKENIZERDEBUG
-                        LOG_WARN("TT: (%ld %ld %ld) '%s'\n", text.length(), fragment.offset, fragment.length, text.c_str());
+                        LOG_WARN("TT: ({:d} {:d} {:d}) '{}'", text.length(), fragment.offset, fragment.length, text.c_str());
 #endif
 
                         session.tokenize(text, output);
@@ -2980,7 +2964,7 @@ std::vector<lhm_token> lhm_vocab::impl::tokenize(
                 }
             } break;
         case LHM_VOCAB_TYPE_NONE:
-            GGML_ABORT("fatal error");
+            LHM_ABORT("fatal error");
     }
 
     return output;
@@ -2998,7 +2982,7 @@ int32_t lhm_vocab::impl::token_to_piece(lhm_token token, char * buf, int32_t len
     // skip up to 'lstrip' leading spaces before copying
     auto _try_copy = [=] (const char * token, size_t size) -> int32_t {
         if (size >= static_cast<size_t>(std::numeric_limits<int32_t>::max())) {
-            GGML_ABORT("invalid token size: %zu exceeds int32_t limit", size);
+            LHM_ABORT("invalid token size: %zu exceeds int32_t limit", size);
         }
 
         for (int32_t i = 0; i < lstrip && size && *token == ' '; ++i) {
@@ -3096,7 +3080,7 @@ int32_t lhm_vocab::impl::token_to_piece(lhm_token token, char * buf, int32_t len
                 return _try_copy(result.data(), result.size());
             }
             default:
-                GGML_ABORT("fatal error");
+                LHM_ABORT("fatal error");
         }
     }
 
@@ -3220,34 +3204,34 @@ int32_t lhm_vocab::impl::detokenize(
 }
 
 void lhm_vocab::impl::print_info() const {
-    LOG_INFO("%s: vocab type            = %s\n",     __func__, type_name().c_str());
-    LOG_INFO("%s: n_vocab               = %u\n",     __func__, vocab.n_tokens());
-    LOG_INFO("%s: n_merges              = %u\n",     __func__, (uint32_t) bpe_ranks.size());
+    LOG_INFO("vocab type            = {}", type_name().c_str());
+    LOG_INFO("n_vocab               = {:d}", vocab.n_tokens());
+    LOG_INFO("n_merges              = {:d}", (uint32_t) bpe_ranks.size());
 
     // special tokens
-    if (special_bos_id  != LHM_TOKEN_NULL)    { LOG_INFO( "%s: BOS token             = %d '%s'\n", __func__, special_bos_id,     id_to_token.at(special_bos_id).text.c_str() );  }
-    if (special_eos_id  != LHM_TOKEN_NULL)    { LOG_INFO( "%s: EOS token             = %d '%s'\n", __func__, special_eos_id,     id_to_token.at(special_eos_id).text.c_str() );  }
-    if (special_eot_id  != LHM_TOKEN_NULL)    { LOG_INFO( "%s: EOT token             = %d '%s'\n", __func__, special_eot_id,     id_to_token.at(special_eot_id).text.c_str() );  }
-    if (special_eom_id  != LHM_TOKEN_NULL)    { LOG_INFO( "%s: EOM token             = %d '%s'\n", __func__, special_eom_id,     id_to_token.at(special_eom_id).text.c_str() );  }
-    if (special_unk_id  != LHM_TOKEN_NULL)    { LOG_INFO( "%s: UNK token             = %d '%s'\n", __func__, special_unk_id,     id_to_token.at(special_unk_id).text.c_str() );  }
-    if (special_sep_id  != LHM_TOKEN_NULL)    { LOG_INFO( "%s: SEP token             = %d '%s'\n", __func__, special_sep_id,     id_to_token.at(special_sep_id).text.c_str() );  }
-    if (special_pad_id  != LHM_TOKEN_NULL)    { LOG_INFO( "%s: PAD token             = %d '%s'\n", __func__, special_pad_id,     id_to_token.at(special_pad_id).text.c_str() );  }
-    if (special_mask_id != LHM_TOKEN_NULL)    { LOG_INFO( "%s: MASK token            = %d '%s'\n", __func__, special_mask_id,    id_to_token.at(special_mask_id).text.c_str() ); }
+    if (special_bos_id  != LHM_TOKEN_NULL)    { LOG_INFO("BOS token             = {:d} '{}'", special_bos_id, id_to_token.at(special_bos_id).text.c_str());  }
+    if (special_eos_id  != LHM_TOKEN_NULL)    { LOG_INFO("EOS token             = {:d} '{}'", special_eos_id, id_to_token.at(special_eos_id).text.c_str());  }
+    if (special_eot_id  != LHM_TOKEN_NULL)    { LOG_INFO("EOT token             = {:d} '{}'", special_eot_id, id_to_token.at(special_eot_id).text.c_str());  }
+    if (special_eom_id  != LHM_TOKEN_NULL)    { LOG_INFO("EOM token             = {:d} '{}'", special_eom_id, id_to_token.at(special_eom_id).text.c_str());  }
+    if (special_unk_id  != LHM_TOKEN_NULL)    { LOG_INFO("UNK token             = {:d} '{}'", special_unk_id, id_to_token.at(special_unk_id).text.c_str());  }
+    if (special_sep_id  != LHM_TOKEN_NULL)    { LOG_INFO("SEP token             = {:d} '{}'", special_sep_id, id_to_token.at(special_sep_id).text.c_str());  }
+    if (special_pad_id  != LHM_TOKEN_NULL)    { LOG_INFO("PAD token             = {:d} '{}'", special_pad_id, id_to_token.at(special_pad_id).text.c_str());  }
+    if (special_mask_id != LHM_TOKEN_NULL)    { LOG_INFO("MASK token            = {:d} '{}'", special_mask_id, id_to_token.at(special_mask_id).text.c_str()); }
 
-    if (linefeed_id != LHM_TOKEN_NULL)        { LOG_INFO( "%s: LF token              = %d '%s'\n", __func__, linefeed_id,        id_to_token.at(linefeed_id).text.c_str() ); }
+    if (linefeed_id != LHM_TOKEN_NULL)        { LOG_INFO("LF token              = {:d} '{}'", linefeed_id, id_to_token.at(linefeed_id).text.c_str()); }
 
-    if (special_fim_pre_id != LHM_TOKEN_NULL) { LOG_INFO( "%s: FIM PRE token         = %d '%s'\n", __func__, special_fim_pre_id, id_to_token.at(special_fim_pre_id).text.c_str() ); }
-    if (special_fim_suf_id != LHM_TOKEN_NULL) { LOG_INFO( "%s: FIM SUF token         = %d '%s'\n", __func__, special_fim_suf_id, id_to_token.at(special_fim_suf_id).text.c_str() ); }
-    if (special_fim_mid_id != LHM_TOKEN_NULL) { LOG_INFO( "%s: FIM MID token         = %d '%s'\n", __func__, special_fim_mid_id, id_to_token.at(special_fim_mid_id).text.c_str() ); }
-    if (special_fim_pad_id != LHM_TOKEN_NULL) { LOG_INFO( "%s: FIM PAD token         = %d '%s'\n", __func__, special_fim_pad_id, id_to_token.at(special_fim_pad_id).text.c_str() ); }
-    if (special_fim_rep_id != LHM_TOKEN_NULL) { LOG_INFO( "%s: FIM REP token         = %d '%s'\n", __func__, special_fim_rep_id, id_to_token.at(special_fim_rep_id).text.c_str() ); }
-    if (special_fim_sep_id != LHM_TOKEN_NULL) { LOG_INFO( "%s: FIM SEP token         = %d '%s'\n", __func__, special_fim_sep_id, id_to_token.at(special_fim_sep_id).text.c_str() ); }
+    if (special_fim_pre_id != LHM_TOKEN_NULL) { LOG_INFO("FIM PRE token         = {:d} '{}'", special_fim_pre_id, id_to_token.at(special_fim_pre_id).text.c_str()); }
+    if (special_fim_suf_id != LHM_TOKEN_NULL) { LOG_INFO("FIM SUF token         = {:d} '{}'", special_fim_suf_id, id_to_token.at(special_fim_suf_id).text.c_str()); }
+    if (special_fim_mid_id != LHM_TOKEN_NULL) { LOG_INFO("FIM MID token         = {:d} '{}'", special_fim_mid_id, id_to_token.at(special_fim_mid_id).text.c_str()); }
+    if (special_fim_pad_id != LHM_TOKEN_NULL) { LOG_INFO("FIM PAD token         = {:d} '{}'", special_fim_pad_id, id_to_token.at(special_fim_pad_id).text.c_str()); }
+    if (special_fim_rep_id != LHM_TOKEN_NULL) { LOG_INFO("FIM REP token         = {:d} '{}'", special_fim_rep_id, id_to_token.at(special_fim_rep_id).text.c_str()); }
+    if (special_fim_sep_id != LHM_TOKEN_NULL) { LOG_INFO("FIM SEP token         = {:d} '{}'", special_fim_sep_id, id_to_token.at(special_fim_sep_id).text.c_str()); }
 
     for (const auto & id : special_eog_ids) {
-        LOG_INFO( "%s: EOG token             = %d '%s'\n", __func__, id, id_to_token.at(id).text.c_str() );
+        LOG_INFO("EOG token             = {:d} '{}'", id, id_to_token.at(id).text.c_str());
     }
 
-    LOG_INFO("%s: max token length      = %d\n", __func__, max_token_len);
+    LOG_INFO("max token length      = {:d}", max_token_len);
 }
 
 lhm_vocab::lhm_vocab() : pimpl(new impl(*this)) {
@@ -3345,7 +3329,7 @@ lhm_token lhm_vocab::byte_to_token(uint8_t ch) const {
             return pimpl->token_to_id.at(hex_str);
         }
         default:
-            GGML_ABORT("fatal error");
+            LHM_ABORT("fatal error");
     }
 }
 
@@ -3532,12 +3516,12 @@ int32_t lhm_vocab::tokenize(
                         bool   parse_special) const {
     auto res = tokenize(std::string(text, text_len), add_special, parse_special);
     if (res.size() >= static_cast<size_t>(std::numeric_limits<int32_t>::max())) {
-        LOG_ERROR("%s: tokenization result size %zu exceeds int32_t limit\n", __func__, res.size());
+        LOG_ERROR("tokenization result size {:d} exceeds int32_t limit", res.size());
         return std::numeric_limits<int32_t>::min();
     }
 
     if (n_tokens_max < (int) res.size()) {
-        // LOG_ERROR("%s: too many tokens\n", __func__);
+        // LOG_ERROR("too many tokens");
         return -((int) res.size());
     }
 

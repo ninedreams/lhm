@@ -249,9 +249,9 @@ std::vector<std::unique_ptr<field>> make_lhm_cmpl_schema(const common_params & p
             if (data.contains("json_schema") && !data.contains("grammar")) {
                 try {
                     auto schema                  = json_value(data, "json_schema", json::object());
-                    SRV_DBG("JSON schema: %s\n", schema.dump(2).c_str());
+                    LOG_DEBUG("JSON schema: {}", schema.dump(2).c_str());
                     std::string grammar_str      = json_schema_to_grammar(schema);
-                    SRV_DBG("Converted grammar: %s\n", grammar_str.c_str());
+                    LOG_DEBUG("Converted grammar: {}", grammar_str.c_str());
                     params.sampling.grammar      = {COMMON_GRAMMAR_TYPE_OUTPUT_FORMAT, std::move(grammar_str)};
                 } catch (const std::exception & e) {
                     throw std::runtime_error(std::string("\"json_schema\": ") + e.what());
@@ -267,7 +267,7 @@ std::vector<std::unique_ptr<field>> make_lhm_cmpl_schema(const common_params & p
                         // explicit grammar from the user (API field "grammar")
                         params.sampling.grammar = {COMMON_GRAMMAR_TYPE_USER, std::move(grammar_str)};
                     }
-                    SRV_DBG("Grammar (%s): %s\n", grammar_type.c_str(), common_grammar_value(params.sampling.grammar).c_str());
+                    LOG_DEBUG("Grammar ({}): {}", grammar_type.c_str(), common_grammar_value(params.sampling.grammar).c_str());
                 }
             }
         }));
@@ -284,7 +284,7 @@ std::vector<std::unique_ptr<field>> make_lhm_cmpl_schema(const common_params & p
         ->set_desc("Chat format used internally by the server")
         ->set_handler([&](field_eval_context & ctx, const json & data) {
             ctx.params.chat_parser_params.format = static_cast<common_chat_format>(data.at("chat_format").get<int>());
-            SRV_INF("Chat format: %s\n", common_chat_format_name(ctx.params.chat_parser_params.format));
+            LOG_INFO("Chat format: {}", common_chat_format_name(ctx.params.chat_parser_params.format));
         }));
 
     add((new field_str("reasoning_format"))
@@ -538,7 +538,7 @@ task_params eval_lhm_cmpl_schema(
     // debugging
     {
         auto budget = params.sampling.reasoning_budget_tokens;
-        SRV_DBG("reasoning budget: tokens=%d, generation_prompt='%s', start=%zu toks, end=%zu toks, forced=%zu toks\n",
+        LOG_DEBUG("reasoning budget: tokens={}, generation_prompt='{}', start={} toks, end={} toks, forced={} toks",
                 budget, params.sampling.generation_prompt.c_str(),
                 params.sampling.reasoning_budget_start.size(),
                 params.sampling.reasoning_budget_end.size(),
@@ -556,7 +556,7 @@ static void handle_with_catch(const char * name, std::function<void()> func) {
     try {
         func();
     } catch (const std::exception & e) {
-        throw std::invalid_argument(string_format("Field '%s': %s", name, e.what()));
+        throw std::invalid_argument(fmt::format("Field '{}': {}", name, e.what()));
     }
 }
 

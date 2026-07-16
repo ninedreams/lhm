@@ -53,7 +53,7 @@ uint32_t lhm_hparams::n_head(uint32_t il) const {
         return n_head_arr[il];
     }
 
-    GGML_ABORT("fatal error");
+    LHM_ABORT("fatal error");
 }
 
 uint32_t lhm_hparams::n_head_kv(uint32_t il) const {
@@ -61,7 +61,7 @@ uint32_t lhm_hparams::n_head_kv(uint32_t il) const {
         return n_head_kv_arr[il];
     }
 
-    GGML_ABORT("fatal error");
+    LHM_ABORT("fatal error");
 }
 
 uint32_t lhm_hparams::n_ff(uint32_t il) const {
@@ -69,7 +69,7 @@ uint32_t lhm_hparams::n_ff(uint32_t il) const {
         return n_ff_arr[il];
     }
 
-    GGML_ABORT("fatal error");
+    LHM_ABORT("fatal error");
 }
 
 uint32_t lhm_hparams::n_gqa(uint32_t il) const {
@@ -88,7 +88,7 @@ uint32_t lhm_hparams::n_rot(uint32_t il) const {
         return is_swa(il) ? n_rot_swa : n_rot_full;
     }
 
-    GGML_ABORT("fatal error");
+    LHM_ABORT("fatal error");
 }
 
 uint32_t lhm_hparams::n_embd_inp() const {
@@ -118,7 +118,7 @@ uint32_t lhm_hparams::n_embd_head_k(uint32_t il) const {
         return is_swa(il) ? n_embd_head_k_swa : n_embd_head_k_full;
     }
 
-    GGML_ABORT("fatal error");
+    LHM_ABORT("fatal error");
 }
 
 uint32_t lhm_hparams::n_embd_head_v(uint32_t il) const {
@@ -126,7 +126,7 @@ uint32_t lhm_hparams::n_embd_head_v(uint32_t il) const {
         return is_swa(il) ? n_embd_head_v_swa : n_embd_head_v_full;
     }
 
-    GGML_ABORT("fatal error");
+    LHM_ABORT("fatal error");
 }
 
 uint32_t lhm_hparams::n_embd_k_gqa(uint32_t il) const {
@@ -227,7 +227,7 @@ bool lhm_hparams::is_recr(uint32_t il) const {
         return is_recr_impl[il];
     }
 
-    GGML_ABORT("%s: il (%u) out of bounds (n_layer_all: %u)\n", __func__, il, n_layer_all);
+    LHM_ABORT("il (%u) out of bounds (n_layer_all: %u)", il, n_layer_all);
 }
 
 uint32_t lhm_hparams::n_pos_per_embd() const {
@@ -239,7 +239,7 @@ bool lhm_hparams::is_swa(uint32_t il) const {
         return is_swa_impl[il];
     }
 
-    GGML_ABORT("%s: il (%u) out of bounds (n_layer_all: %u)\n", __func__, il, n_layer_all);
+    LHM_ABORT("il (%u) out of bounds (n_layer_all: %u)", il, n_layer_all);
 }
 
 bool lhm_hparams::is_mla() const {

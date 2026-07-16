@@ -411,7 +411,7 @@ struct lhm_sampler * lhm_sampler_clone(const struct lhm_sampler * smpl) {
         );
     }
 
-    GGML_ABORT("the sampler does not support cloning");
+    LHM_ABORT("the sampler does not support cloning");
 }
 
 void lhm_sampler_free(struct lhm_sampler * smpl) {
@@ -574,7 +574,7 @@ static bool lhm_sampler_backend_support(
 
     ggml_context_ptr ctx_ptr { ggml_init(params) };
     if (!ctx_ptr) {
-        throw std::runtime_error(format("failed to create ggml context"));
+        throw std::runtime_error(fmt::format("failed to create ggml context"));
     }
 
     ggml_context * ctx = ctx_ptr.get();
@@ -612,8 +612,7 @@ static bool lhm_sampler_backend_support(
         struct ggml_tensor * op = ggml_graph_node(gf, i);
 
         if (!ggml_backend_dev_supports_op(device, op)) {
-            LOG_WARN("%s: device '%s' does not have support for op %s needed for sampler '%s'\n",
-                    __func__, ggml_backend_dev_name(device), ggml_op_name(op->op), smpl->iface->name(smpl));
+            LOG_WARN("device '{}' does not have support for op {} needed for sampler '{}'", ggml_backend_dev_name(device), ggml_op_name(op->op), smpl->iface->name(smpl));
 
             return false;
         }
@@ -812,7 +811,7 @@ lhm_token lhm_sampler_sample(struct lhm_sampler * smpl, struct lhm_context * ctx
 
     // If a backend sampler has already sampled a token, return it.
     if (sampled_token != LHM_TOKEN_NULL) {
-        LOG_DEBUG("%s: Backend sampler selected token for idx %d. Skipping CPU samplers\n", __func__, idx);
+        LOG_DEBUG("Backend sampler selected token for idx {:d}. Skipping CPU samplers", idx);
         return sampled_token;
     }
 
@@ -1945,12 +1944,12 @@ static void lhm_sampler_temp_ext_apply(struct lhm_sampler * smpl, lhm_token_data
         float dyn_temp = min_temp + (max_temp - min_temp) * powf(normalized_entropy, exponent_val);
 
     #ifdef DEBUG
-        LOG_INFO("Your text maxtemp value is: %f\n", max_temp);
-        LOG_INFO("Entropy: %f\n", entropy);
-        LOG_INFO("Max Possible Entropy: %f\n", max_entropy);
-        LOG_INFO("Normalized Entropy: %f\n", normalized_entropy);
-        LOG_INFO("Exponent: %f\n", exponent_val);
-        LOG_INFO("Dynamic Temperature (dyn_temp): %f\n", dyn_temp);
+        LOG_INFO("Your text maxtemp value is: {}", max_temp);
+        LOG_INFO("Entropy: {}", entropy);
+        LOG_INFO("Max Possible Entropy: {}", max_entropy);
+        LOG_INFO("Normalized Entropy: {}", normalized_entropy);
+        LOG_INFO("Exponent: {}", exponent_val);
+        LOG_INFO("Dynamic Temperature (dyn_temp): {}", dyn_temp);
     #endif
 
         // Apply the dynamically calculated temperature scaling
@@ -1974,7 +1973,7 @@ static void lhm_sampler_temp_ext_apply(struct lhm_sampler * smpl, lhm_token_data
         // Print the updated top 25 probabilities after temperature scaling
         LOG_INFO("\nUpdated Top 25 Probabilities After Dynamic Temperature Scaling (in percentages):\n");
         for (size_t i = 0; i < 25 && i < cur_p->size; ++i) {
-            LOG_INFO("Token %zu: %f%%\n", i + 1, cur_p->data[i].p * 100.0f);
+            LOG_INFO("Token {:d}: {}%", i + 1, cur_p->data[i].p * 100.0f);
         }
     #endif
     } else {
@@ -3196,7 +3195,7 @@ struct lhm_sampler * lhm_sampler_init_dry(const struct lhm_vocab * vocab, int32_
         // Process sequence breakers
         for (size_t i = 0; i < num_breakers; ++i) {
             if (seq_breakers[i] == nullptr || std::strlen(seq_breakers[i]) == 0) {
-                LOG_WARN("skipping null or empty DRY sequence breaker at index %zu\n", i);
+                LOG_WARN("skipping null or empty DRY sequence breaker at index %zu", i);
                 continue;
             }
 
@@ -3207,7 +3206,7 @@ struct lhm_sampler * lhm_sampler_init_dry(const struct lhm_vocab * vocab, int32_
             }
 
             if (sequence_break.size() > MAX_CHAR_LEN) {
-                LOG_WARN("truncating DRY sequence breaker to %d characters\n", MAX_CHAR_LEN);
+                LOG_WARN("truncating DRY sequence breaker to {:d} characters", MAX_CHAR_LEN);
                 sequence_break.resize(MAX_CHAR_LEN);
             }
 
@@ -3619,7 +3618,7 @@ static void lhm_sampler_infill_apply(struct lhm_sampler * smpl, lhm_token_data_a
 #endif
 
     for (size_t i = 0; i < cur_p->size; ++i) {
-        LOG_DBG_CUR("%s: cur_p[%3zu] = { id: %6d, p: %.6f, logit: %6.3f }\n", __func__, i, cur_p->data[i].id, cur_p->data[i].p, cur_p->data[i].logit);
+        LOG_DBG_CUR("%s: cur_p[%3zu] = { id: %6d, p: %.6f, logit: %6.3f }", i, cur_p->data[i].id, cur_p->data[i].p, cur_p->data[i].logit);
     }
 
     float p_txt_sum = 0.0f;
@@ -3635,10 +3634,10 @@ static void lhm_sampler_infill_apply(struct lhm_sampler * smpl, lhm_token_data_a
 
     const float rat = p_eog_sum == 0.0 ? INFINITY : p_txt_sum / p_eog_sum; GGML_UNUSED(rat);
 
-    LOG_DBG_CUR("%s: p_txt_sum = %.2f, p_eog_sum = %.2f, rat = %.2f, n = %zu\n", __func__, p_txt_sum, p_eog_sum, rat, cur_p->size);
+    LOG_DBG_CUR("%s: p_txt_sum = %.2f, p_eog_sum = %.2f, rat = %.2f, n = %zu", p_txt_sum, p_eog_sum, rat, cur_p->size);
 
     if (3*p_eog_sum*cur_p->size > p_txt_sum) {
-        LOG_DBG_CUR("%s: the ratio p_txt/p_eog = %.2f is too low -> sampling EOG\n", __func__, p_txt_sum/p_eog_sum);
+        LOG_DBG_CUR("%s: the ratio p_txt/p_eog = %.2f is too low -> sampling EOG", p_txt_sum/p_eog_sum);
 
         // keep just the EOG tokens
         const auto size_org = cur_p->size;
@@ -3718,7 +3717,7 @@ static void lhm_sampler_infill_apply(struct lhm_sampler * smpl, lhm_token_data_a
 
     cur_p->size = 0;
 
-    LOG_DBG_CUR("%s: n_combined = %zu, applying thold = %.3f\n", __func__, n_combined, thold);
+    LOG_DBG_CUR("%s: n_combined = %zu, applying thold = %.3f", n_combined, thold);
 
     for (size_t i = 0; i < size_org; ++i) {
         const bool is_eog = ctx->vocab->is_eog(cur_p->data[i].id);
@@ -3737,7 +3736,7 @@ static void lhm_sampler_infill_apply(struct lhm_sampler * smpl, lhm_token_data_a
         cur_p->data[cur_p->size++] = cur_p->data[i];
     }
 
-    LOG_DBG_CUR("%s: n_non_eog = %zu\n", __func__, n_non_eog);
+    LOG_DBG_CUR("%s: n_non_eog = %zu", n_non_eog);
 
     // if no non-EOG tokens are left -> reduce cur_p to single EOT token
     if (n_non_eog == 0) {
@@ -3757,7 +3756,7 @@ static void lhm_sampler_infill_apply(struct lhm_sampler * smpl, lhm_token_data_a
     for (size_t i = 0; i < cur_p->size; ++i) {
         cur_p->data[i].p /= p_sum;
 
-        LOG_DBG_CUR("%s: cur_p[%3zu] = { id: %6d, p: %.6f, logit: %6.3f }\n", __func__, i, cur_p->data[i].id, cur_p->data[i].p, cur_p->data[i].logit);
+        LOG_DBG_CUR("%s: cur_p[%3zu] = { id: %6d, p: %.6f, logit: %6.3f }", i, cur_p->data[i].id, cur_p->data[i].p, cur_p->data[i].logit);
     }
 
     size_org = cur_p->size;
@@ -3766,7 +3765,7 @@ static void lhm_sampler_infill_apply(struct lhm_sampler * smpl, lhm_token_data_a
 
     cur_p->size = 0;
 
-    LOG_DBG_CUR("%s: applying thold = %.3f\n", __func__, thold);
+    LOG_DBG_CUR("%s: applying thold = %.3f", thold);
 
     for (size_t i = 0; i < size_org; ++i) {
         const bool is_eog = ctx->vocab->is_eog(cur_p->data[i].id);
@@ -3784,7 +3783,7 @@ static void lhm_sampler_infill_apply(struct lhm_sampler * smpl, lhm_token_data_a
     for (size_t i = 0; i < cur_p->size; ++i) {
         cur_p->data[i].p /= p_sum;
 
-        LOG_DBG_CUR("%s: cur_p[%3zu] = { id: %6d, p: %.6f, logit: %6.3f }\n", __func__, i, cur_p->data[i].id, cur_p->data[i].p, cur_p->data[i].logit);
+        LOG_DBG_CUR("%s: cur_p[%3zu] = { id: %6d, p: %.6f, logit: %6.3f }", i, cur_p->data[i].id, cur_p->data[i].p, cur_p->data[i].logit);
     }
 
 #undef LOG_DBG_CUR
@@ -3857,7 +3856,7 @@ struct lhm_perf_sampler_data lhm_perf_sampler(const struct lhm_sampler * chain) 
     struct lhm_perf_sampler_data data = {};
 
     if (chain == nullptr || chain->iface != &lhm_sampler_chain_i) {
-        GGML_ABORT("%s: invalid sampler passed - requires a sampler created with lhm_sampler_chain_init()\n", __func__);
+        LHM_ABORT("invalid sampler passed - requires a sampler created with lhm_sampler_chain_init()");
     }
 
     const auto * ctx = (const struct lhm_sampler_chain *) chain->ctx;
@@ -3871,12 +3870,12 @@ struct lhm_perf_sampler_data lhm_perf_sampler(const struct lhm_sampler * chain) 
 void lhm_perf_sampler_print(const struct lhm_sampler * chain) {
     const auto data = lhm_perf_sampler(chain);
 
-    LOG_INFO("%s:    samplers time = %10.2f ms / %5d runs\n", __func__, data.t_sample_ms, data.n_sample);
+    LOG_INFO("   samplers time = {:10.2f} ms / {:5d} runs", data.t_sample_ms, data.n_sample);
 }
 
 void lhm_perf_sampler_reset(struct lhm_sampler * chain) {
     if (chain == nullptr || chain->iface != &lhm_sampler_chain_i) {
-        GGML_ABORT("%s: invalid sampler passed - requires a sampler created with lhm_sampler_chain_init()\n", __func__);
+        LHM_ABORT("invalid sampler passed - requires a sampler created with lhm_sampler_chain_init()");
     }
 
     auto * ctx = (struct lhm_sampler_chain *) chain->ctx;

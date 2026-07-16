@@ -60,9 +60,9 @@ static server_http_context::handler_t ex_wrapper(server_http_context::handler_t 
             json error_data = format_error_response(message, error);
             res->status = json_value(error_data, "code", 500);
             res->data = safe_json_to_str({{ "error", error_data }});
-            SRV_WRN("got exception: %s\n", res->data.c_str());
+            LOG_WARN("got exception: {}", res->data.c_str());
         } catch (const std::exception & e) {
-            SRV_ERR("got another exception: %s | while handling exception: %s\n", e.what(), message.c_str());
+            LOG_ERROR("got another exception: {} | while handling exception: {}", e.what(), message.c_str());
             res->data = "Internal Server Error";
         }
         return res;
@@ -88,13 +88,13 @@ int llm_server() {
     // embeddings require all tokens to be processed in a single ubatch
     // see https://github.com/ggml-org/llama.cpp/issues/12836
     if (params.embedding && params.n_batch > params.n_ubatch) {
-        SRV_WRN("embeddings enabled with n_batch (%d) > n_ubatch (%d)\n", params.n_batch, params.n_ubatch);
-        SRV_WRN("setting n_batch = n_ubatch = %d to avoid assertion failure\n", params.n_ubatch);
+        LOG_WARN("embeddings enabled with n_batch ({:d}) > n_ubatch ({:d})", params.n_batch, params.n_ubatch);
+        LOG_WARN("setting n_batch = n_ubatch = {:d} to avoid assertion failure", params.n_ubatch);
         params.n_batch = params.n_ubatch;
     }
 
     if (params.n_parallel < 0) {
-        SRV_INF("%s", "n_parallel is set to auto, using n_parallel = 4 and kv_unified = true\n");
+        LOG_INFO("{}", "n_parallel is set to auto, using n_parallel = 4 and kv_unified = true\n");
 
         params.n_parallel = 4;
         params.kv_unified = true;
@@ -110,7 +110,7 @@ int llm_server() {
 
     server_http_context ctx_http;
     if (!ctx_http.init(params)) {
-        SRV_ERR("%s", "failed to initialize HTTP server\n");
+        LOG_ERROR("{}", "failed to initialize HTTP server\n");
         return 1;
     }
 
@@ -166,13 +166,13 @@ int llm_server() {
         try {
             tools.setup(params.server_tools);
         } catch (const std::exception & e) {
-            SRV_ERR("tools setup failed: %s\n", e.what());
+            LOG_ERROR("tools setup failed: {}", e.what());
             return 1;
         }
-        SRV_WRN("%s", "-----------------\n");
-        SRV_WRN("%s", "Built-in tools are enabled, do not expose server to untrusted environments\n");
-        SRV_WRN("%s", "This feature is EXPERIMENTAL and may be changed in the future\n");
-        SRV_WRN("%s", "-----------------\n");
+        LOG_WARN("{}", "-----------------\n");
+        LOG_WARN("{}", "Built-in tools are enabled, do not expose server to untrusted environments\n");
+        LOG_WARN("{}", "This feature is EXPERIMENTAL and may be changed in the future\n");
+        LOG_WARN("{}", "-----------------\n");
         ctx_http.get ("/tools",           ex_wrapper(tools.handle_get));
         ctx_http.post("/tools",           ex_wrapper(tools.handle_post));
     }
@@ -182,7 +182,7 @@ int llm_server() {
     {
         // setup clean up function, to be called before exit
         clean_up = [&ctx_http, &ctx_server]() {
-            SRV_INF("%s: cleaning up before exit...\n", __func__);
+            LOG_INFO("cleaning up before exit...");
             ctx_http.stop();
             ctx_server.terminate();
             lhm_backend_free();
@@ -191,26 +191,26 @@ int llm_server() {
         // start the HTTP server before loading the model to be able to serve /health requests
         if (!ctx_http.start()) {
             clean_up();
-            SRV_ERR("%s", "exiting due to HTTP server error\n");
+            LOG_ERROR("{}", "exiting due to HTTP server error\n");
             return 1;
         }
 
         // load the model
-        SRV_INF("%s", "loading model\n");
+        LOG_INFO("{}", "loading model\n");
 
         if (!ctx_server.load_model(params)) {
             clean_up();
             if (ctx_http.thread.joinable()) {
                 ctx_http.thread.join();
             }
-            SRV_ERR("%s", "exiting due to model loading error\n");
+            LOG_ERROR("{}", "exiting due to model loading error\n");
             return 1;
         }
 
         routes.update_meta(ctx_server);
         ctx_http.is_ready.store(true);
 
-        SRV_INF("%s", "model loaded\n");
+        LOG_INFO("{}", "model loaded\n");
 
         shutdown_handler = [&](int) {
             // this will unblock start_loop()
@@ -234,7 +234,7 @@ int llm_server() {
 #endif
 
     {
-        SRV_INF("server is listening on %s\n", ctx_http.listening_address.c_str());
+        LOG_INFO("server is listening on {}", ctx_http.listening_address.c_str());
 
         // // optionally, notify router server that this instance is ready
         // std::thread monitor_thread;

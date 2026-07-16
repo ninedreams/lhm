@@ -18843,7 +18843,7 @@ class serializer
 
                 if (pretty_print)
                 {
-                    o->write_characters("{\n", 2);
+                    o->write_characters("{", 2);
 
                     // variable to hold indentation for recursive calls
                     const auto new_indent = current_indent + indent_step;
@@ -18861,7 +18861,7 @@ class serializer
                         dump_escaped(i->first, ensure_ascii);
                         o->write_characters("\": ", 3);
                         dump(i->second, true, ensure_ascii, indent_step, new_indent);
-                        o->write_characters(",\n", 2);
+                        o->write_characters(",", 2);
                     }
 
                     // last element
@@ -18916,7 +18916,7 @@ class serializer
 
                 if (pretty_print)
                 {
-                    o->write_characters("[\n", 2);
+                    o->write_characters("[", 2);
 
                     // variable to hold indentation for recursive calls
                     const auto new_indent = current_indent + indent_step;
@@ -18931,7 +18931,7 @@ class serializer
                     {
                         o->write_characters(indent_string.c_str(), new_indent);
                         dump(*i, true, ensure_ascii, indent_step, new_indent);
-                        o->write_characters(",\n", 2);
+                        o->write_characters(",", 2);
                     }
 
                     // last element
@@ -18977,7 +18977,7 @@ class serializer
             {
                 if (pretty_print)
                 {
-                    o->write_characters("{\n", 2);
+                    o->write_characters("{", 2);
 
                     // variable to hold indentation for recursive calls
                     const auto new_indent = current_indent + indent_step;
@@ -19001,7 +19001,7 @@ class serializer
                         dump_integer(val.m_data.m_value.binary->back());
                     }
 
-                    o->write_characters("],\n", 3);
+                    o->write_characters("],", 3);
                     o->write_characters(indent_string.c_str(), new_indent);
 
                     o->write_characters("\"subtype\": ", 11);

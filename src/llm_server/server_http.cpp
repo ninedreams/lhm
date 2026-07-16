@@ -40,10 +40,10 @@ static void log_server_request(const httplib::Request & req, const httplib::Resp
 
     // reminder: this function is not covered by httplib's exception handler; if someone does more complicated stuff, think about wrapping it in try-catch
 
-    SRV_TRC("done request: %s %s %s %d\n", req.method.c_str(), req.path.c_str(), req.remote_addr.c_str(), res.status);
+    LOG_TRACE("done request: {} {} {} {}", req.method.c_str(), req.path.c_str(), req.remote_addr.c_str(), res.status);
 
-    SRV_DBG("request:  %s\n", req.body.c_str());
-    SRV_DBG("response: %s\n", res.body.c_str());
+    LOG_DEBUG("request:  {}", req.body.c_str());
+    LOG_DEBUG("response: {}", res.body.c_str());
 }
 
 // For Google Cloud Platform deployment compatibility
@@ -82,10 +82,10 @@ bool server_http_context::init(const common_params & params) {
     hostname = params.hostname;
 
     if (gcp.enabled) {
-        SRV_INF("Google Cloud Platform compat: health route = %s, predict route = %s, port = %d\n", gcp.path_health.c_str(), gcp.path_predict.c_str(), gcp.port);
+        LOG_INFO("Google Cloud Platform compat: health route = {}, predict route = {}, port = {}", gcp.path_health.c_str(), gcp.path_predict.c_str(), gcp.port);
 
         if (port != gcp.port) {
-            SRV_WRN("Google Cloud Platform compat: overriding server port %d with AIP_HTTP_PORT %d\n", port, gcp.port);
+            LOG_WARN("Google Cloud Platform compat: overriding server port {} with AIP_HTTP_PORT {}", port, gcp.port);
         }
 
         port = gcp.port;
@@ -95,18 +95,18 @@ bool server_http_context::init(const common_params & params) {
 
 #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
     if (!params.ssl_file_key.empty() && !params.ssl_file_cert.empty()) {
-        SRV_INF("running with SSL: key = %s, cert = %s\n", params.ssl_file_key.c_str(), params.ssl_file_cert.c_str());
+        LOG_INFO("running with SSL: key = {}, cert = {}", params.ssl_file_key.c_str(), params.ssl_file_cert.c_str());
         srv = std::make_unique<httplib::SSLServer>(
             params.ssl_file_cert.c_str(), params.ssl_file_key.c_str()
         );
         is_ssl = true;
     } else {
-        SRV_INF("%s", "running without SSL\n");
+        LOG_INFO("{}", "running without SSL\n");
         srv = std::make_unique<httplib::Server>();
     }
 #else
     if (params.ssl_file_key != "" && params.ssl_file_cert != "") {
-        SRV_ERR("%s", "the server is built without SSL support\n");
+        LOG_ERROR("{}", "the server is built without SSL support\n");
         return false;
     }
     srv.reset(new httplib::Server());
@@ -128,7 +128,7 @@ bool server_http_context::init(const common_params & params) {
 
         res.status = 500;
         res.set_content(message, "text/plain");
-        SRV_ERR("got exception: %s\n", message.c_str());
+        LOG_ERROR("got exception: {}", message.c_str());
     });
 
     srv->set_error_handler([](const httplib::Request &, httplib::Response & res) {
@@ -156,7 +156,7 @@ bool server_http_context::init(const common_params & params) {
 #ifdef SO_REUSEPORT
             httplib::set_socket_opt(sock, SOL_SOCKET, SO_REUSEPORT, 1);
 #else
-            SRV_WRN("%s", "SO_REUSEPORT is not supported\n");
+            LOG_WARN("{}", "SO_REUSEPORT is not supported\n");
 #endif
         }
     });
@@ -164,9 +164,9 @@ bool server_http_context::init(const common_params & params) {
     if (params.api_keys.size() == 1) {
         const auto key = params.api_keys[0];
         const std::string substr = key.substr(std::max(static_cast<int>(key.length() - 4), 0));
-        SRV_INF("api_keys: ****%s\n", substr.c_str());
+        LOG_INFO("api_keys: ****{}", substr.c_str());
     } else if (params.api_keys.size() > 1) {
-        SRV_INF("api_keys: %zu keys loaded\n", params.api_keys.size());
+        LOG_INFO("api_keys: %zu keys loaded", params.api_keys.size());
     }
 
     //
@@ -227,7 +227,7 @@ bool server_http_context::init(const common_params & params) {
             "application/json; charset=utf-8"
         );
 
-        SRV_WRN("%s", "unauthorized: Invalid API Key\n");
+        LOG_WARN("{}", "unauthorized: Invalid API Key\n");
 
         return false;
     };
@@ -278,7 +278,7 @@ bool server_http_context::init(const common_params & params) {
         // +4 threads for monitoring, health and some threads reserved for MCP and other tasks in the future
         n_threads_http = std::max(params.n_parallel + 4, static_cast<int32_t>(std::thread::hardware_concurrency() - 1));
     }
-    SRV_INF("using %d threads for HTTP server\n", n_threads_http);
+    LOG_INFO("using {} threads for HTTP server", n_threads_http);
     srv->new_task_queue = [n_threads_http] {
         // spawn n_threads_http fixed thread (always alive), while allow up to 1024 max possible additional threads
         // when n_threads_http is used, server will create new "dynamic" threads that will be destroyed after processing each request
@@ -292,11 +292,11 @@ bool server_http_context::init(const common_params & params) {
     if (!params.public_path.empty()) {
         // Set the base directory for serving static files
         if (const auto is_found = srv->set_mount_point(params.api_prefix + "/", params.public_path); !is_found) {
-            SRV_ERR("static assets path not found: %s\n", params.public_path.c_str());
+            LOG_ERROR("static assets path not found: {}", params.public_path.c_str());
             return false;
         }
     } else {
-        SRV_INF("%s", "pass \n");
+        LOG_INFO("{}", "pass \n");
     }
     return true;
 }
@@ -309,13 +309,13 @@ bool server_http_context::start() {
     auto is_sock = false;
     if (std::string(hostname).ends_with(".sock")) {
         is_sock = true;
-        SRV_INF("%s", "setting address family to AF_UNIX\n");
+        LOG_INFO("{}", "setting address family to AF_UNIX\n");
         srv->set_address_family(AF_UNIX);
         // bind_to_port requires a second arg, any value other than 0 should
         // simply get ignored
         was_bound = srv->bind_to_port(hostname, 8080);
     } else {
-        SRV_INF("%s", "binding port with default address family\n");
+        LOG_INFO("{}", "binding port with default address family\n");
         // bind HTTP listen port
         if (port == 0) {
             const auto bound_port = srv->bind_to_any_port(hostname);
@@ -329,7 +329,7 @@ bool server_http_context::start() {
     }
 
     if (!was_bound) {
-        SRV_ERR("couldn't bind HTTP server socket, hostname: %s, port: %d\n", hostname.c_str(), port);
+        LOG_ERROR("couldn't bind HTTP server socket, hostname: {}, port: {}", hostname.c_str(), port);
         return false;
     }
 
@@ -337,8 +337,8 @@ bool server_http_context::start() {
     thread = std::thread([this] { pimpl->srv->listen_after_bind(); });
     srv->wait_until_ready();
 
-    listening_address = is_sock ? string_format("unix://%s", hostname.c_str())
-                                : string_format("%s://%s:%d", is_ssl ? "https" : "http", hostname.c_str(), port);
+    listening_address = is_sock ? fmt::format("unix://{}", hostname.c_str())
+                                : fmt::format("{}://{}:{}", is_ssl ? "https" : "http", hostname.c_str(), port);
     return true;
 }
 
@@ -404,11 +404,11 @@ static void process_handler_response(server_http_req_ptr && request, server_http
                 if (!sink.write(chunk.data(), chunk.size())) {
                     return false;
                 }
-                SRV_DBG("http: streamed chunk: %s\n", chunk.c_str());
+                LOG_DEBUG("http: streamed chunk: {}", chunk.c_str());
             }
             if (!has_next) {
                 sink.done();
-                SRV_DBG("%s", "http: stream ended\n");
+                LOG_DEBUG("{}", "http: stream ended\n");
             }
             return has_next;
         };
@@ -560,7 +560,7 @@ void server_http_context::register_gcp_compat() const {
     }
 
     if (handlers.count(gcp.path_predict)) {
-        SRV_ERR("AIP_PREDICT_ROUTE=%s conflicts with an existing lhm_server route\n", gcp.path_predict.c_str());
+        LOG_ERROR("AIP_PREDICT_ROUTE={} conflicts with an existing lhm_server route", gcp.path_predict.c_str());
         exit(1);
     }
 
@@ -631,7 +631,7 @@ void server_http_context::register_gcp_compat() const {
                     payload.erase("@requestFormat");
 
                     if (payload.contains("stream")) {
-                        SRV_WRN("%s", "ignoring client-provided stream field in instance, streaming is not supported in predict route\n");
+                        LOG_WARN("{}", "ignoring client-provided stream field in instance, streaming is not supported in predict route\n");
                         payload["stream"] = false;
                     }
 

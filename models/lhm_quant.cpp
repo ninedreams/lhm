@@ -87,7 +87,7 @@ static std::string remap_imatrix(const std::string & orig_name, const std::map<i
                 return new_name.replace(match.position(1), match.length(1), std::to_string(p.first));
             }
         }
-        GGML_ABORT("\n%s: imatrix mapping error for %s\n", __func__, orig_name.c_str());
+        LHM_ABORT("imatrix mapping error for {}", orig_name.c_str());
     }
 
     return orig_name;
@@ -221,11 +221,11 @@ static void lhm_tensor_dequantize_impl(
     const ggml_type_traits * qtype = ggml_get_type_traits(tensor->type);
     if (ggml_is_quantized(tensor->type)) {
         if (qtype->to_float == NULL) {
-            throw std::runtime_error(format("type %s unsupported for integer quantization: no dequantization available", ggml_type_name(tensor->type)));
+            throw std::runtime_error(fmt::format("type {} unsupported for integer quantization: no dequantization available", ggml_type_name(tensor->type)));
         }
     } else if (tensor->type != GGML_TYPE_F16 &&
                tensor->type != GGML_TYPE_BF16) {
-        throw std::runtime_error(format("cannot dequantize/convert tensor type %s", ggml_type_name(tensor->type)));
+        throw std::runtime_error(fmt::format("cannot dequantize/convert tensor type {}", ggml_type_name(tensor->type)));
     }
 
     if (nthread < 2) {
@@ -236,7 +236,7 @@ static void lhm_tensor_dequantize_impl(
         } else if (ggml_is_quantized(tensor->type)) {
             qtype->to_float(tensor->data, f32_output, nelements);
         } else {
-            GGML_ABORT("fatal error"); // unreachable
+            LHM_ABORT("fatal error"); // unreachable
         }
         return;
     }
@@ -366,8 +366,7 @@ static ggml_type tensor_type_fallback(quantize_state_impl & qs, const ggml_tenso
     const int64_t qk_k = ggml_blck_size(target_type);
 
     if (ncols % qk_k != 0) { // this tensor's shape is incompatible with this quant
-        LOG_WARN("warning: %-36s - ncols %6" PRId64 " not divisible by %3" PRId64 " (required for type %7s) ",
-                        t->name, ncols, qk_k, ggml_type_name(target_type));
+        LOG_WARN("warning: {} - ncols {} not divisible by {} (required for type {}) ", t->name, ncols, qk_k, ggml_type_name(target_type));
         ++qs.n_fallback;
 
         switch (target_type) {
@@ -388,7 +387,7 @@ static ggml_type tensor_type_fallback(quantize_state_impl & qs, const ggml_tenso
             case GGML_TYPE_Q5_K:    return_type = GGML_TYPE_Q5_1;   break;
             case GGML_TYPE_Q6_K:    return_type = GGML_TYPE_Q8_0;   break;
             default:
-                throw std::runtime_error(format("no tensor type fallback is defined for type %s",
+                throw std::runtime_error(fmt::format("no tensor type fallback is defined for type {}",
                                                 ggml_type_name(target_type)));
         }
         if (ncols % ggml_blck_size(return_type) != 0) {
@@ -402,7 +401,7 @@ static ggml_type tensor_type_fallback(quantize_state_impl & qs, const ggml_tenso
             LOG_WARN("(WARNING: must use F16 due to unusual shape) ");
             return_type = GGML_TYPE_F16;
         }
-        LOG_WARN("-> falling back to %7s\n", ggml_type_name(return_type));
+        LOG_WARN("-> falling back to {}", ggml_type_name(return_type));
     }
     return return_type;
 }
@@ -425,10 +424,10 @@ static ggml_type lhm_tensor_get_type_impl(quantize_state_impl & qs, ggml_type ne
             // for getting the current layer as I initially thought, and we need to resort to parsing the
             // tensor name.
             if (sscanf(name, "blk.%d.", &i_layer) != 1) {
-                throw std::runtime_error(format("Failed to determine layer for tensor %s", name));
+                throw std::runtime_error(fmt::format("Failed to determine layer for tensor {}", name));
             }
             if (i_layer < 0 || i_layer >= n_layer) {
-                throw std::runtime_error(format("Bad layer %d for tensor %s. Must be in [0, %d)", i_layer, name, n_layer));
+                throw std::runtime_error(fmt::format("Bad layer {} for tensor {}. Must be in [0, {})", i_layer, name, n_layer));
             }
         }
         return std::make_pair(i_layer, n_layer);
@@ -671,8 +670,7 @@ static ggml_type lhm_tensor_get_type(quantize_state_impl & qs, const lhm_model_q
             for (const auto & [pattern, qtype] : qs.tensor_type_patterns) {
                 if (std::regex_search(tensor_name, pattern)) {
                     if (qtype != new_type) {
-                        LOG_WARN("%s: %-36s - applying manual override: %s -> %s\n",
-                                       __func__, tensor_name.c_str(), ggml_type_name(new_type), ggml_type_name(qtype));
+                        LOG_WARN("{} - applying manual override: {} -> {}", tensor_name.c_str(), ggml_type_name(new_type), ggml_type_name(qtype));
                         new_type = qtype;
                     }
                     manual = true;
@@ -856,7 +854,7 @@ static void lhm_model_quantize_impl(const std::string & fname_inp, const std::st
 
     ggml_type default_type = lhm_ftype_get_default_type(ftype);
     if (default_type == GGML_TYPE_COUNT) {
-        throw std::runtime_error(format("invalid output file type %d\n", ftype));
+        throw std::runtime_error(fmt::format("invalid output file type {}", int(ftype)));
     }
 
     // mmap consistently increases speed on Linux, and also increases speed on Windows with
@@ -878,7 +876,7 @@ static void lhm_model_quantize_impl(const std::string & fname_inp, const std::st
 
     auto * model = dynamic_cast<lhm_model_base *>(model_ptr.get());
     if (model == nullptr) {
-        GGML_ABORT("fatal error: model does not implement lhm_model_base");
+        LHM_ABORT("fatal error: model does not implement lhm_model_base");
     }
 
     model->load_hparams(ml);
@@ -897,14 +895,13 @@ static void lhm_model_quantize_impl(const std::string & fname_inp, const std::st
         }
         imatrix_data = & i_data;
         if (imatrix_data) {
-            LOG_INFO("\n%s: have importance matrix data with %d entries\n",
-                           __func__, (int)imatrix_data->size());
+            LOG_INFO("have importance matrix data with {:d} entries", (int)imatrix_data->size());
             qs.has_imatrix = true;
             // check imatrix for nans or infs
             for (const auto & kv : *imatrix_data) {
                 for (float f : kv.second) {
                     if (!std::isfinite(f)) {
-                        throw std::runtime_error(format("imatrix contains non-finite value %f\n", f));
+                        throw std::runtime_error(fmt::format("imatrix contains non-finite value %f", f));
                     }
                 }
             }
@@ -943,7 +940,7 @@ static void lhm_model_quantize_impl(const std::string & fname_inp, const std::st
             } else if (o->tag == LHM_KV_OVERRIDE_TYPE_STR) {
                 gguf_set_val_str(ctx_out.get(), o->key, o->val_str);
             } else {
-                LOG_WARN("%s: unknown KV override type for key %s\n", __func__, o->key);
+                LOG_WARN("unknown KV override type for key {}", o->key);
             }
         }
     }
@@ -957,13 +954,13 @@ static void lhm_model_quantize_impl(const std::string & fname_inp, const std::st
     for (const auto & it : ml.weights_map) {
         const std::string remapped_name(remap_layer(it.first, prune_list, mapped, blk_id));
         if (remapped_name.empty()) {
-            LOG_DEBUG("%s: pruning tensor %s\n", __func__, it.first.c_str());
+            LOG_DEBUG("pruning tensor {}", it.first.c_str());
             continue;
         }
 
         if (remapped_name != it.first) {
             ggml_set_name(it.second.tensor, remapped_name.c_str());
-            LOG_DEBUG("%s: tensor %s remapped to %s\n", __func__, it.first.c_str(), ggml_get_name(it.second.tensor));
+            LOG_DEBUG("tensor {} remapped to {}", it.first.c_str(), ggml_get_name(it.second.tensor));
         }
         tensors.push_back(&it.second);
     }
@@ -1037,10 +1034,9 @@ static void lhm_model_quantize_impl(const std::string & fname_inp, const std::st
             } else {
                 LOG_ERROR("\n============================================================================\n"
                                 " ERROR: this quantization requires an importance matrix!\n"
-                                "        - offending tensor: %s\n"
-                                "        - target type: %s\n"
-                                "============================================================================\n\n",
-                                metadata[i].name.c_str(), ggml_type_name(metadata[i].target_type));
+                                "        - offending tensor: {}\n"
+                                "        - target type: {}\n"
+                                "============================================================================\n", metadata[i].name.c_str(), ggml_type_name(metadata[i].target_type));
                 throw std::runtime_error("this quantization requires an imatrix!");
             }
         }
@@ -1125,11 +1121,7 @@ static void lhm_model_quantize_impl(const std::string & fname_inp, const std::st
             ml.load_data_for(tensor);
         }
 
-        LOG_INFO("[%4d/%4d] %-36s - [%s], type = %6s, ",
-               ++idx, ml.n_tensors,
-               ggml_get_name(tensor),
-               lhm_format_tensor_shape(tensor).c_str(),
-               ggml_type_name(tensor->type));
+        LOG_INFO("[{:4d}/{:4d}] {:<36s} - [{}], type = {:6s}, ", ++idx, ml.n_tensors, ggml_get_name(tensor), lhm_format_tensor_shape(tensor).c_str(), ggml_type_name(tensor->type));
 
         const ggml_type cur_type = tensor->type;
         const ggml_type new_type = tm.target_type;
@@ -1145,16 +1137,13 @@ static void lhm_model_quantize_impl(const std::string & fname_inp, const std::st
             // the --dry-run option calculates the final quantization size without quantizing
             if (quantize) {
                 new_size = ggml_nrows(tensor) * ggml_row_size(new_type, tensor->ne[0]);
-                LOG_INFO("size = %8.2f MiB -> %8.2f MiB (%s)\n",
-                               tensor_size/1024.0/1024.0,
-                               new_size/1024.0/1024.0,
-                               ggml_type_name(new_type));
+                LOG_INFO("size = {:8.2f} MiB -> {:8.2f} MiB ({})", tensor_size/1024.0/1024.0, new_size/1024.0/1024.0, ggml_type_name(new_type));
                 if (!will_require_imatrix && tm.requires_imatrix) {
                     will_require_imatrix = true;
                 }
             } else {
                 new_size = tensor_size;
-                LOG_INFO("size = %8.3f MiB\n", new_size/1024.0/1024.0);
+                LOG_INFO("size = {:8.3f} MiB", new_size/1024.0/1024.0);
             }
             total_size_org += tensor_size;
             total_size_new += new_size;
@@ -1164,7 +1153,7 @@ static void lhm_model_quantize_impl(const std::string & fname_inp, const std::st
             if (!quantize) {
                 new_data = tensor->data;
                 new_size = tensor_size;
-                LOG_INFO("size = %8.3f MiB\n", tensor_size/1024.0/1024.0);
+                LOG_INFO("size = {:8.3f} MiB", tensor_size/1024.0/1024.0);
             } else {
                 const int64_t nelements = ggml_nelements(tensor);
 
@@ -1172,20 +1161,19 @@ static void lhm_model_quantize_impl(const std::string & fname_inp, const std::st
                 if (imatrix_data) {
                     auto it = imatrix_data->find(tm.remapped_imatrix_name);
                     if (it == imatrix_data->end()) {
-                        LOG_INFO("\n====== %s: did not find weights for %s\n", __func__, tensor->name);
+                        LOG_INFO("did not find weights for {}", tensor->name);
                     } else {
                         if (it->second.size() == (size_t)tensor->ne[0]*tensor->ne[2]) {
                             imatrix = it->second.data();
                         } else {
-                            LOG_INFO("\n====== %s: imatrix size %d is different from tensor size %d for %s\n", __func__,
-                                    int(it->second.size()), int(tensor->ne[0]*tensor->ne[2]), tensor->name);
+                            LOG_INFO("imatrix size {:d} is different from tensor size {:d} for {}", int(it->second.size()), int(tensor->ne[0]*tensor->ne[2]), tensor->name);
 
                             // this can happen when quantizing an old mixtral model with split tensors with a new incompatible imatrix
                             // this is a significant error and it may be good idea to abort the process if this happens,
                             // since many people will miss the error and not realize that most of the model is being quantized without an imatrix
                             // tok_embd should be ignored in this case, since it always causes this warning
                             if (!tensor_name_match_token_embd(tensor->name)) {
-                                throw std::runtime_error(format("imatrix size %d is different from tensor size %d for %s",
+                                throw std::runtime_error(fmt::format("imatrix size {} is different from tensor size {} for {}",
                                         int(it->second.size()), int(tensor->ne[0]*tensor->ne[2]), tensor->name));
                             }
                         }
@@ -1193,10 +1181,10 @@ static void lhm_model_quantize_impl(const std::string & fname_inp, const std::st
                 }
                 if (!imatrix && tm.requires_imatrix) {
                     LOG_ERROR("\n\n============================================================\n");
-                    LOG_ERROR("Missing importance matrix for tensor %s in a very low-bit quantization\n", tensor->name);
+                    LOG_ERROR("Missing importance matrix for tensor {} in a very low-bit quantization", tensor->name);
                     LOG_ERROR("The result will be garbage, so bailing out\n");
                     LOG_ERROR("============================================================\n\n");
-                    throw std::runtime_error(format("Missing importance matrix for tensor %s in a very low-bit quantization", tensor->name));
+                    throw std::runtime_error(fmt::format("Missing importance matrix for tensor {} in a very low-bit quantization", tensor->name));
                 }
 
                 float * f32_data;
@@ -1204,13 +1192,13 @@ static void lhm_model_quantize_impl(const std::string & fname_inp, const std::st
                 if (tensor->type == GGML_TYPE_F32) {
                     f32_data = (float *) tensor->data;
                 } else if (ggml_is_quantized(tensor->type) && !params->allow_requantize) {
-                    throw std::runtime_error(format("requantizing from type %s is disabled", ggml_type_name(tensor->type)));
+                    throw std::runtime_error(fmt::format("requantizing from type {} is disabled", ggml_type_name(tensor->type)));
                 } else {
                     lhm_tensor_dequantize_impl(tensor, f32_conv_buf, workers, nelements, nthread);
                     f32_data = (float *) f32_conv_buf.data();
                 }
 
-                LOG_INFO("converting to %s .. ", ggml_type_name(new_type));
+                LOG_INFO("converting to {} .. ", ggml_type_name(new_type));
                 fflush(stdout);
 
                 if (work.size() < (size_t)nelements * 4) {
@@ -1237,7 +1225,7 @@ static void lhm_model_quantize_impl(const std::string & fname_inp, const std::st
 
                     new_size += lhm_tensor_quantize_impl(new_type, f32_data_03, new_data_03, chunk_size, nrows, n_per_row, imatrix_03, workers, nthread_use);
                 }
-                LOG_INFO("size = %8.2f MiB -> %8.2f MiB\n", tensor_size/1024.0/1024.0, new_size/1024.0/1024.0);
+                LOG_INFO("size = {:8.2f} MiB -> {:8.2f} MiB", tensor_size/1024.0/1024.0, new_size/1024.0/1024.0);
             }
             total_size_org += tensor_size;
             total_size_new += new_size;
@@ -1257,18 +1245,15 @@ static void lhm_model_quantize_impl(const std::string & fname_inp, const std::st
         close_ofstream();
     }
 
-    LOG_INFO("%s: model size  = %8.2f MiB (%.2f BPW)\n", __func__, total_size_org/1024.0/1024.0, total_size_org*8.0/ml.n_elements);
-    LOG_INFO("%s: quant size  = %8.2f MiB (%.2f BPW)\n", __func__, total_size_new/1024.0/1024.0, total_size_new*8.0/ml.n_elements);
+    LOG_INFO("model size  = {:8.2f} MiB ({:.2f} BPW)", total_size_org/1024.0/1024.0, total_size_org*8.0/ml.n_elements);
+    LOG_INFO("quant size  = {:8.2f} MiB ({:.2f} BPW)", total_size_new/1024.0/1024.0, total_size_new*8.0/ml.n_elements);
 
     if (!params->imatrix && params->dry_run && will_require_imatrix) {
-        LOG_WARN("%s: WARNING: dry run completed successfully, but actually completing this quantization will require an imatrix!\n",
-                       __func__
-        );
+        LOG_WARN("WARNING: dry run completed successfully, but actually completing this quantization will require an imatrix!");
     }
 
     if (qs.n_fallback > 0) {
-        LOG_WARN("%s: WARNING: %d of %d tensor(s) required fallback quantization\n",
-                __func__, qs.n_fallback, ml.n_tensors);
+        LOG_WARN("WARNING: {:d} of {:d} tensor(s) required fallback quantization", qs.n_fallback, ml.n_tensors);
     }
 }
 
@@ -1304,7 +1289,7 @@ uint32_t lhm_model_quantize(
     try {
         lhm_model_quantize_impl(fname_inp, fname_out, params);
     } catch (const std::exception & err) {
-        LOG_ERROR("%s: failed to quantize: %s\n", __func__, err.what());
+        LOG_ERROR("failed to quantize: {}", err.what());
         return 1;
     }
 

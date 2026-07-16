@@ -119,7 +119,7 @@ struct cli_context {
 
         if (verbose_prompt) {
             lhm::console::set_display(DISPLAY_TYPE_PROMPT);
-            lhm::console::log("%s\n\n", chat_params.prompt.c_str());
+            lhm::console::log("%s\n", chat_params.prompt.c_str());
             lhm::console::set_display(DISPLAY_TYPE_RESET);
         }
 
@@ -149,9 +149,9 @@ struct cli_context {
             if (result->is_error()) {
                 json err_data = result->to_json();
                 if (err_data.contains("message")) {
-                    lhm::console::error("Error: %s\n", err_data["message"].get<std::string>().c_str());
+                    lhm::console::error("Error: %s", err_data["message"].get<std::string>().c_str());
                 } else {
-                    lhm::console::error("Error: %s\n", err_data.dump().c_str());
+                    lhm::console::error("Error: %s", err_data.dump().c_str());
                 }
                 return curr_content;
             }
@@ -422,9 +422,9 @@ int llm_cli() {
     add_system_prompt();
 
     lhm::console::log("\n");
-    lhm::console::log("%s\n", llm_ASCII_LOGO);
-    lhm::console::log("model      : %s\n", inf.model_name.c_str());
-    lhm::console::log("modalities : %s\n", modalities.c_str());
+    lhm::console::log("%s", llm_ASCII_LOGO);
+    lhm::console::log("model      : %s", inf.model_name.c_str());
+    lhm::console::log("modalities : %s", modalities.c_str());
     if (!params.system_prompt.empty()) {
         lhm::console::log("using custom system prompt\n");
     }
@@ -446,7 +446,7 @@ int llm_cli() {
     auto add_text_file = [&](const std::string & fname) -> bool {
         std::string marker = ctx_cli.load_input_file(fname, false);
         if (marker.empty()) {
-            lhm::console::error("file does not exist or cannot be opened: '%s'\n", fname.c_str());
+            lhm::console::error("file does not exist or cannot be opened: '%s'", fname.c_str());
             return false;
         }
         if (inf.fim_sep_token != LHM_TOKEN_NULL) {
@@ -459,7 +459,7 @@ int llm_cli() {
             cur_msg += " ---\n";
         }
         cur_msg += marker;
-        lhm::console::log("Loaded text from '%s'\n", fname.c_str());
+        lhm::console::log("Loaded text from '%s'", fname.c_str());
         return true;
     };
 
@@ -477,9 +477,9 @@ int llm_cli() {
         } else {
             buffer = params.prompt;
             if (buffer.size() > 500) {
-                lhm::console::log("\n> %s ... (truncated)\n", buffer.substr(0, 500).c_str());
+                lhm::console::log("\n> %s ... (truncated)", buffer.substr(0, 500).c_str());
             } else {
-                lhm::console::log("\n> %s\n", buffer.c_str());
+                lhm::console::log("\n> %s", buffer.c_str());
             }
             params.prompt.clear(); // only use it once
         }
@@ -530,11 +530,11 @@ int llm_cli() {
             std::string fname = string_strip(buffer.substr(7));
             std::string marker = ctx_cli.load_input_file(fname, true);
             if (marker.empty()) {
-                lhm::console::error("file does not exist or cannot be opened: '%s'\n", fname.c_str());
+                lhm::console::error("file does not exist or cannot be opened: '%s'", fname.c_str());
                 continue;
             }
             cur_msg += marker;
-            lhm::console::log("Loaded media from '%s'\n", fname.c_str());
+            lhm::console::log("Loaded media from '%s'", fname.c_str());
             continue;
         } 
         else if (buffer.starts_with("/read ")) {
@@ -589,7 +589,7 @@ int llm_cli() {
                 }
 
                 if (++count >= FILE_GLOB_MAX_RESULTS) {
-                    lhm::console::error("Maximum number of globbed files allowed (%zu) reached.\n", FILE_GLOB_MAX_RESULTS);
+                    lhm::console::error("Maximum number of globbed files allowed (%zu) reached.", FILE_GLOB_MAX_RESULTS);
                     break;
                 }
             }
@@ -618,7 +618,7 @@ int llm_cli() {
         if (params.show_timings) {
             lhm::console::set_display(DISPLAY_TYPE_INFO);
             lhm::console::log("\n");
-            lhm::console::log("[ Prompt: %.1f t/s | Generation: %.1f t/s ]\n", timings.prompt_per_second, timings.predicted_per_second);
+            lhm::console::log("[ Prompt: %.1f t/s | Generation: %.1f t/s ]", timings.prompt_per_second, timings.predicted_per_second);
             lhm::console::set_display(DISPLAY_TYPE_RESET);
         }
 

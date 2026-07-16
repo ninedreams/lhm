@@ -384,7 +384,7 @@ void llm_graph_input_cross_embd::set_input(const lhm_ubatch * ubatch) {
 
 template <typename T>
 static void print_mask(const T * data, int64_t n_tokens, int64_t n_kv, int64_t n_swa, lhm_swa_type swa_type) {
-    LOG_DEBUG("%s: === Attention mask ===\n", __func__);
+    LOG_DEBUG("=== Attention mask ===");
     const char * swa_type_str = "unknown";
 
     switch (swa_type) {
@@ -394,18 +394,18 @@ static void print_mask(const T * data, int64_t n_tokens, int64_t n_kv, int64_t n
         case LHM_SWA_TYPE_SYMMETRIC: swa_type_str = "LHM_SWA_TYPE_SYMMETRIC"; break;
     };
 
-    LOG_DEBUG("%s: n_swa : %d, n_kv: %d, swa_type: %s\n", __func__, (int)n_swa, (int)n_kv, swa_type_str);
-    LOG_DEBUG("%s: '0' = can attend, '∞' = masked\n", __func__);
-    LOG_DEBUG("%s: Rows = query tokens, Columns = key/value tokens\n\n", __func__);
+    LOG_DEBUG("n_swa : {:d}, n_kv: {:d}, swa_type: {}", (int)n_swa, (int)n_kv, swa_type_str);
+    LOG_DEBUG("'0' = can attend, '∞' = masked");
+    LOG_DEBUG("Rows = query tokens, Columns = key/value tokens");
 
     LOG_DEBUG("    ");
     for (int j = 0; j < std::min((int64_t)20, n_kv); ++j) {
-        LOG_DEBUG("%2d", j);
+        LOG_DEBUG("{:2d}", j);
     }
     LOG_DEBUG("\n");
 
     for (int i = 0; i < std::min((int64_t)20, n_tokens); ++i) {
-        LOG_DEBUG(" %2d ", i);
+        LOG_DEBUG(" {:2d} ", i);
         for (int j = 0; j < std::min((int64_t)20, n_kv); ++j) {
             float val = lhm_cast<float>(data[i * n_kv + j]);
             if (val == -INFINITY) {
@@ -978,24 +978,24 @@ void llm_graph_result::set_outputs(const llm_graph_params & params) {
 
 bool llm_graph_result::can_reuse(const llm_graph_params & params) {
     if (!this->params.allow_reuse(params)) {
-        LOG_TRACE("%s: cannot reuse graph due to incompatible graph parameters\n", __func__);
+        LOG_TRACE("cannot reuse graph due to incompatible graph parameters");
 
         return false;
     }
 
-    LOG_TRACE("%s: checking compatibility of %d inputs:\n", __func__, (int) inputs.size());
+    LOG_TRACE("checking compatibility of {:d} inputs:", (int) inputs.size());
 
     bool res = true;
 
     for (auto & input : inputs) {
         const bool cur = input->can_reuse(params);
 
-        LOG_TRACE("%s: can_reuse = %d\n", "placeholder", cur);
+        LOG_TRACE("can_reuse = {}", "placeholder", cur);
 
         res = res && cur;
     }
 
-    LOG_TRACE("%s: can reuse graph = %d\n", __func__, res);
+    LOG_TRACE("can reuse graph = {}", res);
 
     return res;
 }
@@ -1411,7 +1411,7 @@ ggml_tensor * llm_graph_context::build_ffn(
                 cb(cur, "ffn_reglu", il);
             } break;
         default:
-            GGML_ABORT("fatal error");
+            LHM_ABORT("fatal error");
     }
 
     if (gate && type_gate == LLM_FFN_PAR) {
@@ -1548,7 +1548,7 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
                 probs = ggml_sqrt(ctx0, ggml_softplus(ctx0, logits)); // [n_expert, n_tokens]
             } break;
         default:
-            GGML_ABORT("fatal error");
+            LHM_ABORT("fatal error");
     }
     cb(probs, "ffn_moe_probs", il);
 
@@ -1754,14 +1754,14 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
         case LLM_FFN_RELU_SQR:
             if (has_gate) {
                 // TODO: add support for gated squared relu
-                GGML_ABORT("fatal error: gated squared relu not implemented");
+                LHM_ABORT("fatal error: gated squared relu not implemented");
             } else {
                 cur = ggml_relu(ctx0, cur);
                 cur = ggml_sqr(ctx0, cur);
                 cb(cur, "ffn_moe_relu_sqr", il);
             } break;
         default:
-            GGML_ABORT("fatal error");
+            LHM_ABORT("fatal error");
     }
 
     experts = build_lora_mm_id(down_exps, cur, selected_experts, down_exps_s); // [n_embd, n_expert_used, n_tokens]
@@ -3008,7 +3008,7 @@ void llm_graph_context::build_pooling(
             } break;
         default:
             {
-                GGML_ABORT("unknown pooling type");
+                LHM_ABORT("unknown pooling type");
             }
     }
 

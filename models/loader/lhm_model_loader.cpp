@@ -83,13 +83,13 @@ static std::vector<std::string> lhm_get_list_splits(const std::string & path, co
     {
         int ret = lhm_split_prefix(buf.data(), buf.size(), path.c_str(), idx, n_split);
         if (!ret) {
-            throw std::runtime_error(format("invalid split file name: %s", path.c_str()));
+            throw std::runtime_error(fmt::format("invalid split file name: {}", path.c_str()));
         }
         split_prefix = std::string(buf.data(), ret);
     }
 
     if (split_prefix.empty()) {
-        throw std::runtime_error(format("invalid split file: %s", path.c_str()));
+        throw std::runtime_error(fmt::format("invalid split file: {}", path.c_str()));
     }
 
     for (int idx = 0; idx < n_split; ++idx) {
@@ -161,7 +161,7 @@ namespace GGUFMeta {
             const enum gguf_type kt = gguf_get_kv_type(ctx, k);
 
             if (kt != GKV::gt) {
-                throw std::runtime_error(format("key %s has wrong type %s but expected type %s",
+                throw std::runtime_error(fmt::format("key {} has wrong type {} but expected type {}",
                     gguf_get_key(ctx, k), gguf_type_name(kt), gguf_type_name(GKV::gt)));
             }
             return GKV::getter(ctx, k);
@@ -180,31 +180,29 @@ namespace GGUFMeta {
         static bool validate_override(const lhm_model_kv_override_type expected_type, const struct lhm_model_kv_override * ovrd) {
             if (!ovrd) { return false; }
             if (ovrd->tag == expected_type) {
-                LOG_INFO("%s: Using metadata override (%5s) '%s' = ",
-                    __func__, override_type_to_str(ovrd->tag), ovrd->key);
+                LOG_INFO("Using metadata override ({:5s}) '{}' = ", override_type_to_str(ovrd->tag), ovrd->key);
                 switch (ovrd->tag) {
                     case LHM_KV_OVERRIDE_TYPE_BOOL:  {
-                        LOG_INFO("%s\n", ovrd->val_bool ? "true" : "false");
+                        LOG_INFO("{}", ovrd->val_bool ? "true" : "false");
                     } break;
                     case LHM_KV_OVERRIDE_TYPE_INT:   {
-                        LOG_INFO("%" PRId64 "\n", ovrd->val_i64);
+                        LOG_INFO("%" PRId64 "", ovrd->val_i64);
                     } break;
                     case LHM_KV_OVERRIDE_TYPE_FLOAT: {
-                        LOG_INFO("%.6f\n", ovrd->val_f64);
+                        LOG_INFO("{:.6f}", ovrd->val_f64);
                     } break;
                     case LHM_KV_OVERRIDE_TYPE_STR: {
-                        LOG_INFO("%s\n", ovrd->val_str);
+                        LOG_INFO("{}", ovrd->val_str);
                     } break;
                     default:
                         // Shouldn't be possible to end up here, but just in case...
                         throw std::runtime_error(
-                            format("Unsupported attempt to override %s type for metadata key %s\n",
+                            format("Unsupported attempt to override {} type for metadata key {}",
                                 override_type_to_str(ovrd->tag), ovrd->key));
                 }
                 return true;
             }
-            LOG_WARN("%s: Warning: Bad metadata override type for key '%s', expected %s but got %s\n",
-                __func__, ovrd->key, override_type_to_str(expected_type), override_type_to_str(ovrd->tag));
+            LOG_WARN("Warning: Bad metadata override type for key '{}', expected {} but got {}", ovrd->key, override_type_to_str(expected_type), override_type_to_str(ovrd->tag));
             return false;
         }
 
@@ -274,7 +272,7 @@ namespace GGUFMeta {
 
         if (kid < 0) {
             if (required) {
-                throw std::runtime_error(format("key not found in model: %s", key.c_str()));
+                throw std::runtime_error(fmt::format("key not found in model: {}", key.c_str()));
             }
             return false;
         }
@@ -304,7 +302,7 @@ namespace GGUFMeta {
 
         if (kid < 0 || gguf_get_kv_type(ctx, kid) != GGUF_TYPE_ARRAY) {
             if (required) {
-                throw std::runtime_error(format("array key not found in model: %s", key.c_str()));
+                throw std::runtime_error(fmt::format("array key not found in model: {}", key.c_str()));
             }
             return false;
         }
@@ -319,7 +317,7 @@ namespace GGUFMeta {
             case GGUF_TYPE_FLOAT32: LHM_ASSERT((std::is_same<T,       float>::value)); break;
             case GGUF_TYPE_STRING:  LHM_ASSERT((std::is_same<T, std::string>::value)); break;
             default:
-                throw std::runtime_error(format("%s is not a string/float32/uint32/int32 array", key.c_str()));
+                throw std::runtime_error(fmt::format("{} is not a string/float32/uint32/int32 array", key.c_str()));
         }
 
         if constexpr (std::is_same<T, std::string>::value) {
@@ -345,7 +343,7 @@ namespace GGUFMeta {
 
         if (kid < 0 || gguf_get_kv_type(ctx, kid) != GGUF_TYPE_ARRAY) {
             if (required) {
-                throw std::runtime_error(format("array key not found in model: %s", key.c_str()));
+                throw std::runtime_error(fmt::format("array key not found in model: {}", key.c_str()));
             }
             return false;
         }
@@ -361,11 +359,11 @@ namespace GGUFMeta {
             case GGUF_TYPE_FLOAT32: LHM_ASSERT((std::is_same<T,       float>::value)); break;
             case GGUF_TYPE_STRING:  LHM_ASSERT((std::is_same<T, std::string>::value)); break;
             default:
-                throw std::runtime_error(format("%s is not a string/float32/uint32/int32 array", key.c_str()));
+                throw std::runtime_error(fmt::format("{} is not a string/float32/uint32/int32 array", key.c_str()));
         }
 
         if (arr_info.length > N_MAX) {
-            throw std::runtime_error(format("array length %u for key %s exceeds max %u", (uint32_t) arr_info.length, key.c_str(), (uint32_t) N_MAX));
+            throw std::runtime_error(fmt::format("array length %u for key {} exceeds max %u", (uint32_t) arr_info.length, key.c_str(), (uint32_t) N_MAX));
         }
 
         if constexpr (std::is_same<T, std::string>::value) {
@@ -409,7 +407,7 @@ namespace GGUFMeta {
         const bool found = GGUFMeta::GKV<T>::set(metadata, key, result, override);
 
         if (required && !found) {
-            throw std::runtime_error(format("key not found in model: %s", key.c_str()));
+            throw std::runtime_error(fmt::format("key not found in model: {}", key.c_str()));
         }
 
         return found;
@@ -444,13 +442,13 @@ namespace GGUFMeta {
 
         if (kid < 0) {
             if (required) {
-                throw std::runtime_error(format("key not found in model: %s", key.c_str()));
+                throw std::runtime_error(fmt::format("key not found in model: {}", key.c_str()));
             }
             return false;
         }
 
         if (n > N_MAX) {
-            throw std::runtime_error(format("n > N_MAX: %u > %u for key %s", n, (uint32_t) N_MAX, key.c_str()));
+            throw std::runtime_error(fmt::format("n > N_MAX: %u > %u for key {}", n, (uint32_t) N_MAX, key.c_str()));
         }
 
         if (gguf_get_kv_type(metadata, kid) == GGUF_TYPE_ARRAY) {
@@ -458,7 +456,7 @@ namespace GGUFMeta {
                 GGUFMeta::GKV<GGUFMeta::ArrayInfo>::get_kv(metadata, kid);
 
             if (n != arr_info.length) {
-                throw std::runtime_error(format("key %s has wrong array length; expected %u, got %u", key.c_str(), n, (uint32_t) arr_info.length));
+                throw std::runtime_error(fmt::format("key {} has wrong array length; expected %u, got %u", key.c_str(), n, (uint32_t) arr_info.length));
             }
 
             return get_arr(key, result, required);
@@ -490,7 +488,7 @@ namespace GGUFMeta {
 
         if (id < 0) {
             if (required) {
-                throw std::runtime_error(format("key not found in model: %s", key.c_str()));
+                throw std::runtime_error(fmt::format("key not found in model: {}", key.c_str()));
             }
             return false;
         }
@@ -498,7 +496,7 @@ namespace GGUFMeta {
         // throw and error if type is an array
         if (gguf_get_kv_type(metadata, id) == GGUF_TYPE_ARRAY) {
             if (required) {
-                throw std::runtime_error(format("expected scalar, found array for key: %s", key.c_str()));
+                throw std::runtime_error(fmt::format("expected scalar, found array for key: {}", key.c_str()));
             }
             return false;
         }
@@ -550,7 +548,7 @@ lhm_model_loader::lhm_model_loader(
         metadata_ptr.reset(gguf_init_from_file(fname.c_str(), params));
         metadata = metadata_ptr.get();
         if (metadata == nullptr) {
-            throw std::runtime_error(format("%s: failed to load model from %s", __func__, fname.c_str()));
+            throw std::runtime_error(fmt::format("failed to load model from {}", fname.c_str()));
         }
 
         get_key(llm_kv(LLM_KV_GENERAL_ARCHITECTURE), arch_name, false);
@@ -561,10 +559,10 @@ lhm_model_loader::lhm_model_loader(
 
         if (use_mmap && use_direct_io) {
             if (files.back()->has_direct_io()) {
-                LOG_WARN("%s: direct I/O is enabled, disabling mmap\n", __func__);
+                LOG_WARN("direct I/O is enabled, disabling mmap");
                 use_mmap = false;
             } else {
-                LOG_WARN("%s: direct I/O is not available, using mmap\n", __func__);
+                LOG_WARN("direct I/O is not available, using mmap");
                 use_direct_io = false;
 
                 // reopen file using std::fopen for mmap
@@ -580,7 +578,7 @@ lhm_model_loader::lhm_model_loader(
             std::string tensor_name = std::string(cur->name);
             // make sure there is no duplicated tensor names
             if (weights_map.find(tensor_name) != weights_map.end()) {
-                throw std::runtime_error(format("invalid model: tensor '%s' is duplicated", ggml_get_name(cur)));
+                throw std::runtime_error(fmt::format("invalid model: tensor '{}' is duplicated", ggml_get_name(cur)));
             }
             n_elements += ggml_nelements(cur);
             n_bytes    += ggml_nbytes(cur);
@@ -596,7 +594,7 @@ lhm_model_loader::lhm_model_loader(
             const std::string kv_split_no = llm_kv(LLM_KV_SPLIT_NO);
             get_key(kv_split_no, idx);
             if (idx != 0) {
-                throw std::runtime_error(format("illegal split file idx: %d (file: %s), model must be loaded with the first split", idx, fname.c_str()));
+                throw std::runtime_error(fmt::format("illegal split file idx: {} (file: {}), model must be loaded with the first split", idx, fname.c_str()));
             }
 
             // generate list of splits if needed
@@ -606,11 +604,11 @@ lhm_model_loader::lhm_model_loader(
 
             // in case user give a custom list of splits, check if it matches the expected number
             if (n_split != (uint16_t)splits.size()) {
-                throw std::runtime_error(format("invalid split count, given: %zu splits, but expected %d", splits.size(), n_split));
+                throw std::runtime_error(fmt::format("invalid split count, given: %zu splits, but expected {}", splits.size(), n_split));
             }
 
             if (trace > 0) {
-                LOG_INFO("%s: loading additional %d GGUFs\n", __func__, n_split);
+                LOG_INFO("loading additional {:d} GGUFs", n_split);
             }
 
             // load other splits
@@ -623,18 +621,18 @@ lhm_model_loader::lhm_model_loader(
                 };
                 gguf_context_ptr ctx_gguf { gguf_init_from_file(fname_split, split_params) };
                 if (!ctx_gguf) {
-                    throw std::runtime_error(format("%s: failed to load GGUF split from %s", __func__, fname_split));
+                    throw std::runtime_error(fmt::format("failed to load GGUF split from {}", fname_split));
                 }
 
                 // check idx
                 {
                     const int kid = gguf_find_key(ctx_gguf.get(), kv_split_no.c_str());
                     if (kid < 0) {
-                        throw std::runtime_error(format("missing key %s in GGUF split %s", kv_split_no.c_str(), fname_split));
+                        throw std::runtime_error(fmt::format("missing key {} in GGUF split {}", kv_split_no.c_str(), fname_split));
                     }
                     int idx_gguf = gguf_get_val_u16(ctx_gguf.get(), kid);
                     if (idx_gguf != idx) {
-                        throw std::runtime_error(format("invalid split file idx: %d (file: %s), expected %d", idx_gguf, fname_split, idx));
+                        throw std::runtime_error(fmt::format("invalid split file idx: {} (file: {}), expected {}", idx_gguf, fname_split, idx));
                     }
                 }
 
@@ -646,7 +644,7 @@ lhm_model_loader::lhm_model_loader(
                     std::string tensor_name = std::string(cur->name);
                     // make sure there is no duplicated tensor names
                     if (weights_map.find(tensor_name) != weights_map.end()) {
-                        throw std::runtime_error(format("invalid model: tensor '%s' is duplicated", ggml_get_name(cur)));
+                        throw std::runtime_error(fmt::format("invalid model: tensor '{}' is duplicated", ggml_get_name(cur)));
                     }
                     n_elements += ggml_nelements(cur);
                     n_bytes    += ggml_nbytes(cur);
@@ -660,11 +658,11 @@ lhm_model_loader::lhm_model_loader(
             {
                 const int n_tensors_loaded = (int) weights_map.size();
                 if (n_tensors != n_tensors_loaded) {
-                    throw std::runtime_error(format("corrupted model: %d tensors expected but %d found", n_tensors, n_tensors_loaded));
+                    throw std::runtime_error(fmt::format("corrupted model: {} tensors expected but {} found", n_tensors, n_tensors_loaded));
                 }
             }
 
-            LOG_INFO("%s: additional %d GGUFs metadata loaded.\n",  __func__, n_split - 1);
+            LOG_INFO("additional {:d} GGUFs metadata loaded.", n_split - 1);
         }
     } else if (file != nullptr) {
         struct ggml_context * ctx = NULL;
@@ -676,7 +674,7 @@ lhm_model_loader::lhm_model_loader(
         metadata_ptr.reset(gguf_init_from_file_ptr(file, params));
         metadata = metadata_ptr.get();
         if (metadata == nullptr) {
-            throw std::runtime_error(format("%s: failed to load model from file pointer", __func__));
+            throw std::runtime_error(fmt::format("failed to load model from file pointer"));
         }
 
         get_key(llm_kv(LLM_KV_GENERAL_ARCHITECTURE), arch_name, false);
@@ -690,7 +688,7 @@ lhm_model_loader::lhm_model_loader(
             std::string tensor_name = std::string(cur->name);
             // make sure there is no duplicated tensor names
             if (weights_map.find(tensor_name) != weights_map.end()) {
-                throw std::runtime_error(format("invalid model: tensor '%s' is duplicated", ggml_get_name(cur)));
+                throw std::runtime_error(fmt::format("invalid model: tensor '{}' is duplicated", ggml_get_name(cur)));
             }
             n_elements += ggml_nelements(cur);
             n_bytes    += ggml_nbytes(cur);
@@ -706,8 +704,7 @@ lhm_model_loader::lhm_model_loader(
 
     fver = (enum lhm_fver) gguf_get_version(metadata);
 
-    LOG_INFO("%s: loaded meta data with %d key-value pairs and %d tensors from %s (version %s)\n",
-            __func__, n_kv, n_tensors, fname.empty() ? "(file*)" : fname.c_str(), lhm_file_version_name(fver));
+    LOG_INFO("loaded meta data with {:d} key-value pairs and {:d} tensors from {} (version {})", n_kv, n_tensors, fname.empty() ? "(file*)" : fname.c_str(), lhm_file_version_name(fver));
 
     // determine file type based on the number of tensors for each quantization and print meta data
     // TODO: make optional
@@ -732,9 +729,7 @@ lhm_model_loader::lhm_model_loader(
 
             if (trace > 0) {
                 const uint16_t sid = w.idx;
-                LOG_INFO("%s: - tensor split %2d: %32s %-8s [ %s ] %8.2f MiB\n", __func__,
-                        sid, ggml_get_name(tensor), ggml_type_name(type), lhm_format_tensor_shape(tensor).c_str(),
-                        ggml_nbytes(tensor)/1024.0f/1024.0f);
+                LOG_INFO("- tensor split {:2d}: {:32s} {:<8s} [ {} ] {:8.2f} MiB", sid, ggml_get_name(tensor), ggml_type_name(type), lhm_format_tensor_shape(tensor).c_str(), ggml_nbytes(tensor)/1024.0f/1024.0f);
             }
         }
 
@@ -767,7 +762,7 @@ lhm_model_loader::lhm_model_loader(
             case GGML_TYPE_Q1_0:    ftype = LHM_FTYPE_MOSTLY_Q1_0;    break;
             default:
                 {
-                    LOG_WARN("%s: unknown type %s\n", __func__, ggml_type_name(type_max));
+                    LOG_WARN("unknown type {}", ggml_type_name(type_max));
                     ftype = LHM_FTYPE_ALL_F32;
                 } break;
         }
@@ -782,24 +777,24 @@ lhm_model_loader::lhm_model_loader(
             }
         }
 
-        LOG_INFO("%s: Dumping metadata keys/values. Note: KV overrides do not apply in this output.\n", __func__);
+        LOG_INFO("Dumping metadata keys/values. Note: KV overrides do not apply in this output.");
 
         for (int i = 0; i < n_kv; i++) {
             const char * name           = gguf_get_key(metadata, i);
             const enum gguf_type type   = gguf_get_kv_type(metadata, i);
             const std::string type_name =
                 type == GGUF_TYPE_ARRAY
-                ? format("%s[%s,%zu]", gguf_type_name(type), gguf_type_name(gguf_get_arr_type(metadata, i)), gguf_get_arr_n(metadata, i))
+                ? format("{}[{},%zu]", gguf_type_name(type), gguf_type_name(gguf_get_arr_type(metadata, i)), gguf_get_arr_n(metadata, i))
                 : gguf_type_name(type);
 
             std::string value          = gguf_kv_to_str(metadata, i);
             const size_t MAX_VALUE_LEN = 40;
             if (value.size() > MAX_VALUE_LEN) {
-                value = format("%s...", value.substr(0, MAX_VALUE_LEN - 3).c_str());
+                value = format("{}...", value.substr(0, MAX_VALUE_LEN - 3).c_str());
             }
-            replace_all(value, "\n", "\\n");
+            replace_all(value, "", "\\n");
 
-            LOG_INFO("%s: - kv %3d: %42s %-16s = %s\n", __func__, i, name, type_name.c_str(), value.c_str());
+            LOG_INFO("- kv {:3d}: {:42s} {:<16s} = {}", i, name, type_name.c_str(), value.c_str());
         }
 
         // print type counts
@@ -808,12 +803,12 @@ lhm_model_loader::lhm_model_loader(
                 continue;
             }
 
-            LOG_INFO("%s: - type %4s: %4d tensors\n", __func__, ggml_type_name(kv.first), kv.second);
+            LOG_INFO("- type {:4s}: {:4d} tensors", ggml_type_name(kv.first), kv.second);
         }
     }
 
     if (!lhm_mmap::SUPPORTED) {
-        LOG_WARN("%s: mmap is not supported on this platform\n", __func__);
+        LOG_WARN("mmap is not supported on this platform");
         use_mmap = false;
     }
 
@@ -843,7 +838,7 @@ const lhm_model_loader::lhm_tensor_weight * lhm_model_loader::get_weight(const c
 const lhm_model_loader::lhm_tensor_weight & lhm_model_loader::require_weight(const char * name) const {
     const lhm_tensor_weight * weight = get_weight(name);
     if (!weight) {
-        throw std::runtime_error(format("%s: tensor '%s' not found", __func__, name));
+        throw std::runtime_error(fmt::format("tensor '{}' not found", name));
     }
     return *weight;
 }
@@ -859,7 +854,7 @@ struct ggml_tensor * lhm_model_loader::get_tensor_meta(const char * name) const 
 struct ggml_tensor * lhm_model_loader::require_tensor_meta(const std::string & name) const {
     struct ggml_tensor * tensor = get_tensor_meta(name.c_str());
     if (!tensor) {
-        throw std::runtime_error(format("%s: tensor '%s' not found", __func__, name.c_str()));
+        throw std::runtime_error(fmt::format("tensor '{}' not found", name.c_str()));
     }
     return tensor;
 }
@@ -871,7 +866,7 @@ const struct ggml_tensor * lhm_model_loader::check_tensor_dims(const std::string
         if (!required) {
             return NULL;
         }
-        throw std::runtime_error(format("%s: tensor '%s' not found", __func__, name.c_str()));
+        throw std::runtime_error(fmt::format("tensor '{}' not found", name.c_str()));
     }
 
     {
@@ -884,8 +879,8 @@ const struct ggml_tensor * lhm_model_loader::check_tensor_dims(const std::string
         }
         if (!is_ok) {
             throw std::runtime_error(
-                    format("%s: tensor '%s' has wrong shape; expected %s, got %s",
-                        __func__, name.c_str(),
+                    format("{}: tensor '{}' has wrong shape; expected {}, got {}",
+                        name.c_str(),
                         lhm_format_tensor_shape(ne).c_str(),
                         lhm_format_tensor_shape(cur).c_str()));
         }
@@ -909,7 +904,7 @@ static bool weight_buft_supported(const lhm_hparams & hparams, ggml_tensor * w, 
     };
     ggml_context_ptr ctx_ptr { ggml_init(params) };
     if (!ctx_ptr) {
-        throw std::runtime_error(format("failed to create ggml context"));
+        throw std::runtime_error(fmt::format("failed to create ggml context"));
     }
     ggml_context * ctx = ctx_ptr.get();
 
@@ -1020,7 +1015,7 @@ static bool weight_buft_supported(const lhm_hparams & hparams, ggml_tensor * w, 
                 op_tensor = ggml_scale(ctx, w, 1.0f);
             } break;
         default:
-            GGML_ABORT("%s: missing test for op %s for tensor %s", __func__, ggml_op_name(op), w->name);
+            LHM_ABORT("missing test for op {} for tensor {}", ggml_op_name(op), w->name);
     }
 
     // create a temporary dummy buffer for the weight so that supports_op can check the buffer type
@@ -1070,7 +1065,7 @@ struct ggml_tensor * lhm_model_loader::create_tensor(
 
             ggml_context * ctx = ggml_init(params);
             if (!ctx) {
-                throw std::runtime_error(format("failed to create ggml context"));
+                throw std::runtime_error(fmt::format("failed to create ggml context"));
             }
 
             ctx_map.emplace(buft, ctx);
@@ -1085,7 +1080,7 @@ struct ggml_tensor * lhm_model_loader::create_tensor(
             if (flags & TENSOR_NOT_REQUIRED) {
                 return nullptr;
             }
-            throw std::runtime_error(format("missing tensor '%s'", tn.str().c_str()));
+            throw std::runtime_error(fmt::format("missing tensor '{}'", tn.str().c_str()));
         }
 
         // some models use the token embedding tensor as the output, but since these are used in different layers and with different ops
@@ -1100,13 +1095,13 @@ struct ggml_tensor * lhm_model_loader::create_tensor(
         try {
             info = llm_tensor_info_for(tn_tensor);
         } catch (const std::out_of_range & e) {
-            throw std::runtime_error(format("missing tensor info mapping for %s", tn.str().c_str()));
+            throw std::runtime_error(fmt::format("missing tensor info mapping for {}", tn.str().c_str()));
         }
 
         // skip unused tensors
         if (info.op == GGML_OP_NONE || (flags & TENSOR_SKIP)) {
             const size_t nbytes = ggml_nbytes(t_meta);
-            LOG_WARN("model has unused tensor %s (size = %zu bytes) -- ignoring\n", tn.str().c_str(), nbytes);
+            LOG_WARN("model has unused tensor {} (size = {:d} bytes) -- ignoring", tn.str().c_str(), nbytes);
 
             size_data -= nbytes;
             n_created++;
@@ -1130,11 +1125,11 @@ struct ggml_tensor * lhm_model_loader::create_tensor(
         // sanity checks
         if (info.layer == LLM_TENSOR_LAYER_INPUT || info.layer == LLM_TENSOR_LAYER_OUTPUT) {
             if (tn.bid != -1) {
-                GGML_ABORT("input/output layer tensor %s used with a layer number", tn.str().c_str());
+                LHM_ABORT("input/output layer tensor {} used with a layer number", tn.str().c_str());
             }
         } else {
             if (tn.bid == -1) {
-                GGML_ABORT("repeating layer tensor %s used without a layer number", tn.str().c_str());
+                LHM_ABORT("repeating layer tensor {} used without a layer number", tn.str().c_str());
             }
         }
 
@@ -1152,7 +1147,7 @@ struct ggml_tensor * lhm_model_loader::create_tensor(
                 buft_list = buft_list_layer;
                 break;
             default:
-                GGML_ABORT("invalid layer %d for tensor %s", info.layer, tn.str().c_str());
+                LHM_ABORT("invalid layer {} for tensor {}", int(info.layer), tn.str().c_str());
         }
 
         ggml_backend_buffer_type_t buft = nullptr;
@@ -1176,10 +1171,7 @@ struct ggml_tensor * lhm_model_loader::create_tensor(
                         buft = overrides->buft;
                     }
 
-                    LOG_DEBUG("tensor %s (%zu MiB %s) buffer type overridden to %s\n",
-                            tensor_name.c_str(),
-                            ggml_nbytes(t_meta) / 1024 / 1024, ggml_type_name(t_meta->type),
-                            ggml_backend_buft_name(buft));
+                    LOG_DEBUG("tensor {} ({:d} MiB {}) buffer type overridden to {}", tensor_name.c_str(), ggml_nbytes(t_meta) / 1024 / 1024, ggml_type_name(t_meta->type), ggml_backend_buft_name(buft));
                     break;
                 }
             }
@@ -1188,7 +1180,7 @@ struct ggml_tensor * lhm_model_loader::create_tensor(
         if (!buft) {
             buft = select_weight_buft(hparams, t_meta, op, buft_list);
             if (!buft) {
-                throw std::runtime_error(format("failed to find a compatible buffer type for tensor %s", tn.str().c_str()));
+                throw std::runtime_error(fmt::format("failed to find a compatible buffer type for tensor {}", tn.str().c_str()));
             }
         }
 
@@ -1268,7 +1260,7 @@ struct ggml_tensor * lhm_model_loader::create_tensor(
         }
     }
 
-    LOG_DEBUG("%s: loading tensor %s\n", __func__, tn.str().c_str());
+    LOG_DEBUG("loading tensor {}", tn.str().c_str());
     const struct ggml_tensor * cur = check_tensor_dims(tn.str(), ne, !(flags & TENSOR_NOT_REQUIRED));
 
     if (cur == NULL) {
@@ -1297,7 +1289,7 @@ struct ggml_tensor * lhm_model_loader::create_tensor_as_view(struct ggml_context
     }
 
     if (cur->type != base->type) {
-        throw std::runtime_error(format("%s: tensor '%s' has wrong type; expected %s, got %s", __func__, name.c_str(), ggml_type_name(base->type), ggml_type_name(cur->type)));
+        throw std::runtime_error(fmt::format("tensor '{}' has wrong type; expected {}, got {}", name.c_str(), ggml_type_name(base->type), ggml_type_name(cur->type)));
     }
 
     std::array<int64_t, GGML_MAX_DIMS> dims;
@@ -1319,19 +1311,16 @@ struct ggml_tensor * lhm_model_loader::create_tensor_as_view(struct ggml_context
 
 void lhm_model_loader::done_getting_tensors(bool partial) const {
     if (n_created > n_tensors) {
-        throw std::runtime_error(format("%s: too many tensors created; expected %d, got %d", __func__, n_tensors, n_created));
+        throw std::runtime_error(fmt::format("too many tensors created; expected {}, got {}", n_tensors, n_created));
     }
     if (n_created < n_tensors) {
         if (!partial) {
-            throw std::runtime_error(format("%s: wrong number of tensors; expected %d, got %d", __func__, n_tensors, n_created));
+            throw std::runtime_error(fmt::format("wrong number of tensors; expected {}, got {}", n_tensors, n_created));
         }
-        LOG_INFO("%s: partial load — used %d of %d tensors in the file (rest belong to a sibling model on the same .gguf)\n",
-                __func__, n_created, n_tensors);
+        LOG_INFO("partial load — used {:d} of {:d} tensors in the file (rest belong to a sibling model on the same .gguf)", n_created, n_tensors);
     }
     if (n_tensors_moved > 0) {
-        LOG_DEBUG("%s: tensor '%s' (%s) (and %zu others) cannot be used with preferred buffer type %s, using %s instead\n",
-            __func__, first_tensor_moved_name.c_str(), first_tensor_moved_type_name.c_str(), n_tensors_moved - 1,
-            ggml_backend_buft_name(first_moved_from_buft), ggml_backend_buft_name(first_moved_to_buft));
+        LOG_DEBUG("tensor '{}' ({}) (and {:d} others) cannot be used with preferred buffer type {}, using {} instead", first_tensor_moved_name.c_str(), first_tensor_moved_type_name.c_str(), n_tensors_moved - 1, ggml_backend_buft_name(first_moved_from_buft), ggml_backend_buft_name(first_moved_to_buft));
     }
 }
 
@@ -1404,7 +1393,7 @@ void lhm_model_loader::load_data_for(struct ggml_tensor * cur) const {
     }
 
     if (check_tensors && !ggml_validate_row_data(cur->type, cur->data, ggml_nbytes(cur))) {
-        throw std::runtime_error(format("tensor '%s' has invalid data", ggml_get_name(cur)));
+        throw std::runtime_error(fmt::format("tensor '{}' has invalid data", ggml_get_name(cur)));
     }
 }
 
@@ -1450,36 +1439,32 @@ bool lhm_model_loader::load_all_data(
         // First determine if the backend supports the necessary features for async uploads.
         auto * buf = bufs.count(0) ? bufs.at(0) : nullptr;
         if (!buf) {
-            LOG_DEBUG("%s: no buffer found for async uploads\n", func);
+            LOG_DEBUG("no buffer found for async uploads", func);
             return nullptr;
         }
 
         auto * buft = ggml_backend_buffer_get_type(buf);
         auto * dev = ggml_backend_buft_get_device(buft);
         if (!dev) {
-            LOG_DEBUG("%s: no device found for buffer type %s for async uploads\n", func,
-                ggml_backend_buft_name(buft));
+            LOG_DEBUG("no device found for buffer type {} for async uploads", func, ggml_backend_buft_name(buft));
             return nullptr;
         }
 
         if (buft != ggml_backend_dev_buffer_type(dev)) {
-            LOG_DEBUG("%s: buffer type %s is not the default buffer type for device %s for async uploads\n", func,
-                ggml_backend_buft_name(buft), ggml_backend_dev_name(dev));
+            LOG_DEBUG("buffer type {} is not the default buffer type for device {} for async uploads", func, ggml_backend_buft_name(buft), ggml_backend_dev_name(dev));
             return nullptr;
         }
 
         ggml_backend_dev_props props;
         ggml_backend_dev_get_props(dev, &props);
         if (!props.caps.async || !props.caps.host_buffer || !props.caps.events) {
-            LOG_DEBUG("%s: device %s does not support async, host buffers or events\n", func,
-                ggml_backend_dev_name(dev));
+            LOG_DEBUG("device {} does not support async, host buffers or events", func, ggml_backend_dev_name(dev));
             return nullptr;
         }
 
         auto * host_buft = ggml_backend_dev_host_buffer_type(dev);
         if (!host_buft) {
-            LOG_DEBUG("%s: no host buffer type found for device %s\n", func,
-                ggml_backend_dev_name(dev));
+            LOG_DEBUG("no host buffer type found for device {}", func, ggml_backend_dev_name(dev));
             return nullptr;
         }
 
@@ -1488,8 +1473,7 @@ bool lhm_model_loader::load_all_data(
             auto * buf = ggml_backend_buft_alloc_buffer(host_buft, buffer_size);
 
             if (!buf) {
-                LOG_DEBUG("%s: failed to allocate host buffer for async uploads for device %s\n", func,
-                    ggml_backend_dev_name(dev));
+                LOG_DEBUG("failed to allocate host buffer for async uploads for device {}", func, ggml_backend_dev_name(dev));
                 return nullptr;
             }
 
@@ -1498,8 +1482,7 @@ bool lhm_model_loader::load_all_data(
 
             auto * event = ggml_backend_event_new(dev);
             if (!event) {
-                LOG_DEBUG("%s: failed to create event for async uploads for device %s\n", func,
-                    ggml_backend_dev_name(dev));
+                LOG_DEBUG("failed to create event for async uploads for device {}", func, ggml_backend_dev_name(dev));
                 return nullptr;
             }
 
@@ -1508,8 +1491,7 @@ bool lhm_model_loader::load_all_data(
 
         ggml_backend_t backend = ggml_backend_dev_init(dev, nullptr);
         if (!backend) {
-            LOG_DEBUG("%s: failed to initialize backend for device %s for async uploads\n", func,
-                ggml_backend_dev_name(dev));
+            LOG_DEBUG("failed to initialize backend for device {} for async uploads", func, ggml_backend_dev_name(dev));
             return nullptr;
         }
 
@@ -1517,10 +1499,7 @@ bool lhm_model_loader::load_all_data(
     }(__func__);
 
     if (upload_backend) {
-        LOG_DEBUG("%s: using async uploads for device %s, buffer type %s, backend %s\n", __func__,
-            ggml_backend_dev_name(ggml_backend_get_device(upload_backend)),
-            ggml_backend_buft_name(ggml_backend_buffer_get_type(bufs.at(0))),
-            ggml_backend_name(upload_backend));
+        LOG_DEBUG("using async uploads for device {}, buffer type {}, backend {}", ggml_backend_dev_name(ggml_backend_get_device(upload_backend)), ggml_backend_buft_name(ggml_backend_buffer_get_type(bufs.at(0))), ggml_backend_name(upload_backend));
     }
 
     for (struct ggml_tensor * cur = ggml_get_first_tensor(ctx); cur != NULL; cur = ggml_get_next_tensor(ctx, cur)) {
@@ -1637,7 +1616,7 @@ bool lhm_model_loader::load_all_data(
                     file->read_raw(read_buf.data(), n_size);
                     ggml_backend_tensor_set(cur, read_buf.data(), 0, n_size);
                     if (check_tensors && !ggml_validate_row_data(cur->type, read_buf.data(), n_size)) {
-                        throw std::runtime_error(format("tensor '%s' has invalid data", ggml_get_name(cur)));
+                        throw std::runtime_error(fmt::format("tensor '{}' has invalid data", ggml_get_name(cur)));
                     }
                 }
             }
@@ -1661,7 +1640,7 @@ bool lhm_model_loader::load_all_data(
     for (auto & future : validation_result) {
         auto result = future.get();
         if (!result.second) {
-            LOG_ERROR("%s: tensor '%s' has invalid data\n", __func__, ggml_get_name(result.first));
+            LOG_ERROR("tensor '{}' has invalid data", ggml_get_name(result.first));
             validation_failed = true;
         }
     }
@@ -1697,11 +1676,11 @@ std::string lhm_model_loader::ftype_name() const {
 }
 
 void lhm_model_loader::print_info() const {
-    LOG_INFO("%s: file format = %s\n", __func__, lhm_file_version_name(fver));
-    LOG_INFO("%s: file type   = %s\n", __func__, lhm_model_ftype_name(ftype).c_str());
+    LOG_INFO("file format = {}", lhm_file_version_name(fver));
+    LOG_INFO("file type   = {}", lhm_model_ftype_name(ftype).c_str());
     if (n_bytes < GiB) {
-        LOG_INFO("%s: file size   = %.2f MiB (%.2f BPW) \n", __func__, n_bytes/1024.0/1024.0,        n_bytes*8.0/n_elements);
+        LOG_INFO("file size   = {:.2f} MiB ({:.2f} BPW) ", n_bytes/1024.0/1024.0, n_bytes*8.0/n_elements);
     } else {
-        LOG_INFO("%s: file size   = %.2f GiB (%.2f BPW) \n", __func__, n_bytes/1024.0/1024.0/1024.0, n_bytes*8.0/n_elements);
+        LOG_INFO("file size   = {:.2f} GiB ({:.2f} BPW) ", n_bytes/1024.0/1024.0/1024.0, n_bytes*8.0/n_elements);
     }
 }

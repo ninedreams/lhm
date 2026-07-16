@@ -204,7 +204,7 @@ struct tool_arguments_analysis {
     std::string name_suffix;   // e.g., ">", "</arg_key>", "\":"
     std::string value_prefix;  // e.g., "", "<arg_value>", ""
     std::string value_suffix;  // e.g., "</param>", "</arg_value>", ""
-    std::string separator;     // e.g., "", "\n", ","
+    std::string separator;     // e.g., "", "", ","
 };
 
 struct tool_id_analysis {
@@ -281,7 +281,7 @@ struct analyze_reasoning : analyze_base {
 struct analyze_content : analyze_base {
     content_mode mode = content_mode::PLAIN;
 
-    std::string start;  // e.g., "<response>", ">>>all\n", ""
+    std::string start;  // e.g., "<response>", ">>>all", ""
     std::string end;    // e.g., "</response>", ""
 
     bool requires_nonnull_content = false;

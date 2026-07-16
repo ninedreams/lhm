@@ -42,14 +42,14 @@ bool lhm_batch_allocr::init(
     //
 
     if (n_seq_max > LHM_MAX_SEQ) {
-        LOG_ERROR("%s: n_seq_max = %d > %d\n", __func__, n_seq_max, LHM_MAX_SEQ);
+        LOG_ERROR("n_seq_max = {:d} > {:d}", n_seq_max, LHM_MAX_SEQ);
         return false;
     }
 
     if (batch.token) {
         for (int32_t i = 0; i < batch.n_tokens; ++i) {
             if (batch.token[i] < 0 || (uint32_t) batch.token[i] >= vocab.n_tokens()) {
-                LOG_ERROR("%s: invalid token[%d] = %d\n", __func__, i, batch.token[i]);
+                LOG_ERROR("invalid token[{:d}] = {:d}", i, batch.token[i]);
                 return false;
             }
         }
@@ -59,7 +59,7 @@ bool lhm_batch_allocr::init(
         for (int32_t i = 0; i < batch.n_tokens; ++i) {
             for (int32_t s = 0; s < batch.n_seq_id[i]; ++s) {
                 if (batch.seq_id && (batch.seq_id[i][s] < 0 || batch.seq_id[i][s] >= (lhm_seq_id) n_seq_max)) {
-                    LOG_ERROR("%s: invalid seq_id[%d][%d] = %d >= %d\n", __func__, i, s, batch.seq_id[i][s], (lhm_seq_id) n_seq_max);
+                    LOG_ERROR("invalid seq_id[{:d}][{:d}] = {:d} >= {:d}", i, s, batch.seq_id[i][s], (lhm_seq_id) n_seq_max);
                     return false;
                 }
             }
@@ -138,7 +138,7 @@ bool lhm_batch_allocr::init(
         }
 
         if (warn) {
-            LOG_WARN("%s: embeddings required but some input tokens were not marked as outputs -> overriding\n", __func__);
+            LOG_WARN("embeddings required but some input tokens were not marked as outputs -> overriding");
 
             output.resize(batch.n_tokens, true);
             batch.logits = output.data();
@@ -207,7 +207,7 @@ bool lhm_batch_allocr::init(
     }
 
     if (debug > 0) {
-        LOG_DEBUG("%s: input batch info:\n", __func__);
+        LOG_DEBUG("input batch info:");
 
         lhm_ubatch ubatch {
             /*.b_equal_seqs =*/ false,
@@ -229,7 +229,7 @@ bool lhm_batch_allocr::init(
 
         ubatch_print(ubatch, debug);
 
-        LOG_DEBUG("%s:   seq       = [\n", __func__);
+        LOG_DEBUG("  seq       = [");
         for (int s0 = 0; s0 < (int) seq_pos.size(); ++s0) {
             if (seq_pos[s0].empty()) {
                 continue;
@@ -242,10 +242,9 @@ bool lhm_batch_allocr::init(
                 }
             }
 
-            LOG_DEBUG("%s:  %4d: pos = [%4d, %4d], cpl = %s\n",
-                    __func__, s0, seq_pos_min(s0), seq_pos_max(s0), ss.str().empty() ? "-" : ss.str().c_str());
+            LOG_DEBUG(" {:4d}: pos = [{:4d}, {:4d}], cpl = {}", s0, seq_pos_min(s0), seq_pos_max(s0), ss.str().empty() ? "-" : ss.str().c_str());
         }
-        LOG_DEBUG("%s:   ]\n", __func__);
+        LOG_DEBUG("  ]");
     }
 
     //
@@ -263,24 +262,20 @@ bool lhm_batch_allocr::init(
 
             if (batch.token) {
                 if (p0 >= 0 && p0 >= seq_pos_min(s)) {
-                    LOG_ERROR(
-                            "%s: the tokens of sequence %d in the input batch have inconsistent sequence positions:\n"
-                            " - the last position stored in the memory module of the context (i.e. the KV cache) for sequence %d is X = %d\n"
-                            " - the tokens for sequence %d in the input batch have a starting position of Y = %d\n"
-                            " for M-RoPE, it is required that the position satisfies: X < Y\n",
-                            __func__, s, s, p0, s, seq_pos_min(s));
+                    LOG_ERROR("the tokens of sequence {:d} in the input batch have inconsistent sequence positions:\n"
+                            " - the last position stored in the memory module of the context (i.e. the KV cache) for sequence {:d} is X = {:d}\n"
+                            " - the tokens for sequence {:d} in the input batch have a starting position of Y = {:d}\n"
+                            " for M-RoPE, it is required that the position satisfies: X < Y", s, s, p0, s, seq_pos_min(s));
 
                     return false;
                 }
             } else {
                 // embedding inputs can have overlapping positions
                 if (p0 >= 0 && p0 > seq_pos_min(s)) {
-                    LOG_ERROR(
-                            "%s: the tokens of sequence %d in the input batch have inconsistent sequence positions:\n"
-                            " - the last position stored in the memory module of the context (i.e. the KV cache) for sequence %d is X = %d\n"
-                            " - the tokens for sequence %d in the input batch have a starting position of Y = %d\n"
-                            " for M-RoPE, it is required that the position satisfies: X <= Y\n",
-                            __func__, s, s, p0, s, seq_pos_min(s));
+                    LOG_ERROR("the tokens of sequence {:d} in the input batch have inconsistent sequence positions:\n"
+                            " - the last position stored in the memory module of the context (i.e. the KV cache) for sequence {:d} is X = {:d}\n"
+                            " - the tokens for sequence {:d} in the input batch have a starting position of Y = {:d}\n"
+                            " for M-RoPE, it is required that the position satisfies: X <= Y", s, s, p0, s, seq_pos_min(s));
 
                     return false;
                 }
@@ -302,19 +297,17 @@ bool lhm_batch_allocr::init(
                 }
 
                 if (!ok) {
-                    LOG_ERROR(
-                            "%s: the tokens of sequence %d in the input batch have inconsistent sequence positions:\n"
-                            " - the last position stored in the memory module of the context (i.e. the KV cache) for sequence %d is X = %d\n"
-                            " - the tokens for sequence %d in the input batch have a starting position of Y = %d\n"
-                            " it is required that the sequence positions remain consecutive: Y = X + 1\n",
-                            __func__, s, s, p0, s, seq_pos_min(s));
+                    LOG_ERROR("the tokens of sequence {:d} in the input batch have inconsistent sequence positions:\n"
+                            " - the last position stored in the memory module of the context (i.e. the KV cache) for sequence {:d} is X = {:d}\n"
+                            " - the tokens for sequence {:d} in the input batch have a starting position of Y = {:d}\n"
+                            " it is required that the sequence positions remain consecutive: Y = X + 1", s, s, p0, s, seq_pos_min(s));
 
                     return false;
                 }
             }
 
             if (seq_pos_max(s) - seq_pos_min(s) + 1 > (int) seq_pos[s].size()) {
-                LOG_ERROR("%s: sequence %d positions are not continuous\n", __func__, s);
+                LOG_ERROR("sequence {:d} positions are not continuous", s);
                 return false;
             }
         }
@@ -326,7 +319,7 @@ bool lhm_batch_allocr::init(
                 if (seq_cpl[s0][s1]) {
                     if (memory->seq_pos_min(s0) != memory->seq_pos_min(s1) ||
                         memory->seq_pos_max(s0) != memory->seq_pos_max(s1)) {
-                        LOG_ERROR("%s: sequence %d is coupled to %d in the input batch, but have divereged\n", __func__, s0, s1);
+                        LOG_ERROR("sequence {:d} is coupled to {:d} in the input batch, but have divereged", s0, s1);
                         return false;
                     }
                 }
@@ -371,12 +364,12 @@ bool lhm_batch_allocr::init(
                 cur_seq_set[seq_id] &= seq_set[i];
 
                 if (cur_seq_set[seq_id].none()) {
-                    LOG_ERROR("%s: sequence %d belongs to incompatible sequence sets (not allowed)\n", __func__, seq_id);
+                    LOG_ERROR("sequence {:d} belongs to incompatible sequence sets (not allowed)", seq_id);
                     return false;
                 }
 
                 if (pos < cur_seq_pos[seq_id]) {
-                    LOG_ERROR("%s: sequence %d positions are decreasing (not allowed)\n", __func__, seq_id);
+                    LOG_ERROR("sequence {:d} positions are decreasing (not allowed)", seq_id);
                     return false;
                 }
             }
@@ -507,7 +500,7 @@ lhm_ubatch lhm_batch_allocr::split_simple(uint32_t n_ubatch) {
 
 lhm_ubatch lhm_batch_allocr::split_equal(uint32_t n_ubatch, bool sequential) {
     if (sequential && has_cpl) {
-        LOG_ERROR("%s: sequential split is not supported when there are coupled sequences in the input batch (you may need to use the -kvu flag)\n", __func__);
+        LOG_ERROR("sequential split is not supported when there are coupled sequences in the input batch (you may need to use the -kvu flag)");
 
         return {};
     }
@@ -767,7 +760,7 @@ lhm_ubatch lhm_batch_allocr::ubatch_add(const std::vector<int32_t> & idxs, uint3
     };
 
     if (debug > 0) {
-        LOG_DEBUG("%s: added ubatch to split:\n", __func__);
+        LOG_DEBUG("added ubatch to split:");
 
         ubatch_print(res, debug);
     }
@@ -777,11 +770,11 @@ lhm_ubatch lhm_batch_allocr::ubatch_add(const std::vector<int32_t> & idxs, uint3
 
 void lhm_batch_allocr::ubatch_print(const lhm_ubatch & ubatch, int debug) {
     if (debug > 0) {
-        LOG_DEBUG("%s:   equal_seqs   = %d\n", __func__, ubatch.equal_seqs());
-        LOG_DEBUG("%s:   n_tokens     = %d\n", __func__, ubatch.n_tokens);
-        LOG_DEBUG("%s:   n_seq_tokens = %d\n", __func__, ubatch.n_seq_tokens);
-        LOG_DEBUG("%s:   n_seqs       = %d\n", __func__, ubatch.n_seqs);
-        LOG_DEBUG("%s:   n_seqs_unq   = %d\n", __func__, ubatch.n_seqs_unq);
+        LOG_DEBUG("  equal_seqs   = {:d}", ubatch.equal_seqs());
+        LOG_DEBUG("  n_tokens     = {:d}", ubatch.n_tokens);
+        LOG_DEBUG("  n_seq_tokens = {:d}", ubatch.n_seq_tokens);
+        LOG_DEBUG("  n_seqs       = {:d}", ubatch.n_seqs);
+        LOG_DEBUG("  n_seqs_unq   = {:d}", ubatch.n_seqs_unq);
 
         std::stringstream ss_seq_id_unq;
         std::stringstream ss_seq_idx;
@@ -804,15 +797,15 @@ void lhm_batch_allocr::ubatch_print(const lhm_ubatch & ubatch, int debug) {
         ss_seq_id_unq << "]";
         ss_seq_idx    << "]";
 
-        LOG_DEBUG("%s:   token      = %p\n", __func__, (void *) ubatch.token);
-        LOG_DEBUG("%s:   embd       = %p\n", __func__, (void *) ubatch.embd);
-        LOG_DEBUG("%s:   pos        = %p\n", __func__, (void *) ubatch.pos);
-        LOG_DEBUG("%s:   n_seq_id   = %p\n", __func__, (void *) ubatch.n_seq_id);
-        LOG_DEBUG("%s:   seq_id     = %p\n", __func__, (void *) ubatch.seq_id);
-        LOG_DEBUG("%s:   seq_id_unq = %s\n", __func__, ss_seq_id_unq.str().c_str());
-        LOG_DEBUG("%s:   seq_idx    = %s\n", __func__, ss_seq_idx.str().c_str());
-        LOG_DEBUG("%s:   output     = %p\n", __func__, (void *) ubatch.output);
-        LOG_DEBUG("%s:   n_outputs  = %d\n", __func__, n_outputs);
+        LOG_DEBUG("  token      = {}", (void *) ubatch.token);
+        LOG_DEBUG("  embd       = {}", (void *) ubatch.embd);
+        LOG_DEBUG("  pos        = {}", (void *) ubatch.pos);
+        LOG_DEBUG("  n_seq_id   = {}", (void *) ubatch.n_seq_id);
+        LOG_DEBUG("  seq_id     = {}", (void *) ubatch.seq_id);
+        LOG_DEBUG("  seq_id_unq = {}", ss_seq_id_unq.str().c_str());
+        LOG_DEBUG("  seq_idx    = {}", ss_seq_idx.str().c_str());
+        LOG_DEBUG("  output     = {}", (void *) ubatch.output);
+        LOG_DEBUG("  n_outputs  = {:d}", n_outputs);
 
         if (debug > 1) {
             int seq_id_max = 0;
@@ -825,7 +818,7 @@ void lhm_batch_allocr::ubatch_print(const lhm_ubatch & ubatch, int debug) {
             }
             ++seq_id_max;
 
-            LOG_DEBUG("%s:   token     = [\n", __func__);
+            LOG_DEBUG("  token     = [");
             for (uint32_t i = 0; i < ubatch.n_tokens; ++i) {
                 std::vector<int8_t> seq_id(seq_id_max);
 
@@ -843,15 +836,12 @@ void lhm_batch_allocr::ubatch_print(const lhm_ubatch & ubatch, int debug) {
                 }
 
                 if (ubatch.token) {
-                    LOG_DEBUG("%s:  %4d: id = %6d (%16s), pos = %4d, n_seq_id = %2d, seq_id = [%s], output = %d\n",
-                            __func__, i, ubatch.token[i], vocab->token_to_piece(ubatch.token[i]).c_str(),
-                            ubatch.pos[i], ubatch.n_seq_id[i], ss.str().c_str(), ubatch.output[i]);
+                    LOG_DEBUG(" {:4d}: id = {:6d} ({:16s}), pos = {:4d}, n_seq_id = {:2d}, seq_id = [{}], output = {:d}", i, ubatch.token[i], vocab->token_to_piece(ubatch.token[i]).c_str(), ubatch.pos[i], ubatch.n_seq_id[i], ss.str().c_str(), ubatch.output[i]);
                 } else {
-                    LOG_DEBUG("%s:  %4d: [embd], pos = %4d, n_seq_id = %2d, seq_id = [%s], output = %d\n",
-                            __func__, i, ubatch.pos[i], ubatch.n_seq_id[i], ss.str().c_str(), ubatch.output[i]);
+                    LOG_DEBUG(" {:4d}: [embd], pos = {:4d}, n_seq_id = {:2d}, seq_id = [{}], output = {:d}", i, ubatch.pos[i], ubatch.n_seq_id[i], ss.str().c_str(), ubatch.output[i]);
                 }
             }
-            LOG_DEBUG("%s:   ]\n", __func__);
+            LOG_DEBUG("  ]");
         }
     }
 }

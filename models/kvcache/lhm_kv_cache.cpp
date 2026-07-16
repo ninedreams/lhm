@@ -106,7 +106,7 @@ lhm_kv_cache::lhm_kv_cache(
     if (other) {
         const uint32_t size_other = other->get_size();
         if (kv_size != size_other) {
-            LOG_WARN("%s: kv_size = %u overridden to %u to match the shared source cache\n", __func__, kv_size, size_other);
+            LOG_WARN("kv_size = {:d} overridden to {:d} to match the shared source cache", kv_size, size_other);
             kv_size = size_other;
         }
     }
@@ -170,20 +170,19 @@ lhm_kv_cache::lhm_kv_cache(
 
     // [TAG_V_CACHE_VARIABLE]
     if (v_trans && hparams.is_n_embd_v_gqa_variable()) {
-        LOG_WARN("%s: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to %d\n",
-                __func__, hparams.n_embd_v_gqa_max());
+        LOG_WARN("the V embeddings have different sizes across layers and FA is not enabled - padding V cache to {:d}", hparams.n_embd_v_gqa_max());
     }
 
     const bool is_mla = hparams.is_mla();
 
     for (uint32_t il = 0; il < n_layer; il++) {
         if (!hparams.has_kv(il)) {
-            LOG_DEBUG("%s: layer %3d: does not have KV cache\n", __func__, il);
+            LOG_DEBUG("layer {:3d}: does not have KV cache", il);
             continue;
         }
 
         if (filter && !filter(il)) {
-            LOG_DEBUG("%s: layer %3d: filtered\n", __func__, il);
+            LOG_DEBUG("layer {:3d}: filtered", il);
             continue;
         }
 
@@ -193,8 +192,7 @@ lhm_kv_cache::lhm_kv_cache(
             if (il_share >= 0) {
                 const auto & layer_share = other->layers[other->map_layer_ids[il_share]];
 
-                LOG_WARN("%s: layer %3d: sharing with layer %d. k = %p, v = %p\n", __func__, il, il_share,
-                        layer_share.k->data, layer_share.v->data);
+                LOG_WARN("layer {:3d}: sharing with layer {:d}. k = {}, v = {}", il, il_share, layer_share.k->data, layer_share.v->data);
 
                 map_layer_ids[il] = layers.size();
 
@@ -234,7 +232,7 @@ lhm_kv_cache::lhm_kv_cache(
             dev_name = ggml_backend_dev_name(dev);
         }
 
-        LOG_DEBUG("%s: layer %3d: dev = %s\n", __func__, il, dev_name);
+        LOG_DEBUG("layer {:3d}: dev = {}", il, dev_name);
 
         ggml_context * ctx = ctx_for_buft(buft);
         if (!ctx) {
@@ -264,18 +262,18 @@ lhm_kv_cache::lhm_kv_cache(
     }
 
     if (reuse) {
-        LOG_DEBUG("%s: reusing layers:\n", __func__);
+        LOG_DEBUG("reusing layers:");
 
         for (uint32_t il = 0; il < n_layer; il++) {
             const int32_t il_reuse = reuse(il);
 
             if (il_reuse < 0) {
-                LOG_DEBUG("%s: - layer %3d: no reuse\n", __func__, il);
+                LOG_DEBUG("- layer {:3d}: no reuse", il);
                 continue;
             }
 
             if (filter && !filter(il)) {
-                LOG_DEBUG("%s: - layer %3d: filtered\n", __func__, il);
+                LOG_DEBUG("- layer {:3d}: filtered", il);
                 continue;
             }
 
@@ -283,7 +281,7 @@ lhm_kv_cache::lhm_kv_cache(
 
             map_layer_ids[il] = map_layer_ids[il_reuse];
 
-            LOG_DEBUG("%s: - layer %3d: reuse layer %d, is_swa = %d\n", __func__, il, il_reuse, hparams.is_swa(il));
+            LOG_DEBUG("- layer {:3d}: reuse layer {:d}, is_swa = {:d}", il, il_reuse, hparams.is_swa(il));
         }
     }
 
@@ -302,7 +300,7 @@ lhm_kv_cache::lhm_kv_cache(
             throw std::runtime_error("failed to allocate buffer for kv cache");
         }
 
-        LOG_INFO("%s: %10s KV buffer size = %8.2f MiB\n", __func__, ggml_backend_buffer_name(buf), ggml_backend_buffer_get_size(buf)/1024.0/1024.0);
+        LOG_INFO("{:10s} KV buffer size = {:8.2f} MiB", ggml_backend_buffer_name(buf), ggml_backend_buffer_get_size(buf)/1024.0/1024.0);
 
         ggml_backend_buffer_clear(buf, 0);
         ctxs_bufs.emplace_back(std::move(ctx), buf);
@@ -312,10 +310,7 @@ lhm_kv_cache::lhm_kv_cache(
         const size_t memory_size_k = size_k_bytes();
         const size_t memory_size_v = size_v_bytes();
 
-        LOG_INFO("%s: size = %7.2f MiB (%6u cells, %3d layers, %2u/%u seqs), K (%s): %7.2f MiB, V (%s): %7.2f MiB\n", __func__,
-                (float)(memory_size_k + memory_size_v) / (1024.0f * 1024.0f), kv_size, (int) layers.size(), n_seq_max, n_stream,
-                ggml_type_name(type_k), (float)memory_size_k / (1024.0f * 1024.0f),
-                ggml_type_name(type_v), (float)memory_size_v / (1024.0f * 1024.0f));
+        LOG_INFO("size = {:7.2f} MiB ({:6d} cells, {:3d} layers, {:2d}/{:d} seqs), K ({}): {:7.2f} MiB, V ({}): {:7.2f} MiB", (float)(memory_size_k + memory_size_v) / (1024.0f * 1024.0f), kv_size, (int) layers.size(), n_seq_max, n_stream, ggml_type_name(type_k), (float)memory_size_k / (1024.0f * 1024.0f), ggml_type_name(type_v), (float)memory_size_v / (1024.0f * 1024.0f));
     }
 
     // TODO: refactor [TAG_KV_CACHE_SHARE_CELLS]
@@ -329,7 +324,7 @@ lhm_kv_cache::lhm_kv_cache(
         const char * LHM_ATTN_ROT_DISABLE = getenv("LHM_ATTN_ROT_DISABLE");
         const bool attn_rot_disable = LHM_ATTN_ROT_DISABLE ? atoi(LHM_ATTN_ROT_DISABLE) : false;
         if (attn_rot_disable) {
-            LOG_WARN("%s: attention rotation force disabled (LHM_ATTN_ROT_DISABLE)\n", __func__);
+            LOG_WARN("attention rotation force disabled (LHM_ATTN_ROT_DISABLE)");
         }
 
         attn_rot_k =
@@ -350,8 +345,8 @@ lhm_kv_cache::lhm_kv_cache(
             hparams.n_embd_head_v() % 64 == 0;
     }
 
-    LOG_INFO("%s: attn_rot_k = %d, n_embd_head_k_all = %d\n", __func__, attn_rot_k, n_embd_head_k_all);
-    LOG_INFO("%s: attn_rot_v = %d, n_embd_head_k_all = %d\n", __func__, attn_rot_v, n_embd_head_v_all);
+    LOG_INFO("attn_rot_k = {:d}, n_embd_head_k_all = {:d}", attn_rot_k, n_embd_head_k_all);
+    LOG_INFO("attn_rot_v = {:d}, n_embd_head_k_all = {:d}", attn_rot_v, n_embd_head_v_all);
 
     // pre-compute the haramard matrices and keep them in host memory
     // TODO: in the future, we can make copies in the backend buffers to avoid host -> device transfers
@@ -545,10 +540,6 @@ void lhm_kv_cache::seq_cp(lhm_seq_id seq_id_src, lhm_seq_id seq_id_dst, lhm_pos 
     }
 
     v_heads[s1] = v_heads[s0];
-
-    //for (uint32_t s = 0; s < n_stream; ++s) {
-    //    LOG_WARN("%s: seq %d: min = %d, max = %d\n", __func__, s, v_cells[s].seq_pos_min(s), v_cells[s].seq_pos_max(s));
-    //}
 }
 
 void lhm_kv_cache::seq_keep(lhm_seq_id seq_id) {
@@ -849,7 +840,7 @@ bool lhm_kv_cache::update(lhm_context * lctx, bool do_shift, const stream_copy_i
             assert(ssrc < n_stream);
             assert(sdst < n_stream);
 
-            LOG_DEBUG("%s: copying KV buffer: stream %d to stream %d\n", __func__, ssrc, sdst);
+            LOG_DEBUG("copying KV buffer: stream {:d} to stream {:d}", ssrc, sdst);
 
             assert(ssrc != sdst);
 
@@ -867,10 +858,10 @@ bool lhm_kv_cache::update(lhm_context * lctx, bool do_shift, const stream_copy_i
 
     if (do_shift) {
         if (!get_can_shift()) {
-            GGML_ABORT("The current KV cache / model configuration does not support K-shift");
+            LHM_ABORT("The current KV cache / model configuration does not support K-shift");
         }
 
-        LOG_DEBUG("%s: applying K-shift\n", __func__);
+        LOG_DEBUG("applying K-shift");
 
         // apply K-shift if needed
         if (hparams.rope_type != LHM_ROPE_TYPE_NONE) {
@@ -882,14 +873,14 @@ bool lhm_kv_cache::update(lhm_context * lctx, bool do_shift, const stream_copy_i
 
             auto * gf = build_graph_shift(res, lctx);
             if (!ggml_backend_sched_alloc_graph(sched, gf)) {
-                LOG_ERROR("%s: failed to allocate compute graph for K-shift\n", __func__);
+                LOG_ERROR("failed to allocate compute graph for K-shift");
                 return updated;
             }
 
             res->set_inputs(nullptr);
 
             if (lctx->graph_compute(gf, false) != GGML_STATUS_SUCCESS) {
-                LOG_ERROR("%s: failed to compute K-shift\n", __func__);
+                LOG_ERROR("failed to compute K-shift");
                 return updated;
             }
 
@@ -915,8 +906,7 @@ lhm_kv_cache::slot_info lhm_kv_cache::find_slot(const lhm_ubatch & ubatch, bool 
             const auto & cells = v_cells[stream_id];
             const uint32_t head_cur = v_heads[stream_id];
 
-            LOG_DEBUG("%s: stream[%d], n = %5d, used = %5d, head = %5d, size = %5d, n_swa = %5d\n",
-                    __func__, stream_id, cells.used_max_p1(), cells.get_used(), head_cur, get_size(), n_swa);
+            LOG_DEBUG("stream[{:d}], n = {:5d}, used = {:5d}, head = {:5d}, size = {:5d}, n_swa = {:5d}", stream_id, cells.used_max_p1(), cells.get_used(), head_cur, get_size(), n_swa);
 
             if ((debug == 2 && n_swa > 0) || debug > 2) {
                 std::string ss;
@@ -937,7 +927,7 @@ lhm_kv_cache::slot_info lhm_kv_cache::find_slot(const lhm_ubatch & ubatch, bool 
                         ss += '\n';
                     }
                 }
-                LOG_DEBUG("\n%s\n", ss.c_str());
+                LOG_DEBUG("\n{}", ss.c_str());
             }
 
             if ((debug == 2 && n_swa > 0) || debug > 2) {
@@ -961,7 +951,7 @@ lhm_kv_cache::slot_info lhm_kv_cache::find_slot(const lhm_ubatch & ubatch, bool 
                         ss += '\n';
                     }
                 }
-                LOG_DEBUG("\n%s\n", ss.c_str());
+                LOG_DEBUG("\n{}", ss.c_str());
             }
 
             for (int s = 0; s < LHM_MAX_SEQ; ++s) {
@@ -969,7 +959,7 @@ lhm_kv_cache::slot_info lhm_kv_cache::find_slot(const lhm_ubatch & ubatch, bool 
                     continue;
                 }
 
-                LOG_DEBUG("%s: stream[%d] min[%d] = %5d, max[%d] = %5d\n", __func__, stream_id, s, cells.seq_pos_min(s), s, cells.seq_pos_max(s));
+                LOG_DEBUG("stream[{:d}] min[{:d}] = {:5d}, max[{:d}] = {:5d}", stream_id, s, cells.seq_pos_min(s), s, cells.seq_pos_max(s));
             }
         }
     }
@@ -1018,7 +1008,7 @@ lhm_kv_cache::slot_info lhm_kv_cache::find_slot(const lhm_ubatch & ubatch, bool 
         }
 
         if (n_tokens > cells.size()) {
-            LOG_ERROR("%s: n_tokens = %d > size = %u\n", __func__, n_tokens, cells.size());
+            LOG_ERROR("n_tokens = {:d} > size = {:d}", n_tokens, cells.size());
             return { };
         }
 
@@ -1089,7 +1079,7 @@ lhm_kv_cache::slot_info lhm_kv_cache::find_slot(const lhm_ubatch & ubatch, bool 
             }
 
             if (n_tested >= cells.size()) {
-                //LOG_ERROR("%s: failed to find a slot for %d tokens\n", __func__, n_tokens);
+                LOG_ERROR("failed to find a slot for {:d} tokens", n_tokens);
                 return { };
             }
         }
@@ -1168,8 +1158,7 @@ void lhm_kv_cache::apply_ubatch(const slot_info & sinfo, const lhm_ubatch & ubat
         auto & cells = v_cells[seq_to_stream[s]];
 
         if (cells.seq_pos_min(s) <= seq_pos_max_rm[s]) {
-            LOG_DEBUG("%s: purging positions [%d, %d] of sequence %d from KV cache\n",
-                    __func__, cells.seq_pos_min(s), seq_pos_max_rm[s], s);
+            LOG_DEBUG("purging positions [{:d}, {:d}] of sequence {:d} from KV cache", cells.seq_pos_min(s), seq_pos_max_rm[s], s);
 
             seq_rm(s, cells.seq_pos_min(s), seq_pos_max_rm[s] + 1);
         }
@@ -1759,10 +1748,6 @@ void lhm_kv_cache::set_input_kq_mask(ggml_tensor * dst, const lhm_ubatch * ubatc
     } else {
         set_input_kq_mask_impl<float>(args, (float *) dst->data, causal_attn);
     }
-
-    //const int64_t t_end = ggml_time_us();
-
-    //LOG_ERROR("%s: kq mask time: %0.3f ms\n", __func__, (t_end - t_start)/1000.0);
 }
 
 void lhm_kv_cache::set_input_pos_bucket(ggml_tensor * dst, const lhm_ubatch * ubatch) const {
@@ -2232,7 +2217,7 @@ bool lhm_kv_cache::state_read_meta(lhm_io_read_i & io, uint32_t strm, uint32_t c
             io.read(&n_seq_id, sizeof(n_seq_id));
 
             if (n_seq_id != 1) {
-                LOG_ERROR("%s: invalid seq_id-agnostic kv cell\n", __func__);
+                LOG_ERROR("invalid seq_id-agnostic kv cell");
                 return false;
             }
 
@@ -2257,7 +2242,7 @@ bool lhm_kv_cache::state_read_meta(lhm_io_read_i & io, uint32_t strm, uint32_t c
 
         sinfo = find_slot(ubatch, false);
         if (sinfo.empty()) {
-            LOG_ERROR("%s: failed to find %d available cells in kv cache\n", __func__,  cell_count);
+            LOG_ERROR("failed to find {:d} available cells in kv cache", cell_count);
             return false;
         }
 
@@ -2265,7 +2250,7 @@ bool lhm_kv_cache::state_read_meta(lhm_io_read_i & io, uint32_t strm, uint32_t c
         //       see: https://github.com/ggml-org/lhm.cpp/pull/16825#issuecomment-3460868350
         apply_ubatch(sinfo, ubatch);
 
-        LOG_DEBUG("%s: cell_count = %d, dest_seq_id = %d\n", __func__, cell_count, dest_seq_id);
+        LOG_DEBUG("cell_count = {:d}, dest_seq_id = {:d}", cell_count, dest_seq_id);
 
         // DEBUG CHECK: verify that all cells were allocated and have correct seq_id and pos values
         LHM_ASSERT(sinfo.n_stream() == 1);
@@ -2279,7 +2264,7 @@ bool lhm_kv_cache::state_read_meta(lhm_io_read_i & io, uint32_t strm, uint32_t c
         // whole KV cache restore
 
         if (cell_count > cells.size()) {
-            LOG_ERROR("%s: not enough cells in kv cache\n", __func__);
+            LOG_ERROR("not enough cells in kv cache");
             return false;
         }
 
@@ -2305,7 +2290,7 @@ bool lhm_kv_cache::state_read_meta(lhm_io_read_i & io, uint32_t strm, uint32_t c
                 io.read(&seq_id, sizeof(seq_id));
 
                 if (seq_id < 0 || (uint32_t) seq_id >= n_seq_max) {
-                    LOG_ERROR("%s: invalid seq_id, %d is out of range [0, %u)\n", __func__, seq_id, n_seq_max);
+                    LOG_ERROR("invalid seq_id, {:d} is out of range [0, {:d})", seq_id, n_seq_max);
                     return false;
                 }
 
@@ -2339,17 +2324,17 @@ bool lhm_kv_cache::state_read_data(lhm_io_read_i & io, uint32_t strm, uint32_t c
     io.read(&n_layer, sizeof(n_layer));
 
     if (n_layer != layers.size()) {
-        LOG_ERROR("%s: mismatched layer count (%u instead of %u)\n", __func__, n_layer, (uint32_t) layers.size());
+        LOG_ERROR("mismatched layer count ({:d} instead of {:d})", n_layer, (uint32_t) layers.size());
         return false;
     }
 
     if (cell_count > cells.size()) {
-        LOG_ERROR("%s: not enough cells in kv cache to restore state (%u > %u)\n", __func__, cell_count, cells.size());
+        LOG_ERROR("not enough cells in kv cache to restore state ({:d} > {:d})", cell_count, cells.size());
         return false;
     }
 
     if (this->v_trans != (bool) v_trans) {
-        LOG_ERROR("%s: incompatible V transposition\n", __func__);
+        LOG_ERROR("incompatible V transposition");
         return false;
     }
 
@@ -2366,7 +2351,7 @@ bool lhm_kv_cache::state_read_data(lhm_io_read_i & io, uint32_t strm, uint32_t c
         io.read(&k_type_i_ref, sizeof(k_type_i_ref));
         const int32_t k_type_i = (int32_t) k->type;
         if (k_type_i != k_type_i_ref) {
-            LOG_ERROR("%s: mismatched key type (%d != %d, layer %d)\n", __func__, k_type_i, k_type_i_ref, il);
+            LOG_ERROR("mismatched key type ({:d} != {:d}, layer {:d})", k_type_i, k_type_i_ref, il);
             return false;
         }
 
@@ -2375,7 +2360,7 @@ bool lhm_kv_cache::state_read_data(lhm_io_read_i & io, uint32_t strm, uint32_t c
         io.read(&k_size_row_ref, sizeof(k_size_row_ref));
         const size_t k_size_row = ggml_row_size(k->type, n_embd_k_gqa);
         if (k_size_row != k_size_row_ref) {
-            LOG_ERROR("%s: mismatched key row size (%zu != %zu, layer %d)\n", __func__, k_size_row, (size_t) k_size_row_ref, il);
+            LOG_ERROR("mismatched key row size ({:d} != {:d}, layer {:d})", k_size_row, (size_t) k_size_row_ref, il);
             return false;
         }
 
@@ -2409,7 +2394,7 @@ bool lhm_kv_cache::state_read_data(lhm_io_read_i & io, uint32_t strm, uint32_t c
             io.read(&v_type_i_ref, sizeof(v_type_i_ref));
             const int32_t v_type_i = (int32_t) v->type;
             if (v_type_i != v_type_i_ref) {
-                LOG_ERROR("%s: mismatched value type (%d != %d, layer %d)\n", __func__, v_type_i, v_type_i_ref, il);
+                LOG_ERROR("mismatched value type ({:d} != {:d}, layer {:d})", v_type_i, v_type_i_ref, il);
                 return false;
             }
 
@@ -2418,7 +2403,7 @@ bool lhm_kv_cache::state_read_data(lhm_io_read_i & io, uint32_t strm, uint32_t c
             io.read(&v_size_row_ref, sizeof(v_size_row_ref));
             const size_t v_size_row = ggml_row_size(v->type, n_embd_v_gqa);
             if (v_size_row != v_size_row_ref) {
-                LOG_ERROR("%s: mismatched value row size (%zu != %zu, layer %d)\n", __func__, v_size_row, (size_t) v_size_row_ref, il);
+                LOG_ERROR("mismatched value row size ({:d} != {:d}, layer {:d})", v_size_row, (size_t) v_size_row_ref, il);
                 return false;
             }
 
@@ -2452,7 +2437,7 @@ bool lhm_kv_cache::state_read_data(lhm_io_read_i & io, uint32_t strm, uint32_t c
             io.read(&v_type_i_ref, sizeof(v_type_i_ref));
             const int32_t v_type_i = (int32_t) v->type;
             if (v_type_i != v_type_i_ref) {
-                LOG_ERROR("%s: mismatched value type (%d != %d, layer %d)\n", __func__, v_type_i, v_type_i_ref, il);
+                LOG_ERROR("mismatched value type ({:d} != {:d}, layer {:d})", v_type_i, v_type_i_ref, il);
                 return false;
             }
 
@@ -2461,7 +2446,7 @@ bool lhm_kv_cache::state_read_data(lhm_io_read_i & io, uint32_t strm, uint32_t c
             io.read(&v_size_el_ref, sizeof(v_size_el_ref));
             const size_t v_size_el = ggml_type_size(v->type);
             if (v_size_el != v_size_el_ref) {
-                LOG_ERROR("%s: mismatched value element size (%zu != %zu, layer %d)\n", __func__, v_size_el, (size_t) v_size_el_ref, il);
+                LOG_ERROR("mismatched value element size ({:d} != {:d}, layer {:d})", v_size_el, (size_t) v_size_el_ref, il);
                 return false;
             }
 
@@ -2469,7 +2454,7 @@ bool lhm_kv_cache::state_read_data(lhm_io_read_i & io, uint32_t strm, uint32_t c
             uint32_t n_embd_v_gqa_ref;
             io.read(&n_embd_v_gqa_ref, sizeof(n_embd_v_gqa_ref));
             if (n_embd_v_gqa != n_embd_v_gqa_ref) {
-                LOG_ERROR("%s: mismatched GQA embedding size (%u != %u, layer %d)\n", __func__, n_embd_v_gqa, n_embd_v_gqa_ref, il);
+                LOG_ERROR("mismatched GQA embedding size ({:d} != {:d}, layer {:d})", n_embd_v_gqa, n_embd_v_gqa_ref, il);
                 return false;
             }
 

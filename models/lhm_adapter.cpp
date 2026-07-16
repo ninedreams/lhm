@@ -67,7 +67,7 @@ bool lhm_adapter_cvec::init(const lhm_model & model) {
         ggml_backend_buffer_type_t buft = model.select_buft(il);
         ggml_context * ctx = ctx_for_buft(buft);
         if (!ctx) {
-            LOG_ERROR("%s: failed to allocate context for control vector\n", __func__);
+            LOG_ERROR("failed to allocate context for control vector");
             return false;
         }
         ggml_tensor * tensor = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hparams.n_embd);
@@ -81,7 +81,7 @@ bool lhm_adapter_cvec::init(const lhm_model & model) {
         ggml_context * ctx = it.second;
         ggml_backend_buffer_t buf = ggml_backend_alloc_ctx_tensors_from_buft(ctx, buft);
         if (!buf) {
-            LOG_ERROR("%s: failed to allocate buffer for control vector\n", __func__);
+            LOG_ERROR("failed to allocate buffer for control vector");
             return false;
         }
         ggml_backend_buffer_clear(buf, 0);
@@ -108,7 +108,7 @@ bool lhm_adapter_cvec::apply(
     }
 
     if (n_embd != (int) hparams.n_embd) {
-        LOG_ERROR("%s: control vector n_embd does not match model\n", __func__);
+        LOG_ERROR("control vector n_embd does not match model");
         return false;
     }
 
@@ -147,7 +147,7 @@ lhm_adapter_lora_weight * lhm_adapter_lora::get_weight(ggml_tensor * w) {
 }
 
 static void lhm_adapter_lora_init_impl(lhm_model & model, const char * path_lora, lhm_adapter_lora & adapter) {
-    LOG_INFO("%s: loading lora adapter from '%s' ...\n", __func__, path_lora);
+    LOG_INFO("loading lora adapter from '{}' ...", path_lora);
 
     ggml_context * ctx_init;
     gguf_init_params meta_gguf_params = {
@@ -166,7 +166,7 @@ static void lhm_adapter_lora_init_impl(lhm_model & model, const char * path_lora
     {
         const gguf_context * gguf_ctx = ctx_gguf.get();
 
-        LOG_INFO("%s: Dumping metadata keys/values.\n", __func__);
+        LOG_INFO("Dumping metadata keys/values.");
 
         // get metadata as string
         for (int i = 0; i < gguf_get_n_kv(gguf_ctx); i++) {
@@ -186,7 +186,7 @@ static void lhm_adapter_lora_init_impl(lhm_model & model, const char * path_lora
             std::string print_value = value.size() > MAX_VALUE_LEN ? format("%s...", value.substr(0, MAX_VALUE_LEN - 3).c_str()) : value;
             replace_all(print_value, "\n", "\\n");
 
-            LOG_INFO("%s: - kv %3d: %42s %-16s = %s\n", __func__, i, name, type_name.c_str(), print_value.c_str());
+            LOG_INFO("- kv {:3d}: {:42s} {:<16s} = {}", i, name, type_name.c_str(), print_value.c_str());
         }
 
         auto get_kv_str = [&](const std::string & key) -> std::string {
@@ -300,7 +300,7 @@ static void lhm_adapter_lora_init_impl(lhm_model & model, const char * path_lora
     {
         auto * cpu_dev = ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU);
         if (!cpu_dev) {
-            throw std::runtime_error(format("%s: no CPU backend found", __func__));
+            throw std::runtime_error(fmt::format("%s: no CPU backend found"));
         }
         auto * cpu_reg = ggml_backend_dev_backend_reg(cpu_dev);
 
@@ -337,11 +337,11 @@ static void lhm_adapter_lora_init_impl(lhm_model & model, const char * path_lora
         // do not load loras to extra buffer types (i.e. bufts for repacking) -> use the CPU in that case
         for (auto & ex : buft_extra) {
             if (ex == buft) {
-                LOG_WARN("%s: lora for '%s' cannot use buft '%s', fallback to CPU\n", __func__, model_tensor->name, ggml_backend_buft_name(buft));
+                LOG_WARN("lora for '{}' cannot use buft '{}', fallback to CPU", model_tensor->name, ggml_backend_buft_name(buft));
 
                 auto * cpu_dev = ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU);
                 if (!cpu_dev) {
-                    throw std::runtime_error(format("%s: no CPU backend found", __func__));
+                    throw std::runtime_error(fmt::format("%s: no CPU backend found"));
                 }
                 buft = ggml_backend_dev_buffer_type(cpu_dev);
 
@@ -349,7 +349,7 @@ static void lhm_adapter_lora_init_impl(lhm_model & model, const char * path_lora
             }
         }
 
-        LOG_DEBUG("%s: lora for '%s' -> '%s'\n", __func__, model_tensor->name, ggml_backend_buft_name(buft));
+        LOG_DEBUG("lora for '{}' -> '{}'", model_tensor->name, ggml_backend_buft_name(buft));
 
         ggml_context * dev_ctx = ctx_for_buft(buft);
         // validate tensor shape
@@ -386,7 +386,7 @@ static void lhm_adapter_lora_init_impl(lhm_model & model, const char * path_lora
             if (!buf) {
                 throw std::runtime_error("failed to allocate buffer for lora adapter\n");
             }
-            LOG_INFO("%s: %10s LoRA buffer size = %8.2f MiB\n", __func__, ggml_backend_buffer_name(buf.get()), ggml_backend_buffer_get_size(buf.get())/1024.0/1024.0);
+            LOG_INFO("{:10s} LoRA buffer size = {:8.2f} MiB", ggml_backend_buffer_name(buf.get()), ggml_backend_buffer_get_size(buf.get())/1024.0/1024.0);
             adapter.bufs.emplace_back(std::move(buf));
         }
     }
@@ -414,7 +414,7 @@ static void lhm_adapter_lora_init_impl(lhm_model & model, const char * path_lora
     // register adapter with model
     model.loras.insert(&adapter);
 
-    LOG_INFO("%s: loaded %zu tensors from lora file\n", __func__, adapter.ab_map.size()*2);
+    LOG_INFO("loaded {:d} tensors from lora file", adapter.ab_map.size()*2);
 }
 
 lhm_adapter_lora * lhm_adapter_lora_init(lhm_model * model, const char * path_lora) {
@@ -424,7 +424,7 @@ lhm_adapter_lora * lhm_adapter_lora_init(lhm_model * model, const char * path_lo
         lhm_adapter_lora_init_impl(*model, path_lora, *adapter);
         return adapter;
     } catch (const std::exception & err) {
-        LOG_ERROR("%s: failed to apply lora adapter: %s\n", __func__, err.what());
+        LOG_ERROR("failed to apply lora adapter: {}", err.what());
 
         delete adapter;
     }

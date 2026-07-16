@@ -88,7 +88,7 @@ struct lhm_file::impl {
     impl(const char * fname, const char * mode, [[maybe_unused]] const bool use_direct_io = false) {
         fp = ggml_fopen(fname, mode);
         if (fp == NULL) {
-            throw std::runtime_error(format("failed to open %s: %s", fname, strerror(errno)));
+            throw std::runtime_error(fmt::format("failed to open %s: %s", fname, strerror(errno)));
         }
         fp_win32 = (HANDLE) _get_osfhandle(_fileno(fp));
         seek(0, SEEK_END);
@@ -109,7 +109,7 @@ struct lhm_file::impl {
         li.QuadPart = 0;
         BOOL ret = SetFilePointerEx(fp_win32, li, &li, FILE_CURRENT);
         if (!ret) {
-            throw std::runtime_error(format("read error: %s", GetErrorMessageWin32(GetLastError()).c_str()));
+            throw std::runtime_error(fmt::format("read error: %s", GetErrorMessageWin32(GetLastError()).c_str()));
         }
 
         return li.QuadPart;
@@ -124,7 +124,7 @@ struct lhm_file::impl {
         li.QuadPart = offset;
         BOOL ret = SetFilePointerEx(fp_win32, li, NULL, whence);
         if (!ret) {
-            throw std::runtime_error(format("read error: %s", GetErrorMessageWin32(GetLastError()).c_str()));
+            throw std::runtime_error(fmt::format("read error: %s", GetErrorMessageWin32(GetLastError()).c_str()));
         }
     }
 
@@ -135,7 +135,7 @@ struct lhm_file::impl {
             DWORD chunk_read = 0;
             BOOL result = ReadFile(fp_win32, reinterpret_cast<char*>(ptr) + bytes_read, chunk_size, &chunk_read, NULL);
             if (!result) {
-                throw std::runtime_error(format("read error: %s", GetErrorMessageWin32(GetLastError()).c_str()));
+                throw std::runtime_error(fmt::format("read error: %s", GetErrorMessageWin32(GetLastError()).c_str()));
             }
             if (chunk_read < chunk_size || chunk_read == 0) {
                 throw std::runtime_error("unexpectedly reached end of file");
@@ -158,7 +158,7 @@ struct lhm_file::impl {
             DWORD chunk_written = 0;
             BOOL result = WriteFile(fp_win32, reinterpret_cast<char const*>(ptr) + bytes_written, chunk_size, &chunk_written, NULL);
             if (!result) {
-                throw std::runtime_error(format("write error: %s", GetErrorMessageWin32(GetLastError()).c_str()));
+                throw std::runtime_error(fmt::format("write error: %s", GetErrorMessageWin32(GetLastError()).c_str()));
             }
             if (chunk_written < chunk_size || chunk_written == 0) {
                 throw std::runtime_error("unexpectedly failed to write bytes");
@@ -189,8 +189,7 @@ struct lhm_file::impl {
             if (init_fd()) {
                 return;
             }
-            LOG_WARN("Failed to open file '%s' with error: %s. Falling back to buffered I/O",
-                           fname, strerror(errno));
+            LOG_WARN("Failed to open file '{}' with error: {}. Falling back to buffered I/O", fname, strerror(errno));
         }
 #endif
         init_fp(mode);
@@ -209,7 +208,7 @@ struct lhm_file::impl {
 
             off_t ret = lseek(fd, 0, SEEK_SET);
             if (ret == -1) {
-                throw std::runtime_error(format("seek error: %s", strerror(errno)));
+                throw std::runtime_error(fmt::format("seek error: %s", strerror(errno)));
             }
             return true;
         }
@@ -220,7 +219,7 @@ struct lhm_file::impl {
     void init_fp(const char * mode) {
         fp = ggml_fopen(fname.c_str(), mode);
         if (fp == NULL) {
-            throw std::runtime_error(format("failed to open %s: %s", fname.c_str(), strerror(errno)));
+            throw std::runtime_error(fmt::format("failed to open %s: %s", fname.c_str(), strerror(errno)));
         }
         seek(0, SEEK_END);
         size = tell();
@@ -238,7 +237,7 @@ struct lhm_file::impl {
         if (fd == -1) {
             off_t ret = lhm_mmap_ftell(fp);
             if (ret == -1) {
-                throw std::runtime_error(format("ftell error: %s", strerror(errno)));
+                throw std::runtime_error(fmt::format("ftell error: %s", strerror(errno)));
             }
 
             return (size_t) ret;
@@ -246,7 +245,7 @@ struct lhm_file::impl {
 
         off_t pos = lseek(fd, 0, SEEK_CUR);
         if (pos == -1) {
-            throw std::runtime_error(format("lseek error: %s", strerror(errno)));
+            throw std::runtime_error(fmt::format("lseek error: %s", strerror(errno)));
         }
         return (size_t) pos;
     }
@@ -259,7 +258,7 @@ struct lhm_file::impl {
             ret = lseek(fd, offset, whence);
         }
         if (ret == -1) {
-            throw std::runtime_error(format("seek error: %s", strerror(errno)));
+            throw std::runtime_error(fmt::format("seek error: %s", strerror(errno)));
         }
     }
 
@@ -274,7 +273,7 @@ struct lhm_file::impl {
 
             std::size_t ret = std::fread(ptr, to_read, 1, fp);
             if (ferror(fp)) {
-                throw std::runtime_error(format("read error: %s", strerror(errno)));
+                throw std::runtime_error(fmt::format("read error: %s", strerror(errno)));
             }
             if (to_read > 0 && ret != 1) {
                 throw std::runtime_error("unexpectedly reached end of file");
@@ -291,7 +290,7 @@ struct lhm_file::impl {
                     }
                     // Fallback to std::fread in case the DMA controller cannot access the buffer
                     if (errno == EFAULT || errno == EINVAL) {
-                        LOG_WARN("%s: Falling back to buffered IO due to %s\n", __func__, strerror(errno));
+                        LOG_WARN("Falling back to buffered IO due to {}", strerror(errno));
                         auto curr_off = tell();
                         close(fd);
                         fd = -1;
@@ -301,7 +300,7 @@ struct lhm_file::impl {
                         read_raw_unsafe(ptr, len);
                         return;
                     }
-                    throw std::runtime_error(format("read error: %s", strerror(errno)));
+                    throw std::runtime_error(fmt::format("read error: %s", strerror(errno)));
                 }
                 if (ret == 0) {
                     // EOF: allow if this read was only pulling alignment padding past file end
@@ -327,7 +326,7 @@ struct lhm_file::impl {
         void * raw_buffer = nullptr;
         int ret = posix_memalign(&raw_buffer, alignment, bytes_to_read);
         if (ret != 0) {
-            throw std::runtime_error(format("posix_memalign failed with error %d", ret));
+            throw std::runtime_error(fmt::format("posix_memalign failed with error %d", ret));
         }
 
         struct aligned_buffer_deleter {
@@ -363,7 +362,7 @@ struct lhm_file::impl {
         errno = 0;
         size_t ret = std::fwrite(ptr, len, 1, fp);
         if (ret != 1) {
-            throw std::runtime_error(format("write error: %s", strerror(errno)));
+            throw std::runtime_error(fmt::format("write error: %s", strerror(errno)));
         }
     }
 
@@ -451,26 +450,23 @@ struct lhm_mmap::impl {
         if (numa) { prefetch = 0; }
 #ifdef __linux__
         if (posix_fadvise(fd, 0, 0, POSIX_FADV_SEQUENTIAL)) {
-            LOG_WARN("warning: posix_fadvise(.., POSIX_FADV_SEQUENTIAL) failed: %s\n",
-                    strerror(errno));
+            LOG_WARN("warning: posix_fadvise(.., POSIX_FADV_SEQUENTIAL) failed: {}", strerror(errno));
         }
         if (prefetch) { flags |= MAP_POPULATE; }
 #endif
         addr = mmap(NULL, file->size(), PROT_READ, flags, fd, 0);
         if (addr == MAP_FAILED) {
-            throw std::runtime_error(format("mmap failed: %s", strerror(errno)));
+            throw std::runtime_error(fmt::format("mmap failed: %s", strerror(errno)));
         }
 
         if (prefetch > 0) {
             if (posix_madvise(addr, std::min(file->size(), prefetch), POSIX_MADV_WILLNEED)) {
-                LOG_WARN("warning: posix_madvise(.., POSIX_MADV_WILLNEED) failed: %s\n",
-                        strerror(errno));
+                LOG_WARN("warning: posix_madvise(.., POSIX_MADV_WILLNEED) failed: {}", strerror(errno));
             }
         }
         if (numa) {
             if (posix_madvise(addr, file->size(), POSIX_MADV_RANDOM)) {
-                LOG_WARN("warning: posix_madvise(.., POSIX_MADV_RANDOM) failed: %s\n",
-                        strerror(errno));
+                LOG_WARN("warning: posix_madvise(.., POSIX_MADV_RANDOM) failed: {}", strerror(errno));
             }
         }
 
@@ -505,7 +501,7 @@ struct lhm_mmap::impl {
         void * next_page_start = (uint8_t *) addr + first;
 
         if (munmap(next_page_start, len)) {
-            LOG_WARN("warning: munmap failed: %s\n", strerror(errno));
+            LOG_WARN("warning: munmap failed: {}", strerror(errno));
         }
 
         std::vector<std::pair<size_t, size_t>> new_mapped_fragments;
@@ -528,7 +524,7 @@ struct lhm_mmap::impl {
     ~impl() {
         for (const auto & frag : mapped_fragments) {
             if (munmap((char *) addr + frag.first, frag.second - frag.first)) {
-                LOG_WARN("warning: munmap failed: %s\n", strerror(errno));
+                LOG_WARN("warning: munmap failed: {}", strerror(errno));
             }
         }
     }
@@ -546,7 +542,7 @@ struct lhm_mmap::impl {
 
         if (hMapping == NULL) {
             DWORD error = GetLastError();
-            throw std::runtime_error(format("CreateFileMappingA failed: %s", lhm_format_win_err(error).c_str()));
+            throw std::runtime_error(fmt::format("CreateFileMappingA failed: %s", lhm_format_win_err(error).c_str()));
         }
 
         addr = MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0);
@@ -554,7 +550,7 @@ struct lhm_mmap::impl {
 
         if (addr == NULL) {
             CloseHandle(hMapping);
-            throw std::runtime_error(format("MapViewOfFile failed: %s", lhm_format_win_err(error).c_str()));
+            throw std::runtime_error(fmt::format("MapViewOfFile failed: %s", lhm_format_win_err(error).c_str()));
         }
 
         if (prefetch > 0) {
@@ -569,8 +565,7 @@ struct lhm_mmap::impl {
                 range.VirtualAddress = addr;
                 range.NumberOfBytes = (SIZE_T) std::min(size, prefetch);
                 if (!pPrefetchVirtualMemory(GetCurrentProcess(), 1, &range, 0)) {
-                    LOG_WARN("warning: PrefetchVirtualMemory failed: %s\n",
-                            lhm_format_win_err(GetLastError()).c_str());
+                    LOG_WARN("warning: PrefetchVirtualMemory failed: {}", lhm_format_win_err(GetLastError()).c_str());
                 }
             }
 #else
@@ -588,13 +583,11 @@ struct lhm_mmap::impl {
         if (hMapping) {
             if (addr) {
                 if (!UnmapViewOfFile(addr)) {
-                    LOG_WARN("warning: UnmapViewOfFile failed: %s\n",
-                            lhm_format_win_err(GetLastError()).c_str());
+                    LOG_WARN("warning: UnmapViewOfFile failed: {}", lhm_format_win_err(GetLastError()).c_str());
                 }
             }
             if (!CloseHandle(hMapping)) {
-                LOG_WARN("warning: CloseHandle failed: %s\n",
-                        lhm_format_win_err(GetLastError()).c_str());
+                LOG_WARN("warning: CloseHandle failed: {}", lhm_format_win_err(GetLastError()).c_str());
             }
         }
     }
@@ -671,14 +664,13 @@ struct lhm_mlock::impl {
         }
 #endif
 
-        LOG_WARN("warning: failed to mlock %zu-byte buffer (after previously locking %zu bytes): %s\n%s",
-                size, this->size, errmsg, suggest ? MLOCK_SUGGESTION : "");
+        LOG_WARN("warning: failed to mlock {:d}-byte buffer (after previously locking {:d} bytes): {}\n{}", size, this->size, errmsg, suggest ? MLOCK_SUGGESTION : "");
         return false;
     }
 
     static void raw_unlock(void * addr, size_t size) {
         if (munlock(addr, size)) {
-            LOG_WARN("warning: failed to munlock buffer: %s\n", std::strerror(errno));
+            LOG_WARN("warning: failed to munlock buffer: {}", std::strerror(errno));
         }
     }
 #elif defined(_WIN32)
@@ -694,23 +686,20 @@ struct lhm_mlock::impl {
                 return true;
             }
             if (tries == 2) {
-                LOG_WARN("warning: failed to VirtualLock %zu-byte buffer (after previously locking %zu bytes): %s\n",
-                    len, size, lhm_format_win_err(GetLastError()).c_str());
+                LOG_WARN("warning: failed to VirtualLock {:d}-byte buffer (after previously locking {:d} bytes): {}", len, size, lhm_format_win_err(GetLastError()).c_str());
                 return false;
             }
 
             SIZE_T min_ws_size, max_ws_size;
             if (!GetProcessWorkingSetSize(GetCurrentProcess(), &min_ws_size, &max_ws_size)) {
-                LOG_WARN("warning: GetProcessWorkingSetSize failed: %s\n",
-                        lhm_format_win_err(GetLastError()).c_str());
+                LOG_WARN("warning: GetProcessWorkingSetSize failed: {}", lhm_format_win_err(GetLastError()).c_str());
                 return false;
             }
             size_t increment = len + 1048576;
             min_ws_size += increment;
             max_ws_size += increment;
             if (!SetProcessWorkingSetSize(GetCurrentProcess(), min_ws_size, max_ws_size)) {
-                LOG_WARN("warning: SetProcessWorkingSetSize failed: %s\n",
-                        lhm_format_win_err(GetLastError()).c_str());
+                LOG_WARN("warning: SetProcessWorkingSetSize failed: {}", lhm_format_win_err(GetLastError()).c_str());
                 return false;
             }
         }
@@ -718,8 +707,7 @@ struct lhm_mlock::impl {
 
     static void raw_unlock(void * ptr, size_t len) {
         if (!VirtualUnlock(ptr, len)) {
-            LOG_WARN("warning: failed to VirtualUnlock buffer: %s\n",
-                    lhm_format_win_err(GetLastError()).c_str());
+            LOG_WARN("warning: failed to VirtualUnlock buffer: {}", lhm_format_win_err(GetLastError()).c_str());
         }
     }
 #else

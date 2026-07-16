@@ -69,7 +69,7 @@ static float common_ggml_get_float_value(const uint8_t * data,
     } else if (type == GGML_TYPE_BF16) {
         v = ggml_bf16_to_fp32(*(const ggml_bf16_t *) &data[i]);
     } else {
-        GGML_ABORT("fatal error");
+        LHM_ABORT("fatal error");
     }
     return v;
 }
@@ -109,7 +109,7 @@ static void common_debug_print_tensor(uint8_t * data, ggml_type type, const int6
                         i0 = ne[0] - n;
                     }
                     const float v = common_ggml_get_float_value(data, type, nb, i0, i1, i2, i3);
-                    LOG_DEBUG("%12.4f", v);
+                    LOG_DEBUG("{:12.4f}", v);
                     if (i0 < ne[0] - 1) {
                         LOG_DEBUG(", ");
                     }
@@ -119,7 +119,7 @@ static void common_debug_print_tensor(uint8_t * data, ggml_type type, const int6
             LOG_DEBUG(INDENT INDENT "],\n");
         }
         LOG_DEBUG(INDENT "]\n");
-        LOG_DEBUG(INDENT "sum = %f\n", sum);
+        LOG_DEBUG(INDENT "sum = {}", sum);
     }
 
     if (abort_on_nan) {
@@ -168,7 +168,7 @@ bool common_debug_cb_eval(struct ggml_tensor * t, bool ask, void * user_data) {
     }
 
     if (matches_filter) {
-        LOG_DEBUG("{}: {} = ({}) {}({} {}, {}) = {}\n", __func__, t->name, ggml_type_name(t->type),
+        LOG_DEBUG("{} = ({}) {}({} {}, {}) = {}", t->name, ggml_type_name(t->type),
             ggml_op_desc(t), src0->name, common_ggml_ne_string(src0).c_str(), src1 ? src1_str : "",
             common_ggml_ne_string(t).c_str());
     }

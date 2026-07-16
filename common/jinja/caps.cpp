@@ -1,6 +1,7 @@
 #include "value.h"
 #include "runtime.h"
 #include "caps.h"
+#include "log.h"
 
 // note: the json dependency is only for defining input in a convenient way
 // we can remove it in the future when we figure out a better way to define inputs using jinja::value
@@ -44,7 +45,7 @@ static void caps_try_execute(jinja::program & prog,
         result = parts->as_string().str();
         success = true;
     } catch (const std::exception & e) {
-        JJ_DEBUG("Exception during execution: %s", e.what());
+        LOG_DEBUG("Exception during execution: {}", e.what());
         result = "";
         // ignore exceptions during capability analysis
     }
@@ -58,7 +59,7 @@ static void caps_print_stats(value & v, const std::string & path) {
     for (const auto & name : v->stats.ops) {
         ops += name + " ";
     }
-    JJ_DEBUG("Value %s, type: %s %s, ops: %s",
+    LOG_DEBUG("Value {}, type: {} {}, ops: {}",
                 path.c_str(),
                 v->type().c_str(),
                 v->stats.used ? "(used)" : "",
@@ -95,7 +96,7 @@ caps caps_get(jinja::program & prog) {
         return v->stats.ops.find(op_name) != v->stats.ops.end();
     };
 
-    JJ_DEBUG("%s\n", ">>> Running capability check: typed content");
+    LOG_DEBUG("{}", ">>> Running capability check: typed content");
 
     // case: typed content support
     caps_try_execute(
@@ -127,7 +128,7 @@ caps caps_get(jinja::program & prog) {
         }
     );
 
-    JJ_DEBUG("%s\n", ">>> Running capability check: system prompt");
+    LOG_DEBUG("{}", ">>> Running capability check: system prompt");
 
     // case: system prompt support
     caps_try_execute(
@@ -158,7 +159,7 @@ caps caps_get(jinja::program & prog) {
         }
     );
 
-    JJ_DEBUG("%s\n", ">>> Running capability check: single tool with object arguments support");
+    LOG_DEBUG("{}", ">>> Running capability check: single tool with object arguments support");
 
     // case: tools support: single call with object arguments
     caps_try_execute(
@@ -252,7 +253,7 @@ caps caps_get(jinja::program & prog) {
     );
 
     if (!result.supports_object_arguments) {
-        JJ_DEBUG("%s\n", ">>> Running capability check: single tool with string arguments support");
+        LOG_DEBUG("{}", ">>> Running capability check: single tool with string arguments support");
 
         // case: tools support: single call with string arguments
         caps_try_execute(
@@ -340,7 +341,7 @@ caps caps_get(jinja::program & prog) {
         );
     }
 
-    JJ_DEBUG("%s\n", ">>> Running capability check: parallel tool support");
+    LOG_DEBUG("{}", ">>> Running capability check: parallel tool support");
 
     // case: tools support: parallel calls
     caps_try_execute(
@@ -435,7 +436,7 @@ caps caps_get(jinja::program & prog) {
         }
     );
 
-    JJ_DEBUG("%s\n", ">>> Running capability check: preserve reasoning");
+    LOG_DEBUG("{}", ">>> Running capability check: preserve reasoning");
 
     // case: preserve reasoning content in chat history
     caps_try_execute(
@@ -471,7 +472,7 @@ caps caps_get(jinja::program & prog) {
         }
     );
 
-    JJ_DEBUG("%s\n", result.to_string().c_str());
+    LOG_DEBUG("{}", result.to_string().c_str());
 
     return result;
 }

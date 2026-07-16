@@ -1063,7 +1063,7 @@ lhm_tokens format_prompt_infill(
 
     if (lhm_vocab_fim_rep(vocab) != LHM_TOKEN_NULL) {
         // TODO: make project name an input
-        static const auto k_fim_repo = common_tokenize(vocab, "myproject\n", false, false);
+        static const auto k_fim_repo = common_tokenize(vocab, "myproject", false, false);
 
         extra_tokens.push_back(lhm_vocab_fim_rep(vocab));
         extra_tokens.insert(extra_tokens.end(), k_fim_repo.begin(), k_fim_repo.end());
@@ -1074,7 +1074,7 @@ lhm_tokens format_prompt_infill(
         const std::string filename = json_value(chunk, "filename", std::string("tmp"));
 
         if (lhm_vocab_fim_sep(vocab) != LHM_TOKEN_NULL) {
-            const auto k_fim_file = common_tokenize(vocab, filename + "\n", false, false);
+            const auto k_fim_file = common_tokenize(vocab, filename + "", false, false);
 
             extra_tokens.insert(extra_tokens.end(), lhm_vocab_fim_sep(vocab));
             extra_tokens.insert(extra_tokens.end(), k_fim_file.begin(), k_fim_file.end());
@@ -1092,7 +1092,7 @@ lhm_tokens format_prompt_infill(
 
     if (lhm_vocab_fim_sep(vocab) != LHM_TOKEN_NULL) {
         // TODO: current filename
-        static const auto k_fim_file = common_tokenize(vocab, "filename\n", false, false);
+        static const auto k_fim_file = common_tokenize(vocab, "filename", false, false);
 
         extra_tokens.insert(extra_tokens.end(), lhm_vocab_fim_sep(vocab));
         extra_tokens.insert(extra_tokens.end(), k_fim_file.begin(), k_fim_file.end());
@@ -1102,7 +1102,7 @@ lhm_tokens format_prompt_infill(
     const int n_prefix_take = std::min<int>(tokens_prefix.size(),                3*(n_batch/4));
     const int n_suffix_take = std::min<int>(tokens_suffix.size(), std::max<int>(0, (n_batch/4) - (2 + tokens_prompt.size())));
 
-    SRV_DBG("n_prefix_take = %d, n_suffix_take = %d, total = %d\n", n_prefix_take, n_suffix_take, (n_prefix_take + n_suffix_take));
+    LOG_DEBUG("n_prefix_take = {}, n_suffix_take = {}, total = {}", n_prefix_take, n_suffix_take, (n_prefix_take + n_suffix_take));
 
     // fill the rest of the context with extra chunks
     const int n_extra_take = std::min<int>(std::max<int>(0, n_ctx - (n_batch) - 2*n_predict), extra_tokens.size());
@@ -1121,7 +1121,7 @@ lhm_tokens format_prompt_infill(
         embd_inp.insert(embd_inp.begin(), lhm_vocab_bos(vocab));
     }
 
-    SRV_DBG("extra: n_ctx = %d, n_extra_take = %d, n_extra = %d\n", n_ctx, n_extra_take, (int) extra_tokens.size());
+    LOG_DEBUG("extra: n_ctx = {}, n_extra_take = {}, n_extra = {}", n_ctx, n_extra_take, (int) extra_tokens.size());
 
     // put the extra context before the FIM prefix
     embd_inp.insert(embd_inp.begin(), extra_tokens.end() - n_extra_take, extra_tokens.end());

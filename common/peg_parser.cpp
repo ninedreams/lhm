@@ -55,7 +55,7 @@ struct trie {
         size_t current = 0; // Start at root
         size_t pos = start_pos;
 
-        // LOG_DEBUG("%s: checking at pos %zu, sv='%s'\n", __func__, start_pos, std::string(sv).c_str());
+        // LOG_DEBUG("checking at pos {:d}, sv='{}'", start_pos, std::string(sv).c_str());
 
         while (pos < sv.size()) {
             auto result = common_parse_utf8_codepoint(sv, pos);
@@ -397,8 +397,7 @@ struct parser_executor {
 
     common_peg_parse_result operator()(const common_peg_sequence_parser & p) {
         if (ctx.is_debug()) {
-            LOG_DEBUG("%sSEQ start at %zu '%s' (%zu children)\n", debug_indent().c_str(), start_pos,
-                    debug_input_snippet(start_pos).c_str(), p.children.size());
+            LOG_DEBUG("{}SEQ start at {:d} '{}' ({:d} children)", debug_indent().c_str(), start_pos, debug_input_snippet(start_pos).c_str(), p.children.size());
         }
         ctx.parse_depth++;
 
@@ -484,7 +483,7 @@ struct parser_executor {
 
     common_peg_parse_result operator()(const common_peg_repetition_parser & p) {
         if (ctx.is_debug()) {
-            fprintf(stderr, "%sREPEAT start at %zu '%s' (min=%d, max=%d)\n", debug_indent().c_str(), start_pos,
+            fprintf(stderr, "%sREPEAT start at %zu '%s' (min=%d, max=%d)", debug_indent().c_str(), start_pos,
                     debug_input_snippet(start_pos).c_str(), p.min_count, p.max_count);
         }
         ctx.parse_depth++;

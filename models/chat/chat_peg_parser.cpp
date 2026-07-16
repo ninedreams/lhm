@@ -215,7 +215,7 @@ tagged_parse_result tagged_peg_parser::parse_anywhere_and_extract(const std::str
             return { std::move(parse_result), std::move(mapper.tags) };
         }
     }
-    GGML_ABORT("Should not happen");
+    LHM_ABORT("Should not happen");
 }
 
 tagged_peg_parser build_tagged_peg_parser(
