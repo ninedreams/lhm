@@ -1,4 +1,7 @@
 #include "lhm_memory_hybrid.h"
+#ifdef LHM_ENABLE_MOONCAKE
+#include "kvcache/lhm_kv_cache_mooncake.h"
+#endif
 
 #include "lhm_impl.h"
 #include "lhm_model.h"
@@ -31,6 +34,49 @@ lhm_memory_hybrid::lhm_memory_hybrid(
     const layer_filter_cb & filter_attn,
     const layer_filter_cb & filter_recr) :
     hparams(model.hparams),
+#ifdef LHM_ENABLE_MOONCAKE
+    mem_attn(FLAGS_enable_mooncake ?
+        new lhm_kv_cache_mooncake(
+        model,
+        model.hparams,
+        type_k,
+        type_v,
+        v_trans,
+        offload,
+        unified,
+        kv_size,
+        n_seq_max,
+        n_pad,
+        n_swa,
+        swa_type,
+        nullptr,
+        filter_attn == nullptr ?
+            [&](int32_t il) { return !hparams.is_recr(il); }
+            : filter_attn,
+        nullptr,
+        nullptr)
+        :
+        new lhm_kv_cache(
+        model,
+        model.hparams,
+        type_k,
+        type_v,
+        v_trans,
+        offload,
+        unified,
+        kv_size,
+        n_seq_max,
+        n_pad,
+        n_swa,
+        swa_type,
+        nullptr,
+        filter_attn == nullptr ?
+            [&](int32_t il) { return !hparams.is_recr(il); }
+            : filter_attn,
+        nullptr,
+        nullptr)
+    ),
+#else
     mem_attn(new lhm_kv_cache(
         model,
         model.hparams,
@@ -51,6 +97,7 @@ lhm_memory_hybrid::lhm_memory_hybrid(
         nullptr,
         nullptr
     )),
+#endif
     mem_recr(new lhm_memory_recurrent(
         model,
         type_r,
