@@ -153,7 +153,7 @@ json common_chat_msg::to_json_oaicompat(bool concat_typed_text) const {
                     add_new_line = false;
                     last_was_media_marker = true;
                 } else {
-                    LOG_WARN("Ignoring content part type: %s\n", part.type.c_str());
+                    LOG_WARN("Ignoring content part type: {}", part.type.c_str());
                     continue;
                 }
 
@@ -254,7 +254,7 @@ std::vector<common_chat_msg_diff> common_chat_msg_diff::compute_diffs(const comm
             // Check if one is a prefix of the other (for incremental parsing where names grow or shrink)
             bool is_prefix = (newf.name.rfind(pref.name, 0) == 0);
             if (!is_prefix) {
-                LOG_ERROR("Tool call mismatch: prev='%s' new='%s'\n", pref.name.c_str(), newf.name.c_str());
+                LOG_ERROR("Tool call mismatch: prev='{}' new='{}'", pref.name.c_str(), newf.name.c_str());
                 throw std::runtime_error("Invalid diff: tool call mismatch!");
             }
         }
@@ -410,7 +410,7 @@ std::vector<common_chat_msg> common_chat_msgs_parse_oaicompat(const json & messa
         }
     } catch (const std::exception & e) {
         // @ngxson : disable otherwise it's bloating the API response
-        // printf("%s\n", std::string("; messages = ") + messages.dump(2));
+        // printf("%s", std::string("; messages = ") + messages.dump(2));
         throw std::runtime_error("Failed to parse messages: " + std::string(e.what()));
     }
 
@@ -419,7 +419,7 @@ std::vector<common_chat_msg> common_chat_msgs_parse_oaicompat(const json & messa
 
 static json render_message_to_json(const std::vector<common_chat_msg> & msgs, const jinja::caps & c) {
     if (!c.supports_string_content && !c.supports_typed_content) {
-        LOG_WARN("%s: Neither string content nor typed content is supported by the template. This is unexpected and may lead to issues.\n", __func__);
+        LOG_WARN("Neither string content nor typed content is supported by the template. This is unexpected and may lead to issues.");
     }
 
     bool only_string_accepted =  c.supports_string_content && !c.supports_typed_content;
@@ -542,7 +542,7 @@ bool common_chat_verify_template(const std::string & tmpl, bool use_jinja) {
             common_chat_templates_apply(tmpls.get(), inputs);
             return true;
         } catch (const std::exception & e) {
-            LOG_ERROR("%s: failed to apply template: %s\n", __func__, e.what());
+            LOG_ERROR("failed to apply template: {}", e.what());
             return false;
         }
     }
@@ -648,7 +648,7 @@ std::string common_chat_templates_source(const struct common_chat_templates * tm
             }
             return "";
         }
-        LOG_DEBUG("%s: unknown template variant: %s\n", __func__, variant.c_str());
+        LOG_DEBUG("unknown template variant: {}", variant.c_str());
     }
     return tmpls->template_default->source();
 }
@@ -717,10 +717,8 @@ common_chat_templates_ptr common_chat_templates_init(const struct lhm_model * mo
             if (token == LHM_TOKEN_NULL) {
                 if (default_template_src.find(jinja_variable_name) != std::string::npos ||
                     template_tool_use_src.find(jinja_variable_name) != std::string::npos) {
-                    LOG_WARN(
-                        "common_chat_templates_init: warning: vocab does not have a %s token, jinja template won't "
-                          "work as intended.\n",
-                        name);
+                    LOG_WARN("common_chat_templates_init: warning: vocab does not have a {} token, jinja template won't "
+                          "work as intended.", name);
                 }
                 return std::string();
             }
@@ -738,16 +736,16 @@ common_chat_templates_ptr common_chat_templates_init(const struct lhm_model * mo
     try {
         tmpls->template_default = std::make_unique<common_chat_template>(default_template_src, token_bos, token_eos);
     } catch (const std::exception & e) {
-        LOG_ERROR("%s: error: %s\n", __func__, e.what());
-        LOG_ERROR("%s: failed to initialize chat template\n", __func__);
-        LOG_ERROR("%s: please consider disabling jinja via --no-jinja, or using another chat template\n", __func__);
+        LOG_ERROR("error: {}", e.what());
+        LOG_ERROR("failed to initialize chat template");
+        LOG_ERROR("please consider disabling jinja via --no-jinja, or using another chat template");
         throw e;
     }
     if (!template_tool_use_src.empty()) {
         try {
             tmpls->template_tool_use = std::make_unique<common_chat_template>(template_tool_use_src, token_bos, token_eos);
         } catch (const std::exception & e) {
-            LOG_ERROR("%s: failed to parse tool use chat template (ignoring it): %s\n", __func__, e.what());
+            LOG_ERROR("failed to parse tool use chat template (ignoring it): {}", e.what());
         }
     }
     return tmpls;
@@ -802,7 +800,7 @@ common_reasoning_format common_reasoning_format_from_name(const std::string & fo
 static void foreach_function(const json & tools, const std::function<void(const json &)> & fn) {
     for (const auto & tool : tools) {
         if (!tool.contains("type") || tool.at("type") != "function" || !tool.contains("function")) {
-            LOG_INFO("Skipping tool without function: %s", tool.dump(2).c_str());
+            LOG_INFO("Skipping tool without function: {}", tool.dump(2).c_str());
             continue;
         }
         fn(tool);
@@ -1731,8 +1729,8 @@ static common_chat_params common_chat_params_init_gigachat_v3(
     data.format            = COMMON_CHAT_FORMAT_PEG_NATIVE;
     data.supports_thinking = false;
     data.preserved_tokens  = {
-        "<|message_sep|>\n\n",
-        "<|role_sep|>\n",
+        "<|message_sep|>\n",
+        "<|role_sep|>",
     };
 
     if (inputs.has_continuation()) {
@@ -2410,8 +2408,8 @@ std::optional<common_chat_params> common_chat_try_specialized_template(
     if (src.find("'<|tool_call>call:'") != std::string::npos) {
         if (src.find("{#- OpenAI Chat Completions:") == std::string::npos) {
             // apply workarounds if using the older gemma4 templates
-            LOG_WARN("%s: detected an outdated gemma4 chat template, applying compatibility workarounds. "
-                    "Consider updating to the official template.\n", __func__);
+            LOG_WARN("detected an outdated gemma4 chat template, applying compatibility workarounds. "
+                    "Consider updating to the official template.");
             workaround::convert_tool_responses_gemma4(params.messages);
         }
         return common_chat_params_init_gemma4(tmpl, params);
@@ -2522,7 +2520,7 @@ static common_chat_params common_chat_templates_apply_jinja(const struct common_
     }
 
     try {
-        LOG_DEBUG("%s: using differential autoparser\n", __func__);
+        LOG_DEBUG("using differential autoparser");
         struct autoparser::autoparser autoparser;
         autoparser.analyze_template(tmpl);
         auto auto_params = autoparser::peg_generator::generate_parser(tmpl, params, autoparser);
@@ -2546,7 +2544,7 @@ static common_chat_params common_chat_templates_apply_jinja(const struct common_
         }
         common_peg_arena arena;
         arena.load(auto_params.parser);
-        LOG_DEBUG("%s: generated parser:\n%s\n\nparser generation prompt: %s\n", __func__, arena.dump(arena.root()).c_str(), auto_params.generation_prompt.c_str());
+        LOG_DEBUG("generated parser:\n{}\n\nparser generation prompt: {}", arena.dump(arena.root()).c_str(), auto_params.generation_prompt.c_str());
         return auto_params;
     } catch (const std::exception & e) {
         throw std::invalid_argument(std::string("Unable to generate parser for this template. Automatic parser generation failed: ") + e.what());
@@ -2564,7 +2562,7 @@ static common_chat_params common_chat_templates_apply_legacy(const struct common
         auto content = msg.content;
         for (const auto & part : msg.content_parts) {
             if (part.type != "text" && part.type != "media_marker") {
-                LOG_WARN("Ignoring non-text content part: %s\n", part.type.c_str());
+                LOG_WARN("Ignoring non-text content part: {}", part.type.c_str());
                 continue;
             }
             if (!content.empty()) {
@@ -2648,7 +2646,7 @@ common_chat_msg common_chat_peg_parse(const common_peg_arena &          src_pars
         ? input
         : params.generation_prompt + input;
 
-    //LOG_DEBUG("Parsing PEG input with format %s: %s\n", common_chat_format_name(params.format), effective_input.c_str());
+    //LOG_DEBUG("Parsing PEG input with format {}: {}", common_chat_format_name(params.format), effective_input.c_str());
 
     common_peg_parse_flags flags = COMMON_PEG_PARSE_FLAG_LENIENT;
     if (params.debug) {
@@ -2679,8 +2677,8 @@ common_chat_msg common_chat_peg_parse(const common_peg_arena &          src_pars
             }
             return msg;
         }
-        LOG_WARN("%s: unparsed %s output: %s\n", __func__, common_chat_format_name(params.format), effective_input.substr(result.end).c_str());
-        LOG_DEBUG("%s: full %s output triggering error:\n=== BEGIN ===\n%s\n=== END ===\n", __func__, common_chat_format_name(params.format), effective_input.c_str());
+        LOG_WARN("unparsed {} output: {}", common_chat_format_name(params.format), effective_input.substr(result.end).c_str());
+        LOG_DEBUG("full {} output triggering error:\n=== BEGIN ===\n{}\n=== END ===", common_chat_format_name(params.format), effective_input.c_str());
         throw std::runtime_error(std::string("The model produced output that does not match the expected ") + common_chat_format_name(params.format) + " format");
     }
 
@@ -2701,7 +2699,7 @@ common_chat_msg common_chat_peg_parse(const common_peg_arena &          src_pars
     }
 
     if (!is_partial) {
-        LOG_DEBUG("Parsed message: %s\n", common_chat_msgs_to_json_oaicompat({ msg }).at(0).dump().c_str());
+        LOG_DEBUG("Parsed message: {}", common_chat_msgs_to_json_oaicompat({ msg }).at(0).dump().c_str());
     }
     return msg;
 }

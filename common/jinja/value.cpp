@@ -1,6 +1,7 @@
 #include "runtime.h"
 #include "unicode.h"
 #include "value.h"
+#include "log.h"
 
 // for converting from JSON to jinja values
 #include <nlohmann/json.hpp>
@@ -132,21 +133,21 @@ template<typename T>
 static value test_type_fn(const func_args & args) {
     args.ensure_count(1);
     bool is_type = is_val<T>(args.get_pos(0));
-    JJ_DEBUG("test_type_fn: type=%s result=%d", typeid(T).name(), is_type ? 1 : 0);
+    LOG_DEBUG("test_type_fn: type={} result=%d", typeid(T).name(), is_type ? 1 : 0);
     return mk_val<value_bool>(is_type);
 }
 template<typename T, typename U>
 static value test_type_fn(const func_args & args) {
     args.ensure_count(1);
     bool is_type = is_val<T>(args.get_pos(0)) || is_val<U>(args.get_pos(0));
-    JJ_DEBUG("test_type_fn: type=%s or %s result=%d", typeid(T).name(), typeid(U).name(), is_type ? 1 : 0);
+    LOG_DEBUG("test_type_fn: type={} or {} result=%d", typeid(T).name(), typeid(U).name(), is_type ? 1 : 0);
     return mk_val<value_bool>(is_type);
 }
 template<typename T, typename U, typename V>
 static value test_type_fn(const func_args & args) {
     args.ensure_count(1);
     bool is_type = is_val<T>(args.get_pos(0)) || is_val<U>(args.get_pos(0)) || is_val<V>(args.get_pos(0));
-    JJ_DEBUG("test_type_fn: type=%s, %s or %s result=%d", typeid(T).name(), typeid(U).name(), typeid(V).name(), is_type ? 1 : 0);
+    LOG_DEBUG("test_type_fn: type={}, {} or {} result=%d", typeid(T).name(), typeid(U).name(), typeid(V).name(), is_type ? 1 : 0);
     return mk_val<value_bool>(is_type);
 }
 template<value_compare_op op>
@@ -362,7 +363,7 @@ const func_builtins & global_builtins() {
                     throw raised_exception("namespace() arguments must be kwargs");
                 }
                 auto kwarg = cast_val<value_kwarg>(arg);
-                JJ_DEBUG("namespace: adding key '%s'", kwarg->key.c_str());
+                LOG_DEBUG("namespace: adding key '{}'", kwarg->key.c_str());
                 out->insert(kwarg->key, kwarg->val);
             }
             return out;
@@ -466,7 +467,7 @@ const func_builtins & global_builtins() {
         {"test_is_defined", [](const func_args & args) -> value {
             args.ensure_count(1);
             bool res = !args.get_pos(0)->is_undefined();
-            JJ_DEBUG("test_is_defined: result=%d", res ? 1 : 0);
+            LOG_DEBUG("test_is_defined: result=%d", res ? 1 : 0);
             return mk_val<value_bool>(res);
         }},
         {"test_is_undefined", test_type_fn<value_undefined>},
@@ -1364,18 +1365,17 @@ bool value_compare(const value & a, const value & b, value_compare_op op) {
         return false;
     };
     auto result = cmp();
-    JJ_DEBUG("Comparing types: %s and %s result=%d", a->type().c_str(), b->type().c_str(), result);
+    LOG_DEBUG("Comparing types: {} and {} result=%d", a->type().c_str(), b->type().c_str(), result);
     return result;
 }
 
 template<>
 void global_from_json(context & ctx, const nlohmann::ordered_json & json_obj, bool mark_input) {
-    // printf("global_from_json: %s\n" , json_obj.dump(2).c_str());
     if (json_obj.is_null() || !json_obj.is_object()) {
         throw std::runtime_error("global_from_json: input JSON value must be an object");
     }
     for (auto it = json_obj.begin(); it != json_obj.end(); ++it) {
-        JJ_DEBUG("global_from_json: setting key '%s'", it.key().c_str());
+        LOG_DEBUG("global_from_json: setting key '{}'", it.key().c_str());
         ctx.set_val(it.key(), from_json(it.value(), mark_input));
     }
 }
@@ -1464,7 +1464,7 @@ static void value_to_json_internal(std::ostringstream & oss, const value & val, 
 std::string value_to_json(const value & val, int indent, const std::string_view item_sep, const std::string_view key_sep) {
     std::ostringstream oss;
     value_to_json_internal(oss, val, 0, indent, item_sep, key_sep);
-    JJ_DEBUG("value_to_json: result=%s", oss.str().c_str());
+    LOG_DEBUG("value_to_json: result={}", oss.str().c_str());
     return oss.str();
 }
 

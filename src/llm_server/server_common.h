@@ -13,19 +13,11 @@
 
 using json = nlohmann::ordered_json;
 
-#define SLT_DBG(slot, fmt, ...) LOG_DEBUG("slot %12.*s: id %2d | task %d | " fmt, 12, __func__, (slot).id, ((slot).task ? (slot).task->id : -1), __VA_ARGS__)
-#define SLT_TRC(slot, fmt, ...) LOG_TRACE("slot %12.*s: id %2d | task %d | " fmt, 12, __func__, (slot).id, ((slot).task ? (slot).task->id : -1), __VA_ARGS__)
-#define SLT_INF(slot, fmt, ...) LOG_INFO("slot %12.*s: id %2d | task %d | " fmt, 12, __func__, (slot).id, ((slot).task ? (slot).task->id : -1), __VA_ARGS__)
-#define SLT_WRN(slot, fmt, ...) LOG_WARN("slot %12.*s: id %2d | task %d | " fmt, 12, __func__, (slot).id, ((slot).task ? (slot).task->id : -1), __VA_ARGS__)
-#define SLT_ERR(slot, fmt, ...) LOG_ERROR("slot %12.*s: id %2d | task %d | " fmt, 12, __func__, (slot).id, ((slot).task ? (slot).task->id : -1), __VA_ARGS__)
-#define SLT_CNT(slot, fmt, ...) LOG_INFO(""                                 fmt,                                                                __VA_ARGS__)
-
-#define SRV_DBG(fmt, ...) LOG_DEBUG("srv  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
-#define SRV_TRC(fmt, ...) LOG_TRACE("srv  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
-#define SRV_INF(fmt, ...) LOG_INFO("srv  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
-#define SRV_WRN(fmt, ...) LOG_WARN("srv  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
-#define SRV_ERR(fmt, ...) LOG_ERROR("srv  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
-#define SRV_CNT(fmt, ...) LOG_INFO(""              fmt,               __VA_ARGS__)
+#define SLT_DBG(slot, fmt, ...) LOG_DEBUG("slot id {:2d} | task {:d} | " fmt, (slot).id, ((slot).task ? (slot).task->id : -1), __VA_ARGS__)
+#define SLT_TRC(slot, fmt, ...) LOG_TRACE("slot id {:2d} | task {:d} | " fmt, (slot).id, ((slot).task ? (slot).task->id : -1), __VA_ARGS__)
+#define SLT_INF(slot, fmt, ...) LOG_INFO("slot id {:2d} | task {:d} | "  fmt, (slot).id, ((slot).task ? (slot).task->id : -1), __VA_ARGS__)
+#define SLT_WRN(slot, fmt, ...) LOG_WARN("slot id {:2d} | task {:d} | "  fmt, (slot).id, ((slot).task ? (slot).task->id : -1), __VA_ARGS__)
+#define SLT_ERR(slot, fmt, ...) LOG_ERROR("slot id {:2d} | task {:d} | " fmt, (slot).id, ((slot).task ? (slot).task->id : -1), __VA_ARGS__)
 
 using raw_buffer = std::vector<uint8_t>;
 
@@ -36,7 +28,7 @@ static T json_value(const json & body, const std::string & key, const T & defaul
         try {
             return body.at(key);
         } catch (NLOHMANN_JSON_NAMESPACE::detail::type_error const & err) {
-            LOG_WARN("Wrong type supplied for parameter '%s'. Expected '%s', using default value: %s\n", key.c_str(), json(default_value).type_name(), err.what());
+            LOG_WARN("Wrong type supplied for parameter '{}'. Expected '{}', using default value: {}", key.c_str(), json(default_value).type_name(), err.what());
             return default_value;
         }
     } else {

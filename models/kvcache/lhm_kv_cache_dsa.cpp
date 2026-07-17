@@ -27,7 +27,7 @@ lhm_kv_cache_dsa::lhm_kv_cache_dsa(
     const  layer_reuse_cb & reuse) :
     hparams_lid(model.hparams), n_stream(unified ? 1 : n_seq_max) {
 
-    LOG_INFO("%s: creating main KV cache, size = %u cells\n", __func__, kv_size);
+    LOG_INFO("creating main KV cache, size = {:d} cells", kv_size);
 
     kv_mla = std::make_unique<lhm_kv_cache>(
             model, model.hparams, type_k, type_v,
@@ -44,7 +44,7 @@ lhm_kv_cache_dsa::lhm_kv_cache_dsa(
     hparams_lid.n_embd_head_k_full = model.hparams.indexer_head_size;
     hparams_lid.rope_type          = LHM_ROPE_TYPE_NEOX;
 
-    LOG_INFO("%s: creating indexer KV cache, size = %u cells\n", __func__, kv_size);
+    LOG_INFO("creating indexer KV cache, size = {:d} cells", kv_size);
 
     kv_lid = std::make_unique<lhm_kv_cache>(
             model, hparams_lid, type_k, type_v,

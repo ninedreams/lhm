@@ -725,13 +725,10 @@ void lhm_grammar_parser::print(FILE * file) {
             symbol_id_names[kv.second] = kv.first;
         }
         for (size_t i = 0, end = rules.size(); i < end; i++) {
-            // fprintf(file, "%zu: ", i);
-            // print_rule_binary(file, rules[i]);
             print_rule(file, uint32_t(i), rules[i], symbol_id_names);
-            // fprintf(file, "\n");
         }
     } catch (const std::exception & err) {
-        fprintf(stderr, "\n%s: error printing grammar: %s\n", __func__, err.what());
+        fprintf(stderr, "\n%s: error printing grammar: %s", err.what());
     }
 }
 
@@ -928,7 +925,7 @@ static void lhm_grammar_advance_stack(
             // end of alternate (LHM_GRETYPE_END, LHM_GRETYPE_ALT) or middle of char range
             // (LHM_GRETYPE_CHAR_ALT, LHM_GRETYPE_CHAR_RNG_UPPER); stack should never be left on
             // those
-            GGML_ABORT("fatal error");
+            LHM_ABORT("fatal error");
         }
     }
 }
@@ -1212,7 +1209,7 @@ struct lhm_grammar * lhm_grammar_init_impl(
 
     // Ensure that the grammar contains the start symbol
     if (parser.symbol_ids.find(grammar_root) == parser.symbol_ids.end()) {
-        LOG_ERROR("grammar does not contain a '%s' symbol\n", grammar_root);
+        LOG_ERROR("grammar does not contain a '{}' symbol", grammar_root);
         return nullptr;
     }
 
@@ -1241,7 +1238,7 @@ struct lhm_grammar * lhm_grammar_init_impl(
             continue;
         }
         if (lhm_grammar_detect_left_recursion(vec_rules, i, &rules_visited, &rules_in_progress, &rules_may_be_empty)) {
-            LOG_ERROR("unsupported grammar, left recursion detected for nonterminal at index %zu\n", i);
+            LOG_ERROR("unsupported grammar, left recursion detected for nonterminal at index %zu", i);
             return nullptr;
         }
     }
@@ -1389,7 +1386,7 @@ void lhm_grammar_accept_impl(struct lhm_grammar & grammar, lhm_token token) {
             grammar.awaiting_trigger = false;
             grammar.trigger_buffer.clear();
             lhm_grammar_accept_token(grammar, token, piece);
-            LOG_DEBUG("Grammar triggered on token %u (`%s`)", token, piece.c_str());
+            LOG_DEBUG("Grammar triggered on token {:d} (`{}`)", token, piece.c_str());
             return;
         } else {
             auto position = std::make_pair(grammar.trigger_buffer.size(), grammar.trigger_buffer.size() + piece.size());
@@ -1417,11 +1414,11 @@ void lhm_grammar_accept_impl(struct lhm_grammar & grammar, lhm_token token) {
                     auto constrained_str = grammar.trigger_buffer.substr(start);
                     grammar.trigger_buffer.clear();
                     grammar.trigger_buffer_positions.clear();
-                    LOG_DEBUG("Grammar triggered on regex: '%s'\n", constrained_str.c_str());
+                    LOG_DEBUG("Grammar triggered on regex: '{}'", constrained_str.c_str());
                     return;
                 }
             }
-            LOG_DEBUG("Grammar still awaiting trigger after token %d (`%s`)\n", token, piece.c_str());
+            LOG_DEBUG("Grammar still awaiting trigger after token {:d} (`{}`)", token, piece.c_str());
             return;
         }
     }
@@ -1432,7 +1429,7 @@ void lhm_grammar_accept_impl(struct lhm_grammar & grammar, lhm_token token) {
                 return;
             }
         }
-        GGML_ABORT("fatal error");
+        LHM_ABORT("fatal error");
     }
 
     lhm_grammar_accept_token(grammar, token, piece);

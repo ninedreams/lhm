@@ -690,19 +690,6 @@ bool set_process_priority(enum ggml_sched_priority prio);
 // String utils
 //
 
-#ifdef __GNUC__
-#    if defined(__MINGW32__) && !defined(__clang__)
-#        define LHM_COMMON_ATTRIBUTE_FORMAT(...) __attribute__((format(gnu_printf, __VA_ARGS__)))
-#    else
-#        define LHM_COMMON_ATTRIBUTE_FORMAT(...) __attribute__((format(printf, __VA_ARGS__)))
-#    endif
-#else
-#    define LHM_COMMON_ATTRIBUTE_FORMAT(...)
-#endif
-
-LHM_COMMON_ATTRIBUTE_FORMAT(1, 2)
-std::string string_format(const char * fmt, ...);
-
 std::string string_strip(const std::string & str);
 std::string string_get_sortable_timestamp();
 std::string string_lcs(std::string_view a, std::string_view b);
@@ -986,7 +973,7 @@ const char * const LLM_KV_SPLIT_TENSORS_COUNT = "split.tensors.count";
 const char * const LLM_FFN_EXPS_REGEX = "\\.ffn_(up|down|gate|gate_up)_(ch|)exps";
 
 inline std::string llm_ffn_exps_block_regex(int idx) {
-    return string_format("blk\\.%d%s", idx, LLM_FFN_EXPS_REGEX);
+    return fmt::format("blk\\.{}{}", idx, LLM_FFN_EXPS_REGEX);
 }
 
 inline lhm_model_tensor_buft_override llm_ffn_exps_cpu_override() {

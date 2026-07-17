@@ -203,7 +203,7 @@ struct common_sampler * common_sampler_init(const struct lhm_model * model, stru
 #ifdef LHM_USE_LLGUIDANCE
         grmr = lhm_sampler_init_llg(vocab, "lark", grammar_str.c_str());
 #else
-        GGML_ABORT("llguidance (cmake -DLHM_LLGUIDANCE=ON) is not enabled");
+        LHM_ABORT("llguidance (cmake -DLHM_LLGUIDANCE=ON) is not enabled");
 #endif // LHM_USE_LLGUIDANCE
     } else {
         std::vector<std::string> trigger_patterns;
@@ -275,7 +275,7 @@ struct common_sampler * common_sampler_init(const struct lhm_model * model, stru
                 // Some tokenizers will add a space before the first special token, need to exclude
                 continue;
             }
-            LOG_DEBUG("%s: prefill token: %d = %s\n", __func__, tokens[i], piece.c_str());
+            LOG_DEBUG("prefill token: {:d} = {}", tokens[i], piece.c_str());
             prefill_tokens.push_back(tokens[i]);
         }
     }
@@ -287,11 +287,10 @@ struct common_sampler * common_sampler_init(const struct lhm_model * model, stru
         try {
             for (const auto & token : prefill_tokens) {
                 lhm_sampler_accept(grmr, token);
-                LOG_DEBUG("%s: grammar accepted prefill token (%d)\n", __func__, token);
+                LOG_DEBUG("grammar accepted prefill token ({:d})", token);
             }
         } catch (std::exception &e) {
-            LOG_ERROR("%s: error initializing grammar sampler for grammar:\n%s\n\nGeneration prompt:\n'%s'\n", __func__,
-                common_grammar_value(params.grammar).c_str(), params.generation_prompt.c_str());
+            LOG_ERROR("error initializing grammar sampler for grammar:\n{}\n\nGeneration prompt:\n'{}'", common_grammar_value(params.grammar).c_str(), params.generation_prompt.c_str());
             throw e;
         }
     }
@@ -307,7 +306,7 @@ struct common_sampler * common_sampler_init(const struct lhm_model * model, stru
 
         for (const auto & token : prefill_tokens) {
             lhm_sampler_accept(rbudget, token);
-            LOG_DEBUG("%s: reasoning-budget accepted prefill token (%d)\n", __func__, token);
+            LOG_DEBUG("reasoning-budget accepted prefill token ({:d})", token);
         }
     }
 
@@ -391,13 +390,13 @@ struct common_sampler * common_sampler_init(const struct lhm_model * model, stru
     }
 
     if (grmr && params.backend_sampling) {
-        LOG_WARN("%s: backend sampling is not compatible with grammar, disabling\n", __func__);
+        LOG_WARN("backend sampling is not compatible with grammar, disabling");
 
         params.backend_sampling = false;
     }
 
     if (rbudget && params.backend_sampling) {
-        LOG_WARN("%s: backend sampling is not compatible with reasoning budget, disabling\n", __func__);
+        LOG_WARN("backend sampling is not compatible with reasoning budget, disabling");
 
         params.backend_sampling = false;
     }
@@ -502,8 +501,8 @@ void common_perf_print(const struct lhm_context * ctx, const struct common_sampl
         data = lhm_perf_sampler(gsmpl->chain);
 
         // note: the sampling time includes the samplers time + extra time spent in sampling
-        LOG_INFO("%s:    sampling time = %10.2f ms\n", __func__, t_sampling_ms);
-        LOG_INFO("%s:    samplers time = %10.2f ms / %5d tokens\n", __func__, data.t_sample_ms, data.n_sample);
+        LOG_INFO("   sampling time = {:10.2f} ms", t_sampling_ms);
+        LOG_INFO("   samplers time = {:10.2f} ms / {:5d} tokens", data.t_sample_ms, data.n_sample);
     }
 
     if (ctx) {
@@ -517,14 +516,12 @@ void common_perf_print(const struct lhm_context * ctx, const struct common_sampl
         const double t_unacc_ms = t_total_ms - (t_sampling_ms + data.t_p_eval_ms + data.t_eval_ms);
         const double t_unacc_pc = 100.0 * t_unacc_ms /  t_total_ms;
 
-        LOG_INFO("%s:        load time = %10.2f ms\n", __func__, data.t_load_ms);
-        LOG_INFO("%s: prompt eval time = %10.2f ms / %5d tokens (%8.2f ms per token, %8.2f tokens per second)\n",
-                __func__, data.t_p_eval_ms, data.n_p_eval, data.t_p_eval_ms / data.n_p_eval, 1e3 / data.t_p_eval_ms * data.n_p_eval);
-        LOG_INFO("%s:        eval time = %10.2f ms / %5d runs   (%8.2f ms per token, %8.2f tokens per second)\n",
-                __func__, data.t_eval_ms, data.n_eval, data.t_eval_ms / data.n_eval, 1e3 / data.t_eval_ms * data.n_eval);
-        LOG_INFO("%s:       total time = %10.2f ms / %5d tokens\n", __func__, (t_end_ms - data.t_start_ms), (data.n_p_eval + data.n_eval));
-        LOG_INFO("%s: unaccounted time = %10.2f ms / %5.1f %%      (total - sampling - prompt eval - eval) / (total)\n", __func__, t_unacc_ms, t_unacc_pc);
-        LOG_INFO("%s:    graphs reused = %10d\n", __func__, data.n_reused);
+        LOG_INFO("       load time = {:10.2f} ms", data.t_load_ms);
+        LOG_INFO("prompt eval time = {:10.2f} ms / {:5d} tokens ({:8.2f} ms per token, {:8.2f} tokens per second)", data.t_p_eval_ms, data.n_p_eval, data.t_p_eval_ms / data.n_p_eval, 1e3 / data.t_p_eval_ms * data.n_p_eval);
+        LOG_INFO("       eval time = {:10.2f} ms / {:5d} runs   ({:8.2f} ms per token, {:8.2f} tokens per second)", data.t_eval_ms, data.n_eval, data.t_eval_ms / data.n_eval, 1e3 / data.t_eval_ms * data.n_eval);
+        LOG_INFO("      total time = {:10.2f} ms / {:5d} tokens", (t_end_ms - data.t_start_ms), (data.n_p_eval + data.n_eval));
+        LOG_INFO("unaccounted time = {:10.2f} ms / {:5.1f} %      (total - sampling - prompt eval - eval) / (total)", t_unacc_ms, t_unacc_pc);
+        LOG_INFO("   graphs reused = {:10d}", data.n_reused);
 
         common_memory_breakdown_print(ctx);
     }
@@ -559,7 +556,7 @@ lhm_token common_sampler_sample(struct common_sampler * gsmpl, struct lhm_contex
         id = lhm_get_sampled_token_ith(ctx, idx);
 
         if (id != LHM_TOKEN_NULL) {
-            LOG_DEBUG("%s: Backend sampler selected token: '%d'. Will not run any CPU samplers\n", __func__, id);
+            LOG_DEBUG("Backend sampler selected token: '{:d}'. Will not run any CPU samplers", id);
 
             LHM_ASSERT(!gsmpl->grmr    && "using grammar in combination with backend sampling is not supported");
             LHM_ASSERT(!gsmpl->rbudget && "using reasoning budget in combination with backend sampling is not supported");
@@ -829,7 +826,7 @@ std::vector<common_sampler_type> common_sampler_types_from_names(const std::vect
             samplers.push_back(sampler->second);
             continue;
         }
-        LOG_WARN("%s: unable to match sampler by name '%s'\n", __func__, name_lower.c_str());
+        LOG_WARN("unable to match sampler by name '{}'", name_lower.c_str());
     }
 
     return samplers;
@@ -858,7 +855,7 @@ std::vector<common_sampler_type> common_sampler_types_from_chars(const std::stri
         if (sampler != sampler_name_map.end()) {
             samplers.push_back(sampler->second);
         } else {
-            LOG_WARN("%s: unable to match sampler by char '%c'\n", __func__, c);
+            LOG_WARN("unable to match sampler by char '{}'", c);
         }
     }
 

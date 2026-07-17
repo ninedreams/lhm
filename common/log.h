@@ -26,8 +26,8 @@ static const spdlog::level::level_enum default_log_level = spdlog::level::info;
 
 namespace lhm {
 
-static std::shared_ptr<spdlog::logger> g_logger; // global logger instance
-static spdlog::level::level_enum g_log_level;
+inline std::shared_ptr<spdlog::logger> g_logger; // global logger instance
+inline spdlog::level::level_enum g_log_level;
 
 enum log_colors {
   LOG_COLORS_AUTO = -1,
@@ -61,57 +61,53 @@ void flush_logger();
 }
 
 template<spdlog::level::level_enum Lvl, typename... Args>
-void lhm_log_impl(fmt::format_string<Args...> fmt, Args&&... args)
+void lhm_log_impl(const char* file, const char* func, int line,
+                  fmt::format_string<Args...> fmt, Args&&... args)
 {
     if constexpr (Lvl < spdlog::level::n_levels) {
         if (Lvl >= lhm::g_log_level && lhm::g_logger) {
+            auto formatted = fmt::format(fmt, std::forward<Args>(args)...);
+            auto msg = fmt::format("[{}:{}:{}] {}", file, func, line, formatted);
             if constexpr (Lvl == spdlog::level::trace) {
-                lhm::g_logger->trace(fmt, std::forward<Args>(args)...);
+                lhm::g_logger->trace(msg);
             } else if constexpr (Lvl == spdlog::level::debug) {
-                lhm::g_logger->debug(fmt, std::forward<Args>(args)...);
+                lhm::g_logger->debug(msg);
             } else if constexpr (Lvl == spdlog::level::info) {
-                lhm::g_logger->info(fmt, std::forward<Args>(args)...);
+                lhm::g_logger->info(msg);
             } else if constexpr (Lvl == spdlog::level::warn) {
-                lhm::g_logger->warn(fmt, std::forward<Args>(args)...);
+                lhm::g_logger->warn(msg);
             } else if constexpr (Lvl == spdlog::level::err) {
-                lhm::g_logger->error(fmt, std::forward<Args>(args)...);
+                lhm::g_logger->error(msg);
             } else if constexpr (Lvl == spdlog::level::critical) {
-                lhm::g_logger->critical(fmt, std::forward<Args>(args)...);
+                lhm::g_logger->critical(msg);
             }
         }
     }
 }
 
-#define LOG_TRACE(...) lhm_log_impl<spdlog::level::trace>(__VA_ARGS__)
-#define LOG_DEBUG(...) lhm_log_impl<spdlog::level::debug>(__VA_ARGS__)
-#define LOG_INFO(...) lhm_log_impl<spdlog::level::info>(__VA_ARGS__)
-#define LOG_WARN(...) lhm_log_impl<spdlog::level::warn>(__VA_ARGS__)
-#define LOG_ERROR(...) lhm_log_impl<spdlog::level::err>(__VA_ARGS__)
-#define LOG_CRIT(...) lhm_log_impl<spdlog::level::critical>(__VA_ARGS__)
-
-template<typename... Args>
-[[noreturn]] static void lhm_abort_impl(const char* file, int line, 
-                               fmt::format_string<Args...> fmt, Args&&... args) {
-    std::string content = fmt::format(fmt, std::forward<Args>(args)...);
-    LOG_CRIT("{}:{}: {}", file, line, content);
-    std::abort();
-}
+#define LOG_TRACE(...) lhm_log_impl<spdlog::level::trace>(__FILE__, __func__, __LINE__, __VA_ARGS__)
+#define LOG_DEBUG(...) lhm_log_impl<spdlog::level::debug>(__FILE__, __func__, __LINE__, __VA_ARGS__)
+#define LOG_INFO(...) lhm_log_impl<spdlog::level::info>(__FILE__, __func__, __LINE__, __VA_ARGS__)
+#define LOG_WARN(...) lhm_log_impl<spdlog::level::warn>(__FILE__, __func__, __LINE__, __VA_ARGS__)
+#define LOG_ERROR(...) lhm_log_impl<spdlog::level::err>(__FILE__, __func__, __LINE__, __VA_ARGS__)
+#define LOG_CRIT(...) lhm_log_impl<spdlog::level::critical>(__FILE__, __func__, __LINE__, __VA_ARGS__)
 
 #define LHM_ABORT(...)                                                  \
     do {                                                                \
-        lhm_abort_impl(__FILE__, __LINE__, __VA_ARGS__);                \
+        LOG_CRIT(__VA_ARGS__);                                          \
+        std::abort();                                                   \
     } while (0)
 
 #define LHM_ASSERT(x)                                                   \
     do {                                                                \
         if (!(x)) {                                                     \
-            LHM_ABORT("LHM_ASSERT(%s) failed", #x);                     \
+            LHM_ABORT("LHM_ASSERT({}) failed", #x);                     \
         }                                                               \
     } while (0)
 
 #define LHM_ASSERT_MSG(x, msg)                                          \
     do {                                                                \
         if (!(x)) {                                                     \
-            LHM_ABORT("LHM_ASSERT(%s) failed, msg: %s", #x, msg);       \
+            LHM_ABORT("LHM_ASSERT({}) failed, msg: {}", #x, msg);       \
         }                                                               \
     } while (0)

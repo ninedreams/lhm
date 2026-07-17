@@ -260,7 +260,7 @@ json server_chat_convert_responses_to_chatcmpl(const json & response_body) {
             const std::string type = json_value(resp_tool, "type", std::string());
             if (type != "function") {
                 // Non-function Responses tools have no Chat Completions equivalent.
-                SRV_WRN("unsupported Responses tool type '%s' skipped\n", type.c_str());
+                LOG_WARN("unsupported Responses tool type '{}' skipped", type.c_str());
                 continue;
             }
             resp_tool.erase("type");
@@ -318,7 +318,7 @@ static void normalize_anthropic_billing_header(std::string & system_text) {
             system_text[index_replace + i] = 'f';
         }
     } else {
-        LOG_ERROR("anthropic string not as expected: %s", system_text.c_str());
+        LOG_ERROR("anthropic string not as expected: {}", system_text.c_str());
     }
 }
 
@@ -604,7 +604,7 @@ json convert_transcriptions_to_chatcmpl(
         prompt = preset.user;
     }
     if (!language.empty()) {
-        prompt += string_format(" (language: %s)", language.c_str());
+        prompt += fmt::format(" (language: {})", language.c_str());
     }
     prompt += get_media_marker();
 

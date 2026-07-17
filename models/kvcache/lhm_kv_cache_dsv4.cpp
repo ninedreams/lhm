@@ -533,10 +533,7 @@ static lhm_kv_cache_dsv4_context::comp_plan dsv4_build_comp_plan(
         plan.state_persist_dst_idxs.push_back(row.dst);
     }
 
-    LOG_DEBUG("%s: ratio=%u, n_tokens=%u, state_persist_dst=%s, state_write_pos=%s\n",
-            __func__, ratio, ubatch.n_tokens,
-            dsv4_plan_positions(plan.state_persist_dst_idxs).c_str(),
-            dsv4_plan_positions(plan.state_write_pos).c_str());
+    LOG_DEBUG("ratio={:d}, n_tokens={:d}, state_persist_dst={}, state_write_pos={}", ratio, ubatch.n_tokens, dsv4_plan_positions(plan.state_persist_dst_idxs).c_str(), dsv4_plan_positions(plan.state_write_pos).c_str());
 
     return plan;
 }
@@ -740,7 +737,7 @@ lhm_dsv4_comp_state::lhm_dsv4_comp_state(
             dev_name = ggml_backend_dev_name(dev);
         }
 
-        LOG_DEBUG("%s: layer %3d: dev = %s\n", __func__, il, dev_name);
+        LOG_DEBUG("layer {:3d}: dev = {}", il, dev_name);
 
         ggml_context * ctx = ctx_for_buft(buft);
         if (!ctx) {
@@ -766,14 +763,12 @@ lhm_dsv4_comp_state::lhm_dsv4_comp_state(
 
         ggml_backend_buffer_clear(buf, 0);
 
-        LOG_INFO("%s: %10s DSV4 %s state buffer size = %8.2f MiB\n",
-                __func__, ggml_backend_buffer_name(buf), name, ggml_backend_buffer_get_size(buf)/1024.0/1024.0);
+        LOG_INFO("{:10s} DSV4 {} state buffer size = {:8.2f} MiB", ggml_backend_buffer_name(buf), name, ggml_backend_buffer_get_size(buf)/1024.0/1024.0);
 
         ctxs_bufs.emplace_back(std::move(ctx), buf);
     }
 
-    LOG_INFO("%s: %s ratio = %u, state = %u x %u, streams = %u, layers = %zu, size = %7.2f MiB\n",
-            __func__, name, ratio, state_size, n_embd_state, n_stream, layers.size(), total_size()/1024.0/1024.0);
+    LOG_INFO("{} ratio = {:d}, state = {:d} x {:d}, streams = {:d}, layers = {:d}, size = {:7.2f} MiB", name, ratio, state_size, n_embd_state, n_stream, layers.size(), total_size()/1024.0/1024.0);
 }
 
 void lhm_dsv4_comp_state::clear(bool data) {
@@ -945,7 +940,7 @@ lhm_kv_cache_dsv4::lhm_kv_cache_dsv4(
     // Keep DSV4 KV/state streams per sequence even when public KV mode is unified.
     const bool unified_raw = false;
 
-    LOG_INFO("%s: creating DSV4 raw KV cache\n", __func__);
+    LOG_INFO("creating DSV4 raw KV cache");
 
     dsv4_make_k_only(hparams_raw);
 
@@ -983,43 +978,40 @@ lhm_kv_cache_dsv4::lhm_kv_cache_dsv4(
 
     const bool unified_compressed = false;
 
-    LOG_INFO("%s: creating DSV4 CSA compressed KV cache, size = %u cells\n",
-            __func__, dsv4_comp_size(kv_size, DSV4_CSA_RATIO));
+    LOG_INFO("creating DSV4 CSA compressed KV cache, size = {:d} cells", dsv4_comp_size(kv_size, DSV4_CSA_RATIO));
 
     kv_csa = std::make_unique<lhm_kv_cache>(
             model, hparams_csa, type_k, type_v,
             v_trans, offload, unified_compressed, GGML_PAD(dsv4_comp_size(kv_size, DSV4_CSA_RATIO), 256u), n_seq_max, n_pad,
             0, LHM_SWA_TYPE_NONE, nullptr, filter_csa, nullptr, nullptr);
 
-    LOG_INFO("%s: creating DSV4 HCA compressed KV cache, size = %u cells\n",
-            __func__, dsv4_comp_size(kv_size, DSV4_HCA_RATIO));
+    LOG_INFO("creating DSV4 HCA compressed KV cache, size = {:d} cells", dsv4_comp_size(kv_size, DSV4_HCA_RATIO));
 
     kv_hca = std::make_unique<lhm_kv_cache>(
             model, hparams_hca, type_k, type_v,
             v_trans, offload, unified_compressed, GGML_PAD(dsv4_comp_size(kv_size, DSV4_HCA_RATIO), 256u), n_seq_max, n_pad,
             0, LHM_SWA_TYPE_NONE, nullptr, filter_hca, nullptr, nullptr);
 
-    LOG_INFO("%s: creating DSV4 lightning-indexer KV cache, size = %u cells\n",
-            __func__, dsv4_comp_size(kv_size, DSV4_CSA_RATIO));
+    LOG_INFO("creating DSV4 lightning-indexer KV cache, size = {:d} cells", dsv4_comp_size(kv_size, DSV4_CSA_RATIO));
 
     kv_lid = std::make_unique<lhm_kv_cache>(
             model, hparams_lid, type_k, type_v,
             v_trans, offload, unified_compressed, GGML_PAD(dsv4_comp_size(kv_size, DSV4_CSA_RATIO), 256u), n_seq_max, n_pad,
             0, LHM_SWA_TYPE_NONE, nullptr, filter_csa, nullptr, nullptr);
 
-    LOG_INFO("%s: creating DSV4 CSA compressor state\n", __func__);
+    LOG_INFO("creating DSV4 CSA compressor state");
 
     csa_state = std::make_unique<lhm_dsv4_comp_state>(
             model, offload, unified_compressed, n_seq_max, DSV4_CSA_RATIO, 2*DSV4_CSA_RATIO,
             2*model.hparams.n_embd_head_k(), "csa", filter_csa);
 
-    LOG_INFO("%s: creating DSV4 HCA compressor state\n", __func__);
+    LOG_INFO("creating DSV4 HCA compressor state");
 
     hca_state = std::make_unique<lhm_dsv4_comp_state>(
             model, offload, unified_compressed, n_seq_max, DSV4_HCA_RATIO, DSV4_HCA_RATIO,
             model.hparams.n_embd_head_k(), "hca", filter_hca);
 
-    LOG_INFO("%s: creating DSV4 lightning-indexer compressor state\n", __func__);
+    LOG_INFO("creating DSV4 lightning-indexer compressor state");
 
     lid_state = std::make_unique<lhm_dsv4_comp_state>(
             model, offload, unified_compressed, n_seq_max, DSV4_CSA_RATIO, 2*DSV4_CSA_RATIO,

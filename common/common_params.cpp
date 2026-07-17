@@ -20,7 +20,7 @@ struct lhm_model_tensor_buft_override;
 static std::string read_file_contents(const std::string & fname) {
     std::ifstream file(fname);
     if (!file) {
-        throw std::runtime_error(string_format("error: failed to open file '%s'\n", fname.c_str()));
+        throw std::runtime_error(fmt::format("error: failed to open file '{}'", fname.c_str()));
     }
     std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     file.close();
@@ -42,7 +42,7 @@ static bool is_set(const std::string & val) {
 static bool parse_bool_string(const std::string & val) {
     if (val == "1" || val == "true" || val == "yes" || val == "on") return true;
     if (val == "0" || val == "false" || val == "no" || val == "off") return false;
-    throw std::invalid_argument(string_format("invalid boolean value: '%s'", val.c_str()));
+    throw std::invalid_argument(fmt::format("invalid boolean value: '{}'", val.c_str()));
 }
 
 static ggml_type common_ggml_type_from_name(const std::string & s) {
@@ -283,7 +283,7 @@ void fill_common_params(common_params & params) {
         } else if (FLAGS_flash_attn == "auto") {
             params.flash_attn_type = LHM_FLASH_ATTN_TYPE_AUTO;
         } else {
-            throw std::runtime_error(string_format("error: unknown value for --flash-attn: '%s'\n", FLAGS_flash_attn.c_str()));
+            throw std::runtime_error(fmt::format("error: unknown value for --flash-attn: '{}'", FLAGS_flash_attn.c_str()));
         }
     }
 
@@ -329,7 +329,7 @@ void fill_common_params(common_params & params) {
         for (const auto & item : parse_csv_row(FLAGS_in_file)) {
             std::ifstream file(item);
             if (!file) {
-                throw std::runtime_error(string_format("error: failed to open file '%s'\n", item.c_str()));
+                throw std::runtime_error(fmt::format("error: failed to open file '{}'", item.c_str()));
             }
             params.in_files.push_back(item);
         }
@@ -339,7 +339,7 @@ void fill_common_params(common_params & params) {
     if (is_set(FLAGS_binary_file)) {
         std::ifstream file(FLAGS_binary_file, std::ios::binary);
         if (!file) {
-            throw std::runtime_error(string_format("error: failed to open file '%s'\n", FLAGS_binary_file.c_str()));
+            throw std::runtime_error(fmt::format("error: failed to open file '{}'", FLAGS_binary_file.c_str()));
         }
         params.prompt_file = FLAGS_binary_file;
         std::ostringstream ss;
@@ -482,7 +482,7 @@ void fill_common_params(common_params & params) {
 
     if (FLAGS_repeat_last_n != 64) {
         if (FLAGS_repeat_last_n < -1) {
-            throw std::runtime_error(string_format("error: invalid repeat-last-n = %d\n", FLAGS_repeat_last_n));
+            throw std::runtime_error(fmt::format("error: invalid repeat-last-n = {}", FLAGS_repeat_last_n));
         }
         params.sampling.penalty_last_n = FLAGS_repeat_last_n;
         params.sampling.n_prev = std::max(params.sampling.n_prev, params.sampling.penalty_last_n);
@@ -519,7 +519,7 @@ void fill_common_params(common_params & params) {
 
     if (FLAGS_dry_penalty_last_n != -1) {
         if (FLAGS_dry_penalty_last_n < -1) {
-            throw std::runtime_error(string_format("error: invalid dry-penalty-last-n = %d\n", FLAGS_dry_penalty_last_n));
+            throw std::runtime_error(fmt::format("error: invalid dry-penalty-last-n = {}", FLAGS_dry_penalty_last_n));
         }
         params.sampling.dry_penalty_last_n = FLAGS_dry_penalty_last_n;
     }
@@ -614,7 +614,7 @@ void fill_common_params(common_params & params) {
         } else if (FLAGS_pooling == "last") {
             params.pooling_type = LHM_POOLING_TYPE_LAST;
         } else {
-            throw std::invalid_argument(string_format("unknown pooling type: %s", FLAGS_pooling.c_str()));
+            throw std::invalid_argument(fmt::format("unknown pooling type: {}", FLAGS_pooling.c_str()));
         }
     }
 
@@ -624,7 +624,7 @@ void fill_common_params(common_params & params) {
         } else if (FLAGS_attention == "non-causal") {
             params.attention_type = LHM_ATTENTION_TYPE_NON_CAUSAL;
         } else {
-            throw std::invalid_argument(string_format("unknown attention type: %s", FLAGS_attention.c_str()));
+            throw std::invalid_argument(fmt::format("unknown attention type: {}", FLAGS_attention.c_str()));
         }
     }
 
@@ -636,7 +636,7 @@ void fill_common_params(common_params & params) {
         } else if (FLAGS_rope_scaling == "yarn") {
             params.rope_scaling_type = LHM_ROPE_SCALING_TYPE_YARN;
         } else {
-            throw std::invalid_argument(string_format("unknown rope scaling type: %s", FLAGS_rope_scaling.c_str()));
+            throw std::invalid_argument(fmt::format("unknown rope scaling type: {}", FLAGS_rope_scaling.c_str()));
         }
     }
 
@@ -752,7 +752,7 @@ void fill_common_params(common_params & params) {
         } else if (FLAGS_numa == "1") {
             params.numa = GGML_NUMA_STRATEGY_DISTRIBUTE;
         } else {
-            throw std::invalid_argument(string_format("unknown NUMA strategy: %s", FLAGS_numa.c_str()));
+            throw std::invalid_argument(fmt::format("unknown NUMA strategy: {}", FLAGS_numa.c_str()));
         }
     }
 
@@ -792,7 +792,7 @@ void fill_common_params(common_params & params) {
         } else if (FLAGS_split_mode == "none") {
             params.split_mode = LHM_SPLIT_MODE_NONE;
         } else {
-            throw std::invalid_argument(string_format("unknown split mode: %s", FLAGS_split_mode.c_str()));
+            throw std::invalid_argument(fmt::format("unknown split mode: {}", FLAGS_split_mode.c_str()));
         }
     }
 
@@ -856,7 +856,7 @@ void fill_common_params(common_params & params) {
         params.lora_adapters.push_back(lora);
     }
 
-    // --lora-scaled (format: PATH SCALE)
+    // --lora-scaled (fmt::format: PATH SCALE)
     if (is_set(FLAGS_lora_scaled)) {
         auto parts = string_split<std::string>(FLAGS_lora_scaled, ' ');
         if (parts.size() >= 2) {
@@ -876,7 +876,7 @@ void fill_common_params(common_params & params) {
     //     params.control_vectors.push_back(cv);
     // }
 
-    // --control-vector-scaled (format: PATH SCALE)
+    // --control-vector-scaled (fmt::format: PATH SCALE)
     // if (is_set(FLAGS_control_vector_scaled)) {
     //     auto parts = string_split<std::string>(FLAGS_control_vector_scaled, ' ');
     //     if (parts.size() >= 2) {
@@ -887,7 +887,7 @@ void fill_common_params(common_params & params) {
     //     }
     // }
 
-    // --control-vector-layer-range (format: START END)
+    // --control-vector-layer-range (fmt::format: START END)
     if (is_set(FLAGS_control_vector_layer_range)) {
         auto parts = string_split<std::string>(FLAGS_control_vector_layer_range, ' ');
         if (parts.size() >= 2) {

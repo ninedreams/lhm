@@ -65,7 +65,7 @@ static void common_reasoning_budget_accept(struct lhm_sampler * smpl, lhm_token 
             if (ctx->start_matcher.advance(token)) {
                 ctx->state = REASONING_BUDGET_COUNTING;
                 ctx->remaining = ctx->budget;
-                LOG_INFO("reasoning-budget: activated, budget=%d tokens\n", ctx->budget);
+                LOG_INFO("reasoning-budget: activated, budget={:d} tokens", ctx->budget);
 
                 if (ctx->remaining <= 0) {
                     ctx->state = REASONING_BUDGET_FORCING;
@@ -128,7 +128,7 @@ static void common_reasoning_budget_accept(struct lhm_sampler * smpl, lhm_token 
                 ctx->state = REASONING_BUDGET_COUNTING;
                 ctx->remaining = ctx->budget;
                 ctx->end_matcher.reset();
-                LOG_INFO("reasoning-budget: re-activated on new start tag, budget=%d tokens\n", ctx->budget);
+                LOG_INFO("reasoning-budget: re-activated on new start tag, budget={:d} tokens", ctx->budget);
 
                 if (ctx->remaining <= 0) {
                     ctx->state = REASONING_BUDGET_FORCING;

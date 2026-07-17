@@ -5,15 +5,15 @@
 
 #include <chrono>
 
-#define QUE_INF(fmt, ...) LOG_INFO("que  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
-#define QUE_WRN(fmt, ...) LOG_WARN("que  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
-#define QUE_ERR(fmt, ...) LOG_ERROR("que  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
-#define QUE_DBG(fmt, ...) LOG_DEBUG("que  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
+#define QUE_INF(fmt, ...) LOG_INFO("que " fmt, __VA_ARGS__)
+#define QUE_WRN(fmt, ...) LOG_WARN("que " fmt, __VA_ARGS__)
+#define QUE_ERR(fmt, ...) LOG_ERROR("que " fmt, __VA_ARGS__)
+#define QUE_DBG(fmt, ...) LOG_DEBUG("que " fmt, __VA_ARGS__)
 
-#define RES_INF(fmt, ...) LOG_INFO("res  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
-#define RES_WRN(fmt, ...) LOG_WARN("res  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
-#define RES_ERR(fmt, ...) LOG_ERROR("res  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
-#define RES_DBG(fmt, ...) LOG_DEBUG("res  %12.*s: " fmt, 12, __func__, __VA_ARGS__)
+#define RES_INF(fmt, ...) LOG_INFO("res " fmt, __VA_ARGS__)
+#define RES_WRN(fmt, ...) LOG_WARN("res " fmt, __VA_ARGS__)
+#define RES_ERR(fmt, ...) LOG_ERROR("res " fmt, __VA_ARGS__)
+#define RES_DBG(fmt, ...) LOG_DEBUG("res " fmt, __VA_ARGS__)
 
 //
 // server_queue
@@ -27,7 +27,7 @@ int server_queue::post(server_task && task, bool front) {
         cleanup_pending_task(task.id_target);
     }
     const int task_id = task.id;
-    QUE_DBG("new task, id = %d, front = %d\n", task_id, front);
+    QUE_DBG("new task, id = {:d}, front = {:d}", task_id, front);
     if (front) {
         queue_tasks.push_front(std::move(task));
     } else {
@@ -48,7 +48,7 @@ int server_queue::post(std::vector<server_task> && tasks, bool front) {
         if (task.type == SERVER_TASK_TYPE_CANCEL) {
             cleanup_pending_task(task.id_target);
         }
-        QUE_DBG("new task, id = %d/%d, front = %d\n", task.id, (int) tasks.size(), front);
+        QUE_DBG("new task, id = {:d}/{:d}, front = {:d}", task.id, (int) tasks.size(), front);
         if (front) {
             queue_tasks.push_front(std::move(task));
         } else {
@@ -62,7 +62,7 @@ int server_queue::post(std::vector<server_task> && tasks, bool front) {
 
 void server_queue::defer(server_task && task) {
     std::unique_lock<std::mutex> lock(mutex_tasks);
-    QUE_DBG("defer task, id = %d\n", task.id);
+    QUE_DBG("defer task, id = {:d}", task.id);
     queue_tasks_deferred.push_back(std::move(task));
     time_last_task = ggml_time_ms();
     condition_tasks.notify_one();
@@ -81,7 +81,7 @@ void server_queue::pop_deferred_task(int id_slot) {
         bool found = false;
         for (auto it = queue_tasks_deferred.begin(); it != queue_tasks_deferred.end(); ++it) {
             if (it->id_slot == id_slot) {
-                QUE_DBG("pop deferred task (use slot %d), id_task = %d\n", id_slot, it->id);
+                QUE_DBG("pop deferred task (use slot {:d}), id_task = {:d}", id_slot, it->id);
                 queue_tasks.emplace_front(std::move(*it));
                 queue_tasks_deferred.erase(it);
                 found = true;
@@ -90,7 +90,7 @@ void server_queue::pop_deferred_task(int id_slot) {
         }
         // if not tasks found using the slot, just pop the first deferred task (default behavior)
         if (!found) {
-            QUE_DBG("pop deferred task, id_task = %d\n", queue_tasks_deferred.front().id);
+            QUE_DBG("pop deferred task, id_task = {:d}", queue_tasks_deferred.front().id);
             queue_tasks.emplace_front(std::move(queue_tasks_deferred.front()));
             queue_tasks_deferred.pop_front();
         }
@@ -105,11 +105,11 @@ void server_queue::wait_until_no_sleep() {
         return;
     } else {
         if (!req_stop_sleeping) {
-            QUE_DBG("%s", "requesting to stop sleeping\n");
+            QUE_DBG("{}", "requesting to stop sleeping\n");
             req_stop_sleeping = true;
             condition_tasks.notify_one(); // only main thread is waiting on this
         }
-        QUE_DBG("%s", "waiting until no sleep\n");
+        QUE_DBG("{}", "waiting until no sleep\n");
         condition_tasks.wait(lock, [&]{
             return !sleeping;
         });
@@ -137,12 +137,12 @@ void server_queue::start_loop(int64_t idle_sleep_ms) {
     };
 
     while (true) {
-        QUE_DBG("%s", "processing new tasks\n");
+        QUE_DBG("{}", "processing new tasks\n");
 
         while (true) {
             std::unique_lock<std::mutex> lock(mutex_tasks);
             if (!running) {
-                QUE_DBG("%s", "terminate\n");
+                QUE_DBG("{}", "terminate\n");
                 return;
             }
             if (queue_tasks.empty()) {
@@ -153,11 +153,11 @@ void server_queue::start_loop(int64_t idle_sleep_ms) {
             queue_tasks.pop_front();
             lock.unlock();
 
-            QUE_DBG("processing task, id = %d\n", task.id);
+            QUE_DBG("processing task, id = {:d}", task.id);
             callback_new_task(std::move(task));
         }
         // all tasks in the current loop is processed, slots data is now ready
-        QUE_DBG("%s", "update slots\n");
+        QUE_DBG("{}", "update slots\n");
 
         // this will run the main inference process for all slots
         callback_update_slots();
@@ -167,7 +167,7 @@ void server_queue::start_loop(int64_t idle_sleep_ms) {
             time_last_task = ggml_time_ms();
         }
 
-        QUE_DBG("%s", "waiting for new tasks\n");
+        QUE_DBG("{}", "waiting for new tasks\n");
         while (true) {
             std::unique_lock<std::mutex> lock(mutex_tasks);
             if (!running || !queue_tasks.empty()) {
@@ -176,7 +176,7 @@ void server_queue::start_loop(int64_t idle_sleep_ms) {
 
             // no tasks, check for sleeping state
             if (should_sleep()) {
-                QUE_INF("%s", "entering sleeping state\n");
+                QUE_INF("{}", "entering sleeping state\n");
                 sleeping = true;
                 callback_sleeping_state(true);
                 req_stop_sleeping = false;
@@ -187,7 +187,7 @@ void server_queue::start_loop(int64_t idle_sleep_ms) {
                 if (!running) { // may changed during sleep
                     break; // terminate
                 }
-                QUE_INF("%s", "exiting sleeping state\n");
+                QUE_INF("{}", "exiting sleeping state\n");
                 req_stop_sleeping = false;
                 callback_sleeping_state(false);
                 sleeping = false;
@@ -226,7 +226,7 @@ void server_queue::cleanup_pending_task(int id_target) {
 //
 
 void server_response::add_waiting_task_id(int id_task) {
-    RES_DBG("add task %d to waiting list. current waiting = %d (before add)\n", id_task, (int) waiting_task_ids.size());
+    RES_DBG("add task {:d} to waiting list. current waiting = {:d} (before add)", id_task, (int) waiting_task_ids.size());
 
     std::unique_lock<std::mutex> lock(mutex_results);
     waiting_task_ids.insert(id_task);
@@ -236,13 +236,13 @@ void server_response::add_waiting_task_ids(const std::unordered_set<int> & id_ta
     std::unique_lock<std::mutex> lock(mutex_results);
 
     for (const auto & id_task : id_tasks) {
-        RES_DBG("add task %d to waiting list. current waiting = %d (before add)\n", id_task, (int) waiting_task_ids.size());
+        RES_DBG("add task {:d} to waiting list. current waiting = {:d} (before add)", id_task, (int) waiting_task_ids.size());
         waiting_task_ids.insert(id_task);
     }
 }
 
 void server_response::remove_waiting_task_id(int id_task) {
-    RES_DBG("remove task %d from waiting list. current waiting = %d (before remove)\n", id_task, (int) waiting_task_ids.size());
+    RES_DBG("remove task {:d} from waiting list. current waiting = {:d} (before remove)", id_task, (int) waiting_task_ids.size());
 
     std::unique_lock<std::mutex> lock(mutex_results);
     waiting_task_ids.erase(id_task);
@@ -258,7 +258,7 @@ void server_response::remove_waiting_task_ids(const std::unordered_set<int> & id
     std::unique_lock<std::mutex> lock(mutex_results);
 
     for (const auto & id_task : id_tasks) {
-        RES_DBG("remove task %d from waiting list. current waiting = %d (before remove)\n", id_task, (int) waiting_task_ids.size());
+        RES_DBG("remove task {:d} from waiting list. current waiting = {:d} (before remove)", id_task, (int) waiting_task_ids.size());
         waiting_task_ids.erase(id_task);
     }
 }
@@ -268,7 +268,7 @@ server_task_result_ptr server_response::recv(const std::unordered_set<int> & id_
         std::unique_lock<std::mutex> lock(mutex_results);
         condition_results.wait(lock, [&]{
             if (!running) {
-                RES_DBG("%s : queue result stop\n", "recv");
+                RES_DBG("{} queue result stop", "recv");
                 std::terminate(); // we cannot return here since the caller is HTTP code
             }
             return !queue_results.empty();
@@ -300,7 +300,7 @@ server_task_result_ptr server_response::recv_with_timeout(const std::unordered_s
 
         std::cv_status cr_res = condition_results.wait_for(lock, std::chrono::seconds(timeout));
         if (!running) {
-            RES_DBG("%s : queue result stop\n", __func__);
+            RES_DBG("queue result {}", "stop");
             std::terminate(); // we cannot return here since the caller is HTTP code
         }
         if (cr_res == std::cv_status::timeout) {
@@ -317,12 +317,12 @@ server_task_result_ptr server_response::recv(int id_task) {
 }
 
 void server_response::send(server_task_result_ptr && result) {
-    RES_DBG("sending result for task id = %d\n", result->id);
+    RES_DBG("sending result for task id = {:d}", result->id);
 
     std::unique_lock<std::mutex> lock(mutex_results);
     for (const auto & id_task : waiting_task_ids) {
         if (result->id == id_task) {
-            RES_DBG("task id = %d pushed to result queue\n", result->id);
+            RES_DBG("task id = {:d} pushed to result queue", result->id);
 
             queue_results.emplace_back(std::move(result));
             condition_results.notify_all();
@@ -334,7 +334,7 @@ void server_response::send(server_task_result_ptr && result) {
 void server_response::broadcast(server_task_result_ptr && result) {
     std::unique_lock<std::mutex> lock(mutex_results);
     for (const auto & id_task : waiting_task_ids) {
-        RES_DBG("task id = %d pushed to result queue\n", id_task);
+        RES_DBG("task id = {:d} pushed to result queue", id_task);
         server_task_result_ptr res_copy(result->clone());
         res_copy->id = id_task; // override id with target task id
         queue_results.emplace_back(std::move(res_copy));
@@ -397,7 +397,7 @@ server_task_result_ptr server_response_reader::next(const std::function<bool()> 
         } else {
             if (result->is_error()) {
                 stop(); // cancel remaining tasks
-                SRV_DBG("%s", "received error result, stopping further processing\n");
+                LOG_DEBUG("{}", "received error result, stopping further processing\n");
                 return result;
             }
             if (!states.empty()) {
@@ -446,7 +446,7 @@ void server_response_reader::stop() {
         std::vector<server_task> cancel_tasks;
         cancel_tasks.reserve(id_tasks.size());
         for (const auto & id_task : id_tasks) {
-            SRV_WRN("cancel task, id_task = %d\n", id_task);
+            LOG_WARN("cancel task, id_task = {:d}", id_task);
             server_task task(SERVER_TASK_TYPE_CANCEL);
             task.id_target = id_task;
             queue_results.remove_waiting_task_id(id_task);
@@ -455,6 +455,6 @@ void server_response_reader::stop() {
         // push to beginning of the queue, so it has highest priority
         queue_tasks.post(std::move(cancel_tasks), true);
     } else {
-        SRV_DBG("%s", "all tasks already finished, no need to cancel\n");
+        LOG_DEBUG("{}", "all tasks already finished, no need to cancel\n");
     }
 }

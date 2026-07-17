@@ -100,9 +100,7 @@ lhm_tokens common_ngram_simple_draft(
     if (copy_max < n_draft_min) {
         return draft_tokens;
     }
-    LOG_DEBUG("%s: #tokens = %zu: found matching pattern at pos %zu, length %zu, draft length %zu\n",
-            __func__, cur_len,
-            match_pos, pattern.size(), copy_max);
+    LOG_DEBUG("#tokens = {:d}: found matching pattern at pos {:d}, length {:d}, draft length {:d}", cur_len, match_pos, pattern.size(), copy_max);
 
     draft_tokens.reserve(copy_max);
     for (size_t j = 0; j < copy_max; ++j) {
@@ -122,8 +120,7 @@ void common_ngram_map_begin(
     common_ngram_map & map, const lhm_tokens & tokens) {
     size_t size_begin = tokens.size();
 
-    LOG_DEBUG("%s: begin, idx_last_draft=%zu, new begin=%zu, #keys=%zu\n", __func__,
-            map.idx_last_check, size_begin, map.keys.size());
+    LOG_DEBUG("begin, idx_last_draft={:d}, new begin={:d}, #keys={:d}", map.idx_last_check, size_begin, map.keys.size());
 
     size_t count_map_entries_upd = 0;
     if (!map.key_map.empty() && size_begin < map.idx_last_check) {
@@ -143,8 +140,7 @@ void common_ngram_map_begin(
             if (count_nonzero == 0) {
                 min_idx = 0;
             }
-            LOG_INFO("%s: key_map stats: entries=%zu, min_idx=%u, max_idx=%u, key_map_last_idx=%u\n",
-                    __func__, count_nonzero, min_idx, max_idx, map.key_map_last_idx);
+            LOG_INFO("key_map stats: entries={:d}, min_idx={:d}, max_idx={:d}, key_map_last_idx={:d}", count_nonzero, min_idx, max_idx, map.key_map_last_idx);
         }
 
         // Update the map from hash to key index (clear outdated entries).
@@ -170,7 +166,7 @@ void common_ngram_map_begin(
             common_ngram_map_key & key = map.keys[i];
             if (key.key_idx >= map.size_last_begin) {
                 // Delete the key.
-                LOG_DEBUG("%s: delete key %d at index %zu (>= size_last_begin=%zu)\n", __func__, i, key.key_idx, map.size_last_begin);
+                LOG_DEBUG("delete key {:d} at index {:d} (>= size_last_begin={:d})", i, key.key_idx, map.size_last_begin);
                 map.keys.erase(map.keys.begin() + i);
                 count_keys_del++;
                 continue;
@@ -197,15 +193,13 @@ void common_ngram_map_begin(
             }
             if (key.values[0].value_idx == 0) {
                 // No values left, delete the key.
-                LOG_DEBUG("%s: delete key %d at index %zu (no values left)\n", __func__, i, key.key_idx);
+                LOG_DEBUG("delete key {:d} at index {:d} (no values left)", i, key.key_idx);
                 map.keys.erase(map.keys.begin() + i);
                 count_keys_del++;
             }
         }
 
-        LOG_INFO("%s: refresh map: idx_last_draft=%zu, new begin=%zu, #keys_checked=%zu, #keys_del=%zu, #values_del=%zu, #hashes_upd=%zu\n", __func__,
-                map.idx_last_check, size_begin,
-                count_keys, count_keys_del, count_values_del, count_map_entries_upd);
+        LOG_INFO("refresh map: idx_last_draft={:d}, new begin={:d}, #keys_checked={:d}, #keys_del={:d}, #values_del={:d}, #hashes_upd={:d}", map.idx_last_check, size_begin, count_keys, count_keys_del, count_values_del, count_map_entries_upd);
     }
 
     map.idx_last_check = size_begin;
@@ -228,12 +222,12 @@ void common_ngram_map_draft(common_ngram_map & map,
     }
     if (cur_len >= static_cast<size_t>(UINT32_MAX)) {
         // key_map uses uint32_t instead of size_t.
-        GGML_ABORT("%s: cur_len exceeds UINT32_MAX: %zu", __func__, cur_len);
+        LHM_ABORT("cur_len exceeds UINT32_MAX: {}", cur_len);
     }
 
     if (map.idx_last_check > cur_len) {
         // Should not happen because of common_ngram_map_begin().
-        GGML_ABORT("%s: map.idx_last_check > cur_len: %zu > %zu", __func__, map.idx_last_check, cur_len);
+        LHM_ABORT("map.idx_last_check > cur_len: {} > {}", map.idx_last_check, cur_len);
     }
     map.idx_last_check = cur_len;
 
@@ -248,7 +242,7 @@ void common_ngram_map_draft(common_ngram_map & map,
     // search for the key in the map
     size_t match_pos = 0;
     if (map.size_last_begin > cur_len) {
-        GGML_ABORT("%s: map.size_last_begin > cur_len: %zu > %zu", __func__, map.size_last_begin, cur_len);
+        LHM_ABORT("map.size_last_begin > cur_len: %zu > %zu", map.size_last_begin, cur_len);
     }
     if (!map.key_map.empty()) {
         // Search for the key in the map key_map from hash of ngrams to index of ngram.
@@ -263,7 +257,7 @@ void common_ngram_map_draft(common_ngram_map & map,
                     break;
                 }
             }
-            LOG_DEBUG("%s: key hash %x -> idx_key %d: match %d\n", __func__, idx_hash, idx_key, match ? 1 : 0);
+            LOG_DEBUG("key hash {:x} -> idx_key {:d}: match {:d}", idx_hash, idx_key, match ? 1 : 0);
             if (match) {
                 match_pos = idx_key;
             }
@@ -305,8 +299,7 @@ void common_ngram_map_draft(common_ngram_map & map,
         }
     }
     if (match_pos > 0) {
-        LOG_DEBUG("%s: cur_len = %zu, n = %d, m = %d, sz_tkns = %zu, sampled = %d, match_pos = %zu\n", __func__,
-            cur_len, n, m, key_tokens.size(), sampled, match_pos);
+        LOG_DEBUG("cur_len = {:d}, n = {:d}, m = {:d}, sz_tkns = {:d}, sampled = {:d}, match_pos = {:d}", cur_len, n, m, key_tokens.size(), sampled, match_pos);
     }
 
     if (!map.key_map.empty()) {
@@ -383,8 +376,7 @@ void common_ngram_map_draft(common_ngram_map & map,
             draft.push_back(inp[match_pos + n + i]);
         }
 
-        LOG_DEBUG("%s: key_idx = %zu, key_offset = %zu, key_num = %d, draft.size = %zu\n", __func__,
-                curr_key.key_idx, key_offset, curr_key.key_num, draft.size());
+        LOG_DEBUG("key_idx = {:d}, key_offset = {:d}, key_num = {:d}, draft.size = {:d}", curr_key.key_idx, key_offset, curr_key.key_num, draft.size());
 
         map.last_draft_created   = true;
         map.last_draft_key_idx   = key_offset;
@@ -394,8 +386,7 @@ void common_ngram_map_draft(common_ngram_map & map,
 
     if (curr_key.key_num < map.min_hits) {
         // not enough hits to consider this a good draft
-        LOG_DEBUG("%s: key_offset = %zu, key_num = %d, min_hits = %d, no draft\n", __func__,
-                key_offset, curr_key.key_num, map.min_hits);
+        LOG_DEBUG("key_offset = {:d}, key_num = {:d}, min_hits = {:d}, no draft", key_offset, curr_key.key_num, map.min_hits);
         return;
     }
 
@@ -471,18 +462,11 @@ void common_ngram_map_draft(common_ngram_map & map,
         sum_occur += curr_occur;
     }
 
-    LOG_DEBUG("%s: key_offset = %zu, max_occur = %d, sum_occur = %d, slot_max = %d [%zu/%d, %zu/%d, %zu/%d, %zu/%d]\n", __func__,
-            key_offset,
-            max_occur, sum_occur, slot_max,
-            curr_key.values[0].value_idx, curr_key.values[0].value_num,
-            curr_key.values[1].value_idx, curr_key.values[1].value_num,
-            curr_key.values[2].value_idx, curr_key.values[2].value_num,
-            curr_key.values[3].value_idx, curr_key.values[3].value_num
-        );
+    LOG_DEBUG("key_offset = {:d}, max_occur = {:d}, sum_occur = {:d}, slot_max = {:d} [{:d}/{:d}, {:d}/{:d}, {:d}/{:d}, {:d}/{:d}]", key_offset, max_occur, sum_occur, slot_max, curr_key.values[0].value_idx, curr_key.values[0].value_num, curr_key.values[1].value_idx, curr_key.values[1].value_num, curr_key.values[2].value_idx, curr_key.values[2].value_num, curr_key.values[3].value_idx, curr_key.values[3].value_num);
     // Print the tokens of the four values (if idx != 0), use LOG_INFO
     for (int v = 0; v < COMMON_NGRAM_MAX_VALUES; ++v) {
         if (curr_key.values[v].value_idx != 0) {
-            LOG_DEBUG("%s: value[%d] = %s\n", __func__, v, common_tokens_to_str(inp, curr_key.values[v].value_idx, m).c_str());
+            LOG_DEBUG("value[{:d}] = {}", v, common_tokens_to_str(inp, curr_key.values[v].value_idx, m).c_str());
         }
     }
 
@@ -500,9 +484,7 @@ void common_ngram_map_draft(common_ngram_map & map,
         draft.push_back(inp[match_pos + n + i]);
     }
 
-    LOG_DEBUG("%s: key_offset = %zu, slot_max = %d, key_num = %d, draft.size = %zu\n", __func__,
-            key_offset, slot_max,
-            curr_key.key_num, draft.size());
+    LOG_DEBUG("key_offset = {:d}, slot_max = {:d}, key_num = {:d}, draft.size = {:d}", key_offset, slot_max, curr_key.key_num, draft.size());
 
     map.last_draft_created   = true;
     map.last_draft_key_idx   = key_offset;
@@ -524,7 +506,6 @@ void common_ngram_map_accept(common_ngram_map & map, uint16_t n_accepted) {
     struct common_ngram_map_value & curr_value = curr_key.values[val_idx]; // value used for draft generation.
 
     // update the value statistics
-    LOG_DEBUG("common_ngram_map_send_accepted: n_accepted = %d, prev value_num = %d\n",
-            n_accepted, curr_value.n_accepted);
+    LOG_DEBUG("common_ngram_map_send_accepted: n_accepted = {:d}, prev value_num = {:d}", n_accepted, curr_value.n_accepted);
     curr_value.n_accepted = n_accepted;
 }

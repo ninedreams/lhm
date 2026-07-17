@@ -11,8 +11,6 @@
 #include <string>
 #include <vector>
 
-#define JJ_DEBUG(msg, ...)  do { if (g_jinja_debug) printf("%s:%-3d : " msg "\n", FILENAME, __LINE__, __VA_ARGS__); } while (0)
-
 extern bool g_jinja_debug;
 
 namespace jinja {

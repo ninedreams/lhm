@@ -635,7 +635,7 @@ static buft_list_t make_cpu_buft_list(const std::vector<lhm_device> & devices, b
     if (use_extra_bufts) {
         auto * cpu_dev = ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU);
         if (cpu_dev == nullptr) {
-            throw std::runtime_error(format("%s: no CPU backend found", __func__));
+            throw std::runtime_error(fmt::format("{}: no CPU backend found", __func__));
         }
 
         auto * cpu_reg = ggml_backend_dev_backend_reg(cpu_dev);
@@ -678,7 +678,7 @@ static buft_list_t make_gpu_buft_list(ggml_backend_dev_t dev, lhm_split_mode spl
                         return i;
                     }
                 }
-                throw std::runtime_error(format("device %s not found in its backend reg", ggml_backend_dev_name(dev)));
+                throw std::runtime_error(fmt::format("device %s not found in its backend reg", ggml_backend_dev_name(dev)));
             }();
             auto * buft = ggml_backend_split_buffer_type_fn(dev_index, tensor_split);
             if (buft != nullptr) {
@@ -932,8 +932,7 @@ bool lhm_model_base::load_tensors(lhm_model_loader & ml) {
 
     this->ml = &ml; // to be used by create_tensor() and load_arch_tensors()
 
-    LOG_INFO("%s: loading model tensors, this can take a while... (mmap = %s, direct_io = %s)\n",
-        __func__, ml.use_mmap ? "true" : "false", ml.use_direct_io ? "true" : "false");
+    LOG_INFO("loading model tensors, this can take a while... (mmap = {}, direct_io = {})", ml.use_mmap ? "true" : "false", ml.use_direct_io ? "true" : "false");
 
     // build a list of buffer types for the CPU and GPU devices
     pimpl->cpu_buft_list = make_cpu_buft_list(devices, params.use_extra_bufts, params.no_host);
@@ -946,7 +945,7 @@ bool lhm_model_base::load_tensors(lhm_model_loader & ml) {
 
     ggml_backend_dev_t cpu_dev = ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU);
     if (cpu_dev == nullptr) {
-        throw std::runtime_error(format("%s: no CPU backend found", __func__));
+        throw std::runtime_error(fmt::format("{}: no CPU backend found", __func__));
     }
 
     // calculate the split points
@@ -987,12 +986,12 @@ bool lhm_model_base::load_tensors(lhm_model_loader & ml) {
     auto get_layer_buft_list = [&](int il) -> lhm_model::impl::layer_dev {
         const bool is_swa = il < n_layer_all && hparams.is_swa(il);
         if (il < i_gpu_start || (il - i_gpu_start) >= act_gpu_layers) {
-            LOG_DEBUG("load_tensors: layer %3d assigned to device %s, is_swa = %d\n", il, ggml_backend_dev_name(cpu_dev), is_swa);
+            LOG_DEBUG("load_tensors: layer {:3d} assigned to device {}, is_swa = {:d}", il, ggml_backend_dev_name(cpu_dev), is_swa);
             return {cpu_dev, &pimpl->cpu_buft_list};
         }
         const int layer_gpu = std::upper_bound(splits.begin(), splits.begin() + n_devices(), float(il - i_gpu_start)/act_gpu_layers) - splits.begin();
         auto * dev = devices.at(layer_gpu).dev;
-        LOG_DEBUG("load_tensors: layer %3d assigned to device %s, is_swa = %d\n", il, ggml_backend_dev_name(dev), is_swa);
+        LOG_DEBUG("load_tensors: layer {:3d} assigned to device {}, is_swa = {:d}", il, ggml_backend_dev_name(dev), is_swa);
         return {dev, &pimpl->gpu_buft_list.at(dev)};
     };
 
@@ -1225,7 +1224,7 @@ bool lhm_model_base::load_tensors(lhm_model_loader & ml) {
             // FIXME: workaround for CPU backend buft having a NULL device
             dev = ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU);
             if (!dev) {
-                throw std::runtime_error(format("%s: no CPU backend found", __func__));
+                throw std::runtime_error(fmt::format("{}: no CPU backend found", __func__));
             }
         }
         ggml_backend_dev_props props;
@@ -1250,7 +1249,7 @@ bool lhm_model_base::load_tensors(lhm_model_loader & ml) {
                 const size_t max_size = ggml_get_max_tensor_size(ctx);
                 ggml_backend_buffer_t buf = ggml_backend_dev_buffer_from_host_ptr(dev, (char *) addr + first, last - first, max_size);
                 if (buf == nullptr) {
-                    throw std::runtime_error(format("unable to allocate %s buffer", ggml_backend_buft_name(buft)));
+                    throw std::runtime_error(fmt::format("unable to allocate %s buffer", ggml_backend_buft_name(buft)));
                 }
                 bufs.emplace_back(buf);
                 buf_map.emplace(idx, buf);
@@ -1266,7 +1265,7 @@ bool lhm_model_base::load_tensors(lhm_model_loader & ml) {
                 buf = ggml_backend_alloc_ctx_tensors_from_buft(ctx, buft); // real buffer
             }
             if (buf == nullptr) {
-                throw std::runtime_error(format("unable to allocate %s buffer", ggml_backend_buft_name(buft)));
+                throw std::runtime_error(fmt::format("unable to allocate %s buffer", ggml_backend_buft_name(buft)));
             }
             if (use_mlock && ggml_backend_buffer_is_host(buf)) {
                 pimpl->mlock_bufs.emplace_back(new lhm_mlock);
@@ -1296,22 +1295,21 @@ bool lhm_model_base::load_tensors(lhm_model_loader & ml) {
 
         int n_repeating = n_gpu;
         if (n_repeating > 0) {
-            LOG_INFO("%s: offloading output layer to GPU\n", __func__);
+            LOG_INFO("offloading output layer to GPU");
             n_repeating--;
         }
-        LOG_INFO("%s: offloading %d repeating layers to GPU\n", __func__, n_repeating);
+        LOG_INFO("offloading {:d} repeating layers to GPU", n_repeating);
 
         const int max_backend_supported_layers = n_layer_all + 1;
         const int max_offloadable_layers       = n_layer_all + 1;
 
-        LOG_INFO("%s: offloaded %d/%d layers to GPU\n", __func__, std::min(n_gpu_layers, max_offloadable_layers), max_backend_supported_layers);
+        LOG_INFO("offloaded {:d}/{:d} layers to GPU", std::min(n_gpu_layers, max_offloadable_layers), max_backend_supported_layers);
     }
 
     // print memory requirements per buffer type
     for (auto & [_, bufs] : pimpl->ctxs_bufs) {
         for (auto & buf: bufs) {
-            LOG_INFO("%s: %12s model buffer size = %8.2f MiB\n",
-                __func__, ggml_backend_buffer_name(buf.get()), ggml_backend_buffer_get_size(buf.get()) / 1024.0 / 1024.0);
+            LOG_INFO("{:12s} model buffer size = {:8.2f} MiB", ggml_backend_buffer_name(buf.get()), ggml_backend_buffer_get_size(buf.get()) / 1024.0 / 1024.0);
         }
     }
 
@@ -1435,94 +1433,92 @@ void lhm_model::print_info() const {
     };
 
     // hparams
-    LOG_INFO("%s: arch                  = %s\n",     __func__, arch_name().c_str());
-    LOG_INFO("%s: vocab_only            = %d\n",     __func__, hparams.vocab_only);
-    LOG_INFO("%s: no_alloc              = %d\n",     __func__, hparams.no_alloc);
+    LOG_INFO("arch                  = {}", arch_name().c_str());
+    LOG_INFO("vocab_only            = {:d}", hparams.vocab_only);
+    LOG_INFO("no_alloc              = {:d}", hparams.no_alloc);
 
     if (!hparams.vocab_only) {
-        LOG_INFO("%s: n_ctx_train           = %u\n",     __func__, hparams.n_ctx_train);
-        LOG_INFO("%s: n_embd_inp            = %u\n",     __func__, hparams.n_embd_inp());
-        LOG_INFO("%s: n_embd                = %u\n",     __func__, hparams.n_embd);
-        LOG_INFO("%s: n_embd_out            = %u\n",     __func__, hparams.n_embd_out());
-        LOG_INFO("%s: n_layer               = %u\n",     __func__, hparams.n_layer());
-        LOG_INFO("%s: n_layer_all           = %u\n",     __func__, hparams.n_layer_all);
-        LOG_INFO("%s: n_head                = %s\n",     __func__, print_f([&](uint32_t il) { return hparams.n_head(il);    }, hparams.n_layer_all).c_str());
-        LOG_INFO("%s: n_head_kv             = %s\n",     __func__, print_f([&](uint32_t il) { return hparams.n_head_kv(il); }, hparams.n_layer_all).c_str());
-        LOG_INFO("%s: n_rot                 = %u\n",     __func__, hparams.n_rot_full);
-        LOG_INFO("%s: n_swa                 = %u\n",     __func__, hparams.n_swa);
-        LOG_INFO("%s: is_swa_any            = %u\n",     __func__, hparams.is_swa_any());
-        LOG_INFO("%s: n_embd_head_k         = %u\n",     __func__, hparams.n_embd_head_k_full);
-        LOG_INFO("%s: n_embd_head_v         = %u\n",     __func__, hparams.n_embd_head_v_full);
-        LOG_INFO("%s: n_gqa                 = %s\n",     __func__, print_f([&](uint32_t il) { return hparams.n_gqa(il);        }, hparams.n_layer_all).c_str());
-        LOG_INFO("%s: n_embd_k_gqa          = %s\n",     __func__, print_f([&](uint32_t il) { return hparams.n_embd_k_gqa(il); }, hparams.n_layer_all).c_str());
-        LOG_INFO("%s: n_embd_v_gqa          = %s\n",     __func__, print_f([&](uint32_t il) { return hparams.n_embd_v_gqa(il); }, hparams.n_layer_all).c_str());
-        LOG_INFO("%s: f_norm_eps            = %.1e\n",   __func__, hparams.f_norm_eps);
-        LOG_INFO("%s: f_norm_rms_eps        = %.1e\n",   __func__, hparams.f_norm_rms_eps);
-        LOG_INFO("%s: f_clamp_kqv           = %.1e\n",   __func__, hparams.f_clamp_kqv);
-        LOG_INFO("%s: f_max_alibi_bias      = %.1e\n",   __func__, hparams.f_max_alibi_bias);
-        LOG_INFO("%s: f_logit_scale         = %.1e\n",   __func__, hparams.f_logit_scale);
-        LOG_INFO("%s: f_attn_scale          = %.1e\n",   __func__, hparams.f_attention_scale);
-        LOG_INFO("%s: f_attn_value_scale    = %.4f\n",   __func__, hparams.f_attn_value_scale);
-        LOG_INFO("%s: n_ff                  = %s\n",     __func__, print_f([&](uint32_t il) { return hparams.n_ff(il); }, hparams.n_layer_all).c_str());
-        LOG_INFO("%s: n_expert              = %u\n",     __func__, hparams.n_expert);
-        LOG_INFO("%s: n_expert_used         = %u\n",     __func__, hparams.n_expert_used);
-        LOG_INFO("%s: n_expert_groups       = %d\n",     __func__, hparams.n_expert_groups);
-        LOG_INFO("%s: n_group_used          = %d\n",     __func__, hparams.n_group_used);
-        LOG_INFO("%s: causal attn           = %d\n",     __func__, hparams.causal_attn);
-        LOG_INFO("%s: pooling type          = %d\n",     __func__, int(hparams.pooling_type));
-        LOG_INFO("%s: rope type             = %d\n",     __func__, int(hparams.rope_type));
-        LOG_INFO("%s: rope scaling          = %s\n",     __func__, rope_scaling_type.c_str());
-        LOG_INFO("%s: freq_base_train       = %.1f\n",   __func__, hparams.rope_freq_base_train);
-        LOG_INFO("%s: freq_scale_train      = %g\n",     __func__, hparams.rope_freq_scale_train);
+        LOG_INFO("n_ctx_train           = {:d}", hparams.n_ctx_train);
+        LOG_INFO("n_embd_inp            = {:d}", hparams.n_embd_inp());
+        LOG_INFO("n_embd                = {:d}", hparams.n_embd);
+        LOG_INFO("n_embd_out            = {:d}", hparams.n_embd_out());
+        LOG_INFO("n_layer               = {:d}", hparams.n_layer());
+        LOG_INFO("n_layer_all           = {:d}", hparams.n_layer_all);
+        LOG_INFO("n_head                = {}", print_f([&](uint32_t il) { return hparams.n_head(il);    }, hparams.n_layer_all).c_str());
+        LOG_INFO("n_head_kv             = {}", print_f([&](uint32_t il) { return hparams.n_head_kv(il); }, hparams.n_layer_all).c_str());
+        LOG_INFO("n_rot                 = {:d}", hparams.n_rot_full);
+        LOG_INFO("n_swa                 = {:d}", hparams.n_swa);
+        LOG_INFO("is_swa_any            = {:d}", hparams.is_swa_any());
+        LOG_INFO("n_embd_head_k         = {:d}", hparams.n_embd_head_k_full);
+        LOG_INFO("n_embd_head_v         = {:d}", hparams.n_embd_head_v_full);
+        LOG_INFO("n_gqa                 = {}", print_f([&](uint32_t il) { return hparams.n_gqa(il);        }, hparams.n_layer_all).c_str());
+        LOG_INFO("n_embd_k_gqa          = {}", print_f([&](uint32_t il) { return hparams.n_embd_k_gqa(il); }, hparams.n_layer_all).c_str());
+        LOG_INFO("n_embd_v_gqa          = {}", print_f([&](uint32_t il) { return hparams.n_embd_v_gqa(il); }, hparams.n_layer_all).c_str());
+        LOG_INFO("f_norm_eps            = {:.1e}", hparams.f_norm_eps);
+        LOG_INFO("f_norm_rms_eps        = {:.1e}", hparams.f_norm_rms_eps);
+        LOG_INFO("f_clamp_kqv           = {:.1e}", hparams.f_clamp_kqv);
+        LOG_INFO("f_max_alibi_bias      = {:.1e}", hparams.f_max_alibi_bias);
+        LOG_INFO("f_logit_scale         = {:.1e}", hparams.f_logit_scale);
+        LOG_INFO("f_attn_scale          = {:.1e}", hparams.f_attention_scale);
+        LOG_INFO("f_attn_value_scale    = {:.4f}", hparams.f_attn_value_scale);
+        LOG_INFO("n_ff                  = {}", print_f([&](uint32_t il) { return hparams.n_ff(il); }, hparams.n_layer_all).c_str());
+        LOG_INFO("n_expert              = {:d}", hparams.n_expert);
+        LOG_INFO("n_expert_used         = {:d}", hparams.n_expert_used);
+        LOG_INFO("n_expert_groups       = {:d}", hparams.n_expert_groups);
+        LOG_INFO("n_group_used          = {:d}", hparams.n_group_used);
+        LOG_INFO("causal attn           = {:d}", hparams.causal_attn);
+        LOG_INFO("pooling type          = {:d}", int(hparams.pooling_type));
+        LOG_INFO("rope type             = {:d}", int(hparams.rope_type));
+        LOG_INFO("rope scaling          = {}", rope_scaling_type.c_str());
+        LOG_INFO("freq_base_train       = {:.1f}", hparams.rope_freq_base_train);
+        LOG_INFO("freq_scale_train      = {}", hparams.rope_freq_scale_train);
         if (hparams.swa_type != LHM_SWA_TYPE_NONE) {
-            LOG_INFO("%s: freq_base_swa         = %.1f\n",   __func__, hparams.rope_freq_base_train_swa);
-            LOG_INFO("%s: freq_scale_swa        = %g\n",     __func__, hparams.rope_freq_scale_train_swa);
-            LOG_INFO("%s: n_embd_head_k_swa     = %u\n",     __func__, hparams.n_embd_head_k_swa);
-            LOG_INFO("%s: n_embd_head_v_swa     = %u\n",     __func__, hparams.n_embd_head_v_swa);
-            LOG_INFO("%s: n_rot_swa             = %u\n",     __func__, hparams.n_rot_swa);
+            LOG_INFO("freq_base_swa         = {:.1f}", hparams.rope_freq_base_train_swa);
+            LOG_INFO("freq_scale_swa        = {}", hparams.rope_freq_scale_train_swa);
+            LOG_INFO("n_embd_head_k_swa     = {:d}", hparams.n_embd_head_k_swa);
+            LOG_INFO("n_embd_head_v_swa     = {:d}", hparams.n_embd_head_v_swa);
+            LOG_INFO("n_rot_swa             = {:d}", hparams.n_rot_swa);
         }
-        LOG_INFO("%s: n_ctx_orig_yarn       = %u\n",     __func__, hparams.n_ctx_orig_yarn);
-        LOG_INFO("%s: rope_yarn_log_mul     = %.4f\n",   __func__, hparams.rope_yarn_log_mul);
-        LOG_INFO("%s: rope_finetuned        = %s\n",     __func__, hparams.rope_finetuned ? "yes" : "unknown");
+        LOG_INFO("n_ctx_orig_yarn       = {:d}", hparams.n_ctx_orig_yarn);
+        LOG_INFO("rope_yarn_log_mul     = {:.4f}", hparams.rope_yarn_log_mul);
+        LOG_INFO("rope_finetuned        = {}", hparams.rope_finetuned ? "yes" : "unknown");
 
         // MRoPE (Multi-axis Rotary Position Embedding) sections
         if (const auto & s = hparams.rope_sections; s[0] || s[1] || s[2] || s[3]) {
-            LOG_INFO("%s: mrope sections        = [%d, %d, %d, %d]\n", __func__, s[0], s[1], s[2], s[3]);
+            LOG_INFO("mrope sections        = [{:d}, {:d}, {:d}, {:d}]", s[0], s[1], s[2], s[3]);
         }
         if (!classifier_labels.empty()) {
-            LOG_INFO("%s: n_cls_out             = %u\n", __func__, hparams.n_cls_out);
+            LOG_INFO("n_cls_out             = {:d}", hparams.n_cls_out);
 
             size_t i = 0;
             for (const auto & label : classifier_labels) {
-                LOG_INFO("%s: cls_label[%2zu]         = %s\n", __func__, i++, label.c_str());
+                LOG_INFO("cls_label[{:2d}]         = {}", i++, label.c_str());
             }
         }
 
         if (arch == LLM_ARCH_QWEN35 ||
             arch == LLM_ARCH_QWEN35MOE) {
-            LOG_INFO("%s: ssm_d_conv            = %u\n",     __func__, hparams.ssm_d_conv);
-            LOG_INFO("%s: ssm_d_inner           = %u\n",     __func__, hparams.ssm_d_inner);
-            LOG_INFO("%s: ssm_d_state           = %u\n",     __func__, hparams.ssm_d_state);
-            LOG_INFO("%s: ssm_dt_rank           = %u\n",     __func__, hparams.ssm_dt_rank);
-            LOG_INFO("%s: ssm_n_group           = %u\n",     __func__, hparams.ssm_n_group);
-            LOG_INFO("%s: ssm_dt_b_c_rms        = %d\n",     __func__, hparams.ssm_dt_b_c_rms);
+            LOG_INFO("ssm_d_conv            = {:d}", hparams.ssm_d_conv);
+            LOG_INFO("ssm_d_inner           = {:d}", hparams.ssm_d_inner);
+            LOG_INFO("ssm_d_state           = {:d}", hparams.ssm_d_state);
+            LOG_INFO("ssm_dt_rank           = {:d}", hparams.ssm_dt_rank);
+            LOG_INFO("ssm_n_group           = {:d}", hparams.ssm_n_group);
+            LOG_INFO("ssm_dt_b_c_rms        = {:d}", hparams.ssm_dt_b_c_rms);
         }
 
-        LOG_INFO("%s: model type            = %s\n",     __func__, type_name().c_str());
+        LOG_INFO("model type            = {}", type_name().c_str());
         if (pimpl->n_elements >= 1e12) {
-            LOG_INFO("%s: model params          = %.2f T\n", __func__, pimpl->n_elements*1e-12);
+            LOG_INFO("model params          = {:.2f} T", pimpl->n_elements*1e-12);
         } else if (pimpl->n_elements >= 1e9) {
-            LOG_INFO("%s: model params          = %.2f B\n", __func__, pimpl->n_elements*1e-9);
+            LOG_INFO("model params          = {:.2f} B", pimpl->n_elements*1e-9);
         } else if (pimpl->n_elements >= 1e6) {
-            LOG_INFO("%s: model params          = %.2f M\n", __func__, pimpl->n_elements*1e-6);
+            LOG_INFO("model params          = {:.2f} M", pimpl->n_elements*1e-6);
         } else {
-            LOG_INFO("%s: model params          = %.2f K\n", __func__, pimpl->n_elements*1e-3);
+            LOG_INFO("model params          = {:.2f} K", pimpl->n_elements*1e-3);
         }
 
         // general kv
-        LOG_INFO("%s: general.name          = %s\n",    __func__, name.c_str());
-
-
+        LOG_INFO("general.name          = {}", name.c_str());
     }
 
     vocab.print_info();
@@ -1546,7 +1542,7 @@ static bool buft_supported(ggml_backend_buffer_type_t buft, ggml_backend_dev_t d
 
     ggml_context_ptr ctx { ggml_init(params) };
     if (!ctx) {
-        throw std::runtime_error(format("failed to create ggml context"));
+        throw std::runtime_error(fmt::format("failed to create ggml context"));
     }
 
     ggml_backend_buffer_ptr buf { ggml_backend_buft_alloc_buffer(buft, 0) };
@@ -1573,7 +1569,7 @@ static ggml_backend_buffer_type_t select_buft(const buft_list_t & buft_list, con
         }
     }
 
-    throw std::runtime_error(format("no suitable buffer type found"));
+    throw std::runtime_error(fmt::format("no suitable buffer type found"));
 }
 
 ggml_backend_buffer_type_t lhm_model::select_buft(int il) const {
@@ -1913,7 +1909,7 @@ lhm_rope_type lhm_model_rope_type(const lhm_model * model) {
             return LHM_ROPE_TYPE_NORM;
         // all model arches should be listed explicitly here
         case LLM_ARCH_UNKNOWN:
-            GGML_ABORT("unknown architecture");
+            LHM_ABORT("unknown architecture");
     }
 
     return LHM_ROPE_TYPE_NONE;

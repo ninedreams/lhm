@@ -306,7 +306,7 @@ struct server_task_result {
     virtual json to_json() = 0;
     virtual ~server_task_result() = default;
     virtual server_task_result * clone() const {
-        GGML_ABORT("not implemented for this task type");
+        LHM_ABORT("not implemented for this task type");
     }
 };
 

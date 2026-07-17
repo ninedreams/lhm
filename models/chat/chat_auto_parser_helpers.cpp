@@ -327,7 +327,7 @@ std::string apply_template(const common_chat_template & tmpl, const template_par
     try {
         return common_chat_template_direct_apply(tmpl, tmpl_params);
     } catch (const std::exception & e) {
-        LOG_DEBUG("Template application failed: %s\n", e.what());
+        LOG_DEBUG("Template application failed: {}", e.what());
         return ERR_TMPL;
     }
 }

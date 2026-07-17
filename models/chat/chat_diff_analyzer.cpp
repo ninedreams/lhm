@@ -46,7 +46,7 @@ static std::vector<std::function<void(const common_chat_template & tmpl, autopar
               analysis.reasoning.end   = "</think>";
               analysis.preserved_tokens.push_back("<think>");
               analysis.preserved_tokens.push_back("</think>");
-              LOG_DEBUG(ANSI_ORANGE "[Patch: old Qwen/Deepseek thinking template]\n" ANSI_RESET);
+              LOG_DEBUG(ANSI_ORANGE "[Patch: old Qwen/Deepseek thinking template]" ANSI_RESET);
           }
       },
       // Granite 3.3, with separate reasoning and content markers
@@ -63,7 +63,7 @@ static std::vector<std::function<void(const common_chat_template & tmpl, autopar
               analysis.content.end   = "</response>";
               analysis.preserved_tokens.push_back("<response>");
               analysis.preserved_tokens.push_back("</response>");
-              LOG_DEBUG(ANSI_ORANGE "[Patch: Granite 3.3]\n" ANSI_RESET);
+              LOG_DEBUG(ANSI_ORANGE "[Patch: Granite 3.3]" ANSI_RESET);
           }
       },
       // Cohere Command R+ - content wrapped in <|CHATBOT_TOKEN|>...<|END_OF_TURN_TOKEN|>
@@ -76,7 +76,7 @@ static std::vector<std::function<void(const common_chat_template & tmpl, autopar
               analysis.preserved_tokens.push_back("<|CHATBOT_TOKEN|>");
               analysis.preserved_tokens.push_back("<|END_OF_TURN_TOKEN|>");
               analysis.user_start = "<|START_OF_TURN_TOKEN|><|USER_TOKEN|>";
-              LOG_DEBUG(ANSI_ORANGE "[Patch: Cohere Command R+]\n" ANSI_RESET);
+              LOG_DEBUG(ANSI_ORANGE "[Patch: Cohere Command R+]" ANSI_RESET);
           }
       },
       // Functionary - no tool call section delimiter
@@ -97,7 +97,7 @@ static std::vector<std::function<void(const common_chat_template & tmpl, autopar
               analysis.preserved_tokens.push_back("<function=");
               analysis.preserved_tokens.push_back(">");
               analysis.preserved_tokens.push_back("</function>");
-              LOG_DEBUG(ANSI_ORANGE "[Patch: Functionary 3.1]\n" ANSI_RESET);
+              LOG_DEBUG(ANSI_ORANGE "[Patch: Functionary 3.1]" ANSI_RESET);
           }
       },
       // DeepSeek-R1-Distill-Qwen
@@ -111,7 +111,7 @@ static std::vector<std::function<void(const common_chat_template & tmpl, autopar
               analysis.tools.function.name_prefix  = "<｜tool▁sep｜>";
               analysis.tools.format.per_call_end   = "<｜tool▁call▁end｜>";
               analysis.tools.function.close        = "```";
-              LOG_DEBUG(ANSI_ORANGE "[Patch: DeepSeek-R1-Distill-Qwen]\n" ANSI_RESET);
+              LOG_DEBUG(ANSI_ORANGE "[Patch: DeepSeek-R1-Distill-Qwen]" ANSI_RESET);
           }
       },
       // Nemotron Nano v2
@@ -138,7 +138,7 @@ static std::vector<std::function<void(const common_chat_template & tmpl, autopar
               analysis.preserved_tokens.push_back("</think>");
               analysis.preserved_tokens.push_back("<TOOLCALL>");
               analysis.preserved_tokens.push_back("</TOOLCALL>");
-              LOG_DEBUG(ANSI_ORANGE "[Patch: Nemotron Nano v2]\n" ANSI_RESET);
+              LOG_DEBUG(ANSI_ORANGE "[Patch: Nemotron Nano v2]" ANSI_RESET);
           }
       },
       // Fireworks
@@ -147,14 +147,14 @@ static std::vector<std::function<void(const common_chat_template & tmpl, autopar
             " + message['content'] | trim + '\\n' + system_prompt_suffix + '<|eot_id|>' -%}") != std::string::npos) {
               analysis.assistant_start             = "<|start_header_id|>assistant<|end_header_id|>";
               analysis.user_start                  = "<|start_header_id|>user<|end_header_id|>";
-              LOG_DEBUG(ANSI_ORANGE "[Patch: Fireworks v2]\n" ANSI_RESET);
+              LOG_DEBUG(ANSI_ORANGE "[Patch: Fireworks v2]" ANSI_RESET);
           }
       },
       // Solar Open
       [](const common_chat_template & tmpl, autoparser & analysis) -> void {
           if (tmpl.src.find("<|begin|>assistant<|think|><|end|>") != std::string::npos) {
               analysis.assistant_start             = "<|begin|>assistant";
-              LOG_DEBUG(ANSI_ORANGE "[Patch: Solar Open]\n" ANSI_RESET);
+              LOG_DEBUG(ANSI_ORANGE "[Patch: Solar Open]" ANSI_RESET);
           }
       },
       // Apriel 1.6
@@ -162,7 +162,7 @@ static std::vector<std::function<void(const common_chat_template & tmpl, autopar
           if (tmpl.src.find("if not loop.last and '[BEGIN FINAL RESPONSE]' in asst_text") != std::string::npos) {
               analysis.user_start                  = "<|begin_user|>";
               analysis.assistant_start             = "<|begin_assistant|>";
-              LOG_DEBUG(ANSI_ORANGE "[Patch: Apriel 1.6]\n" ANSI_RESET);
+              LOG_DEBUG(ANSI_ORANGE "[Patch: Apriel 1.6]" ANSI_RESET);
           }
       },
       // template uses the JSON {name, parameters} tool instruction, emits the OpenAI function wrapper
@@ -170,7 +170,7 @@ static std::vector<std::function<void(const common_chat_template & tmpl, autopar
           if (tmpl.src.find("Respond in the format {\"name\": function name") != std::string::npos &&
               tmpl.src.find("Do not use variables.") != std::string::npos) {
               analysis.tools.format.openai_wrapper_trigger = true;
-              LOG_DEBUG(ANSI_ORANGE "[Patch: JSON name/parameters tool instruction]\n" ANSI_RESET);
+              LOG_DEBUG(ANSI_ORANGE "[Patch: JSON name/parameters tool instruction]" ANSI_RESET);
           }
       },
 
@@ -240,44 +240,44 @@ void autoparser::analyze_template(const common_chat_template & tmpl) {
     }
 
     LOG_DEBUG("\n--- Reasoning & Content Structure ---\n");
-    LOG_DEBUG("user_msg_start: %s\n", user_start.c_str());
-    LOG_DEBUG("assistant_msg_start: %s\n", assistant_start.c_str());
-    LOG_DEBUG("reasoning_mode: %s\n", mode_to_str(reasoning.mode).c_str());
-    LOG_DEBUG("reasoning_start: '%s'\n", reasoning.start.c_str());
-    LOG_DEBUG("reasoning_end: '%s'\n", reasoning.end.c_str());
-    LOG_DEBUG("content_mode: %s\n", mode_to_str(content.mode).c_str());
-    LOG_DEBUG("content_start: '%s'\n", content.start.c_str());
-    LOG_DEBUG("content_end: '%s'\n", content.end.c_str());
+    LOG_DEBUG("user_msg_start: {}", user_start.c_str());
+    LOG_DEBUG("assistant_msg_start: {}", assistant_start.c_str());
+    LOG_DEBUG("reasoning_mode: {}", mode_to_str(reasoning.mode).c_str());
+    LOG_DEBUG("reasoning_start: '{}'", reasoning.start.c_str());
+    LOG_DEBUG("reasoning_end: '{}'", reasoning.end.c_str());
+    LOG_DEBUG("content_mode: {}", mode_to_str(content.mode).c_str());
+    LOG_DEBUG("content_start: '{}'", content.start.c_str());
+    LOG_DEBUG("content_end: '{}'", content.end.c_str());
 
     LOG_DEBUG("\n--- Tool Call Structure ---\n");
-    LOG_DEBUG("tool_mode: %s\n", mode_to_str(tools.format.mode).c_str());
-    LOG_DEBUG("supports_tools: %s\n", jinja_caps.supports_tools ? "true" : "false");
-    LOG_DEBUG("supports_parallel_calls: %s\n", jinja_caps.supports_parallel_tool_calls ? "true" : "false");
-    LOG_DEBUG("tool_section_start: '%s'\n", tools.format.section_start.c_str());
-    LOG_DEBUG("tool_section_end: '%s'\n", tools.format.section_end.c_str());
-    LOG_DEBUG("per_call_start: '%s'\n", tools.format.per_call_start.c_str());
-    LOG_DEBUG("per_call_end: '%s'\n", tools.format.per_call_end.c_str());
-    LOG_DEBUG("func_name_prefix: '%s'\n", tools.function.name_prefix.c_str());
-    LOG_DEBUG("func_name_suffix: '%s'\n", tools.function.name_suffix.c_str());
-    LOG_DEBUG("func_close: '%s'\n", tools.function.close.c_str());
-    LOG_DEBUG("call_id_prefix: '%s'\n", tools.call_id.prefix.c_str());
-    LOG_DEBUG("call_id_suffix: '%s'\n", tools.call_id.suffix.c_str());
-    LOG_DEBUG("call_id_pos: '%s'\n", mode_to_str(tools.call_id.pos).c_str());
-    LOG_DEBUG("args_start: '%s'\n", tools.arguments.start.c_str());
-    LOG_DEBUG("args_end: '%s'\n", tools.arguments.end.c_str());
-    LOG_DEBUG("arg_name_prefix: '%s'\n", tools.arguments.name_prefix.c_str());
-    LOG_DEBUG("arg_name_suffix: '%s'\n", tools.arguments.name_suffix.c_str());
-    LOG_DEBUG("arg_value_prefix: '%s'\n", tools.arguments.value_prefix.c_str());
-    LOG_DEBUG("arg_value_suffix: '%s'\n", tools.arguments.value_suffix.c_str());
-    LOG_DEBUG("name_field: '%s'\n", tools.format.name_field.c_str());
-    LOG_DEBUG("args_field: '%s'\n", tools.format.args_field.c_str());
-    LOG_DEBUG("id_field: '%s'\n", tools.format.id_field.c_str());
-    LOG_DEBUG("gen_id_field: '%s'\n", tools.format.gen_id_field.c_str());
-    LOG_DEBUG("parameter_order: '%s'\n", std::accumulate(tools.format.parameter_order.begin(), tools.format.parameter_order.end(),
+    LOG_DEBUG("tool_mode: {}", mode_to_str(tools.format.mode).c_str());
+    LOG_DEBUG("supports_tools: {}", jinja_caps.supports_tools ? "true" : "false");
+    LOG_DEBUG("supports_parallel_calls: {}", jinja_caps.supports_parallel_tool_calls ? "true" : "false");
+    LOG_DEBUG("tool_section_start: '{}'", tools.format.section_start.c_str());
+    LOG_DEBUG("tool_section_end: '{}'", tools.format.section_end.c_str());
+    LOG_DEBUG("per_call_start: '{}'", tools.format.per_call_start.c_str());
+    LOG_DEBUG("per_call_end: '{}'", tools.format.per_call_end.c_str());
+    LOG_DEBUG("func_name_prefix: '{}'", tools.function.name_prefix.c_str());
+    LOG_DEBUG("func_name_suffix: '{}'", tools.function.name_suffix.c_str());
+    LOG_DEBUG("func_close: '{}'", tools.function.close.c_str());
+    LOG_DEBUG("call_id_prefix: '{}'", tools.call_id.prefix.c_str());
+    LOG_DEBUG("call_id_suffix: '{}'", tools.call_id.suffix.c_str());
+    LOG_DEBUG("call_id_pos: '{}'", mode_to_str(tools.call_id.pos).c_str());
+    LOG_DEBUG("args_start: '{}'", tools.arguments.start.c_str());
+    LOG_DEBUG("args_end: '{}'", tools.arguments.end.c_str());
+    LOG_DEBUG("arg_name_prefix: '{}'", tools.arguments.name_prefix.c_str());
+    LOG_DEBUG("arg_name_suffix: '{}'", tools.arguments.name_suffix.c_str());
+    LOG_DEBUG("arg_value_prefix: '{}'", tools.arguments.value_prefix.c_str());
+    LOG_DEBUG("arg_value_suffix: '{}'", tools.arguments.value_suffix.c_str());
+    LOG_DEBUG("name_field: '{}'", tools.format.name_field.c_str());
+    LOG_DEBUG("args_field: '{}'", tools.format.args_field.c_str());
+    LOG_DEBUG("id_field: '{}'", tools.format.id_field.c_str());
+    LOG_DEBUG("gen_id_field: '{}'", tools.format.gen_id_field.c_str());
+    LOG_DEBUG("parameter_order: '{}'", std::accumulate(tools.format.parameter_order.begin(), tools.format.parameter_order.end(),
         std::string(""), [] (const std::string & a, const std::string & b) { return a.empty() ? b : a + ", " + b; }
         ).c_str());
 
-    LOG_DEBUG(ANSI_PURPLE "=== Differential analysis complete ===\n" ANSI_RESET);
+    LOG_DEBUG(ANSI_PURPLE "=== Differential analysis complete ===" ANSI_RESET);
     analysis_complete = true;
 }
 
@@ -337,13 +337,13 @@ std::string autoparser::detect_assistant_start_marker(const common_chat_template
     );
 
     if (!comparison) {
-        LOG_DEBUG(ANSI_ORANGE "%s: Template application failed, skipping assistant start detection\n" ANSI_RESET, __func__);
+        LOG_DEBUG(ANSI_ORANGE "Template application failed, skipping assistant start detection" ANSI_RESET);
         return "";
     }
 
     auto usermsg = comparison->diff.right;
     if (usermsg.find(ASSISTANT_MSG) == std::string::npos) {
-        LOG_DEBUG(ANSI_ORANGE "%s: Did not find assistant message in assistant message block, skipping detection\n" ANSI_RESET, __func__);
+        LOG_DEBUG(ANSI_ORANGE "Did not find assistant message in assistant message block, skipping detection" ANSI_RESET);
     }
 
     auto ast_prefix = usermsg.substr(0, usermsg.find(ASSISTANT_MSG));
@@ -384,7 +384,7 @@ std::string autoparser::detect_user_start_marker(const common_chat_template & tm
     );
 
     if (!comparison) {
-        LOG_DEBUG(ANSI_ORANGE "%s: Template application failed, unsupported empty messages? trying complex variant\n" ANSI_RESET, __func__);
+        LOG_DEBUG(ANSI_ORANGE "Template application failed, unsupported empty messages? trying complex variant" ANSI_RESET);
         params.messages = json::array({ user_msg_two, assistant });
         comparison = compare_variants(
             tmpl, params, [&](template_params & p) {
@@ -392,14 +392,14 @@ std::string autoparser::detect_user_start_marker(const common_chat_template & tm
             }
         );
         if (!comparison) {
-            LOG_DEBUG(ANSI_ORANGE "%s: Template application failed for reserve variant, aborting\n" ANSI_RESET, __func__);
+            LOG_DEBUG(ANSI_ORANGE "Template application failed for reserve variant, aborting" ANSI_RESET);
             return "";
         }
     }
 
     auto usermsg = comparison->diff.right;
     if (usermsg.find(USER_MSG) == std::string::npos) {
-        LOG_DEBUG(ANSI_ORANGE "%s: Did not find user message in user message block, aborting detection\n" ANSI_RESET, __func__);
+        LOG_DEBUG(ANSI_ORANGE "Did not find user message in user message block, aborting detection" ANSI_RESET);
     }
 
     if (usermsg.find(ASSISTANT_MSG) != std::string::npos) {
@@ -430,8 +430,8 @@ std::string autoparser::detect_user_start_marker(const common_chat_template & tm
 
 analyze_reasoning::analyze_reasoning(const common_chat_template & tmpl, bool supports_tools)
     : analyze_base(tmpl) {
-    LOG_DEBUG(ANSI_PURPLE "=== Starting differential analysis ===\n" ANSI_RESET);
-    LOG_DEBUG(ANSI_ORANGE "Phase 1: Reasoning analysis\n" ANSI_RESET);
+    LOG_DEBUG(ANSI_PURPLE "=== Starting differential analysis ===" ANSI_RESET);
+    LOG_DEBUG(ANSI_ORANGE "Phase 1: Reasoning analysis" ANSI_RESET);
 
     compare_reasoning_presence();
     compare_thinking_enabled();
@@ -466,7 +466,7 @@ void analyze_reasoning::compare_reasoning_presence() {
         *tmpl, params, [&](template_params & p) { p.messages = json::array({ user_msg, assistant_with_reasoning }); });
 
     if (!comparison) {
-        LOG_DEBUG(ANSI_ORANGE "%s: Template application failed, skipping reasoning detection\n" ANSI_RESET, __func__);
+        LOG_DEBUG(ANSI_ORANGE "Template application failed, skipping reasoning detection" ANSI_RESET);
         return;
     }
 
@@ -513,7 +513,7 @@ void analyze_reasoning::compare_thinking_enabled() {
     auto comparison = compare_variants(*tmpl, params, [&](template_params & p) { p.enable_thinking = true; });
 
     if (!comparison) {
-        LOG_DEBUG(ANSI_ORANGE "%s: Template application failed\n" ANSI_RESET , __func__);
+        LOG_DEBUG(ANSI_ORANGE "Template application failed" ANSI_RESET);
         return;
     }
 
@@ -608,7 +608,7 @@ void analyze_reasoning::compare_reasoning_scope() {
         *tmpl, params, [&](template_params & p) { p.messages = json::array({ user_msg, assistant_reasoning_tools }); });
 
     if (!comparison) {
-        LOG_DEBUG(ANSI_ORANGE "%s: Template application failed\n" ANSI_RESET, __func__);
+        LOG_DEBUG(ANSI_ORANGE "Template application failed" ANSI_RESET);
         return;
     }
 
@@ -620,7 +620,7 @@ void analyze_reasoning::compare_reasoning_scope() {
 
     if (!reasoning_in_A && reasoning_in_B) {
         mode = reasoning_mode::TOOLS_ONLY;
-        LOG_DEBUG(ANSI_ORANGE "%s: Detected TOOLS_ONLY reasoning mode\n" ANSI_RESET, __func__);
+        LOG_DEBUG(ANSI_ORANGE "Detected TOOLS_ONLY reasoning mode" ANSI_RESET);
 
         auto parser_wrapped = build_tagged_peg_parser([&](common_peg_parser_builder &p) {
             return p.tag("pre", p.marker() + p.space()) + p.literal(reasoning_content) + p.space() + p.tag("post", (p.marker() + p.space()));
@@ -637,7 +637,7 @@ void analyze_reasoning::compare_reasoning_scope() {
             if (result.result.success()) {
                 end = result.tags["post"];
             } else {
-                LOG_DEBUG(ANSI_ORANGE "%s: Unable to extract reasoning markers, falling back to reasoning = NONE\n" ANSI_RESET, __func__);
+                LOG_DEBUG(ANSI_ORANGE "Unable to extract reasoning markers, falling back to reasoning = NONE" ANSI_RESET);
                 mode = reasoning_mode::NONE;
             }
         }
@@ -646,7 +646,7 @@ void analyze_reasoning::compare_reasoning_scope() {
 
 analyze_content::analyze_content(const common_chat_template & tmpl, const analyze_reasoning & reasoning)
     : analyze_base(tmpl) {
-    LOG_DEBUG(ANSI_ORANGE "Phase 2: Content analysis\n" ANSI_RESET);
+    LOG_DEBUG(ANSI_ORANGE "Phase 2: Content analysis" ANSI_RESET);
 
     json assistant_content_only = json{
         { "role",    "assistant"     },
@@ -680,7 +680,7 @@ analyze_content::analyze_content(const common_chat_template & tmpl, const analyz
     });
 
     if (!comparison_with_tools || !comparison_with_reasoning) {
-        LOG_DEBUG(ANSI_ORANGE "%s: Template application failed\n" ANSI_RESET, __func__);
+        LOG_DEBUG(ANSI_ORANGE "Template application failed" ANSI_RESET);
         return;
     }
 
@@ -739,7 +739,7 @@ analyze_tools::analyze_tools(const common_chat_template & tmpl,
                              const jinja::caps &          caps,
                              const analyze_reasoning &    reasoning)
     : analyze_base(tmpl) {
-    LOG_DEBUG(ANSI_ORANGE "Phase 3: Tool call analysis\n" ANSI_RESET);
+    LOG_DEBUG(ANSI_ORANGE "Phase 3: Tool call analysis" ANSI_RESET);
 
     analyze_tool_calls(reasoning, caps.supports_parallel_tool_calls);
 
@@ -747,15 +747,15 @@ analyze_tools::analyze_tools(const common_chat_template & tmpl,
         if (caps.supports_parallel_tool_calls) {
             check_per_call_markers();
         }
-        LOG_DEBUG(ANSI_ORANGE "Phase 3a: Function call analysis\n" ANSI_RESET);
+        LOG_DEBUG(ANSI_ORANGE "Phase 3a: Function call analysis" ANSI_RESET);
         extract_function_markers();
-        LOG_DEBUG(ANSI_ORANGE "Phase 3b: Argument analysis\n" ANSI_RESET);
+        LOG_DEBUG(ANSI_ORANGE "Phase 3b: Argument analysis" ANSI_RESET);
         if (format.mode == tool_format::TAG_WITH_TAGGED) {
             analyze_arguments();
         }
         extract_argument_separator();
         extract_args_markers();
-        LOG_DEBUG(ANSI_ORANGE "Phase 3c: Call id analysis\n" ANSI_RESET);
+        LOG_DEBUG(ANSI_ORANGE "Phase 3c: Call id analysis" ANSI_RESET);
         extract_call_id_markers();
     }
 }
@@ -782,7 +782,7 @@ void analyze_tools::analyze_tool_calls(const analyze_reasoning & reasoning, bool
         *tmpl, params, [&](template_params & p) { p.messages = json::array({ user_msg, assistant_with_tools }); });
 
     if (!comparison) {
-        LOG_DEBUG(ANSI_ORANGE "%s: Template application failed\n" ANSI_RESET, __func__);
+        LOG_DEBUG(ANSI_ORANGE "Template application failed" ANSI_RESET);
         return;
     }
 
@@ -878,7 +878,7 @@ void analyze_tools::analyze_json_native_parallel_calls() {
         *tmpl, params, [&](template_params & p) { p.messages = json::array({ user_msg, assistant_two_tools }); });
 
     if (!comparison) {
-        LOG_DEBUG(ANSI_ORANGE "%s: Template application failed\n" ANSI_RESET, __func__);
+        LOG_DEBUG(ANSI_ORANGE "Template application failed" ANSI_RESET);
         return;
     }
 
@@ -1037,7 +1037,7 @@ void analyze_tools::check_per_call_markers() {
         *tmpl, params, [&](template_params & p) { p.messages = json::array({ user_msg, assistant_two_tools }); });
 
     if (!one_vs_two) {
-        LOG_DEBUG(ANSI_ORANGE "%s: Generating double tool call comparison failed\n" ANSI_RESET, __func__);
+        LOG_DEBUG(ANSI_ORANGE "Generating double tool call comparison failed" ANSI_RESET);
         return;
     }
 
@@ -1081,7 +1081,7 @@ void analyze_tools::extract_function_markers() {
         *tmpl, params, [&](template_params & p) { p.messages = json::array({ user_msg, assistant_barbar }); });
 
     if (!comparison) {
-        LOG_DEBUG(ANSI_ORANGE "%s: Template application failed\n" ANSI_RESET, __func__);
+        LOG_DEBUG(ANSI_ORANGE "Template application failed" ANSI_RESET);
         return;
     }
 
@@ -1213,7 +1213,7 @@ void analyze_tools::extract_argument_name_markers() {
         *tmpl, params, [&](template_params & p) { p.messages = json::array({ user_msg, assistant_second_arg }); });
 
     if (!comparison) {
-        LOG_DEBUG(ANSI_ORANGE "%s: Template application failed\n" ANSI_RESET, __func__);
+        LOG_DEBUG(ANSI_ORANGE "Template application failed" ANSI_RESET);
         return;
     }
 
@@ -1287,7 +1287,7 @@ void analyze_tools::extract_argument_value_markers() {
         *tmpl, params, [&](template_params & p) { p.messages = json::array({ user_msg, assistant_val_Y }); });
 
     if (!comparison) {
-        LOG_DEBUG(ANSI_ORANGE "%s: Template application failed\n" ANSI_RESET, __func__);
+        LOG_DEBUG(ANSI_ORANGE "Template application failed" ANSI_RESET);
         return;
     }
 
@@ -1352,7 +1352,7 @@ void analyze_tools::extract_argument_separator() {
         *tmpl, params, [&](template_params & p) { p.messages = json::array({ user_msg, assistant_two_args }); });
 
     if (!comparison) {
-        LOG_DEBUG(ANSI_ORANGE "%s: Template application failed\n" ANSI_RESET, __func__);
+        LOG_DEBUG(ANSI_ORANGE "Template application failed" ANSI_RESET);
         return;
     }
 
@@ -1387,7 +1387,7 @@ void analyze_tools::extract_args_markers() {
         *tmpl, params, [&](template_params & p) { p.messages = json::array({ user_msg, assistant_with_args }); });
 
     if (!comparison) {
-        LOG_DEBUG(ANSI_ORANGE "%s: Template application failed\n" ANSI_RESET, __func__);
+        LOG_DEBUG(ANSI_ORANGE "Template application failed" ANSI_RESET);
         return;
     }
 
@@ -1448,7 +1448,7 @@ void analyze_tools::extract_call_id_markers() {
         *tmpl, params, [&](template_params & p) { p.messages = json::array({ user_msg, assistant_id2 }); });
 
     if (!comparison) {
-        LOG_DEBUG(ANSI_ORANGE "%s: Template application failed for call_id detection\n" ANSI_RESET, __func__);
+        LOG_DEBUG(ANSI_ORANGE "Template application failed for call_id detection" ANSI_RESET);
         return;
     }
 

@@ -118,8 +118,8 @@ static void dsv4_set_comp_inputs(
     dsv4_set_i32(inp.state_write_pos, plan.state_write_pos);
     dsv4_set_kq_mask(inp.kq_mask, plan, n_tokens, n_stream);
 
-    LOG_TRACE("%s: %s n_tokens=%u, n_stream=%d, state_persist_dst=%s, state_write_pos=%s\n",
-            __func__, name, n_tokens, (int) n_stream,
+    LOG_TRACE("n_tokens={:d}, n_stream={:d}, state_persist_dst={}, state_write_pos={}",
+            n_tokens, (int) n_stream,
             dsv4_plan_positions(plan.state_persist_dst_idxs).c_str(),
             dsv4_plan_positions(plan.state_write_pos).c_str());
 }

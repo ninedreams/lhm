@@ -160,8 +160,8 @@ struct server_tool_read_file : server_tool {
             return {{"error", "cannot stat file: " + ec.message()}};
         }
         if (file_size > SERVER_TOOL_READ_FILE_MAX_SIZE && end_line == -1) {
-            return {{"error", string_format(
-                "file too large (%zu bytes, max %zu). Use start_line/end_line to read a portion.",
+            return {{"error", fmt::format(
+                "file too large ({} bytes, max {}). Use start_line/end_line to read a portion.",
                 (size_t)file_size, SERVER_TOOL_READ_FILE_MAX_SIZE)}};
         }
 
@@ -382,8 +382,8 @@ struct server_tool_exec_shell_command : server_tool {
                     {"type", "object"},
                     {"properties", {
                         {"command",         {{"type", "string"},  {"description", "Shell command to execute"}}},
-                        {"timeout",         {{"type", "integer"}, {"description", string_format("Timeout in seconds (default 10, max %d)", SERVER_TOOL_EXEC_SHELL_COMMAND_MAX_TIMEOUT)}}},
-                        {"max_output_size", {{"type", "integer"}, {"description", string_format("Maximum output size in bytes (default %zu)", SERVER_TOOL_EXEC_SHELL_COMMAND_MAX_OUTPUT_SIZE)}}},
+                        {"timeout",         {{"type", "integer"}, {"description", fmt::format("Timeout in seconds (default 10, max {})", SERVER_TOOL_EXEC_SHELL_COMMAND_MAX_TIMEOUT)}}},
+                        {"max_output_size", {{"type", "integer"}, {"description", fmt::format("Maximum output size in bytes (default %zu)", SERVER_TOOL_EXEC_SHELL_COMMAND_MAX_OUTPUT_SIZE)}}},
                     }},
                     {"required", json::array({"command"})},
                 }},
@@ -408,7 +408,7 @@ struct server_tool_exec_shell_command : server_tool {
         auto res = run_process(args, max_output, timeout);
 
         std::string text_output = res.output;
-        text_output += string_format("\n[exit code: %d]", res.exit_code);
+        text_output += fmt::format("\n[exit code: {}]", res.exit_code);
         if (res.timed_out) {
             text_output += " [exit due to timed out]";
         }
@@ -573,10 +573,10 @@ struct server_tool_edit_file : server_tool {
                 e.line_end   = n + 1;
             } else {
                 if (e.line_start < 1 || e.line_end < e.line_start) {
-                    return {{"error", string_format("invalid line range [%d, %d]", e.line_start, e.line_end)}};
+                    return {{"error", fmt::format("invalid line range [{}, {}]", e.line_start, e.line_end)}};
                 }
                 if (e.line_end > n) {
-                    return {{"error", string_format("line_end %d exceeds file length %d", e.line_end, n)}};
+                    return {{"error", fmt::format("line_end {} exceeds file length {}", e.line_end, n)}};
                 }
             }
             entries.push_back(std::move(e));
@@ -756,8 +756,8 @@ void server_tools::setup(const std::vector<std::string> & enabled_tools) {
         for (const auto & name : enabled_tools) {
             if (name == "all") continue;
             if (std::find(known_names.begin(), known_names.end(), name) == known_names.end()) {
-                throw std::runtime_error(string_format(
-                    "unknown tool \"%s\". available tools: %s",
+                throw std::runtime_error(fmt::format(
+                    "unknown tool \"{}\". available tools: {}",
                     name.c_str(),
                     string_join(known_names, ", ").c_str()));
             }
@@ -780,7 +780,7 @@ void server_tools::setup(const std::vector<std::string> & enabled_tools) {
             }
             res->data = safe_json_to_str(result);
         } catch (const std::exception & e) {
-            SRV_ERR("got exception: %s\n", e.what());
+            LOG_ERROR("got exception: {}", e.what());
             res->status = 500;
             res->data   = safe_json_to_str(format_error_response(e.what(), ERROR_TYPE_SERVER));
         }
@@ -799,7 +799,7 @@ void server_tools::setup(const std::vector<std::string> & enabled_tools) {
             res->status = 400;
             res->data   = safe_json_to_str(format_error_response(e.what(), ERROR_TYPE_INVALID_REQUEST));
         } catch (const std::exception & e) {
-            SRV_ERR("got exception: %s\n", e.what());
+            LOG_ERROR("got exception: {}", e.what());
             res->status = 500;
             res->data   = safe_json_to_str(format_error_response(e.what(), ERROR_TYPE_SERVER));
         }

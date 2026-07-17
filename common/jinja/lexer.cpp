@@ -1,5 +1,6 @@
 #include "lexer.h"
 #include "runtime.h"
+#include "log.h"
 
 #include <cctype>
 #include <functional>
@@ -123,7 +124,7 @@ lexer_result lexer::tokenize(const std::string & source) {
 
     while (pos < src.size()) {
         start_pos = pos;
-        // JJ_DEBUG("lexer main loop at pos %zu: '%s...'", pos, src.substr(pos, 10).c_str());
+        // LOG_DEBUG("lexer main loop at pos %zu: '{}...'", pos, src.substr(pos, 10).c_str());
 
         // First, consume all text that is outside of a Jinja statement or expression
         token::type last_token_type = tokens.empty()
@@ -190,7 +191,7 @@ lexer_result lexer::tokenize(const std::string & source) {
             if (is_rstrip_block) {
                 // example: {last_block}[space]text
                 // doing lstrip on text, effectively rstrip the LAST block
-                // JJ_DEBUG("RSTRIP block detected, current text: '%s'", text.c_str());
+                // LOG_DEBUG("RSTRIP block detected, current text: '{}'", text.c_str());
                 string_lstrip(text, " \t\r\n");
             }
 
@@ -198,12 +199,12 @@ lexer_result lexer::tokenize(const std::string & source) {
             if (is_lstrip_block) {
                 // example: text[space]{current_block}
                 // doing rstrip on text, effectively lstrip the CURRENT block
-                // JJ_DEBUG("LSTRIP block detected, current text: '%s'", text.c_str());
+                // LOG_DEBUG("LSTRIP block detected, current text: '{}'", text.c_str());
                 string_rstrip(text, " \t\r\n");
             }
 
             if (!text.empty()) {
-                // JJ_DEBUG("consumed text: '%s'", text.c_str());
+                // LOG_DEBUG("consumed text: '{}'", text.c_str());
                 tokens.push_back({token::text, text, start_pos});
                 continue;
             }
@@ -221,7 +222,7 @@ lexer_result lexer::tokenize(const std::string & source) {
                 }
                 comment += src[pos++];
             }
-            JJ_DEBUG("consumed comment: '%s'", comment.c_str());
+            LOG_DEBUG("consumed comment: '{}'", comment.c_str());
             tokens.push_back({token::comment, comment, start_pos});
             pos += 2; // Skip the closing #}
             continue;
@@ -231,7 +232,7 @@ lexer_result lexer::tokenize(const std::string & source) {
                 last_token_type == token::open_expression ||
                 last_token_type == token::open_statement)
         ) {
-            JJ_DEBUG("lexer main loop at pos %zu: '%s...'", pos, src.substr(pos, 10).c_str());
+            LOG_DEBUG("lexer main loop at pos %zu: '{}...'", pos, src.substr(pos, 10).c_str());
             pos++; // consume '-' in {%- or {{-
             if (pos >= src.size()) break;
         }
@@ -271,7 +272,7 @@ lexer_result lexer::tokenize(const std::string & source) {
                     std::string num = consume_numeric();
                     std::string value = std::string(1, ch) + num;
                     token::type t = num.empty() ? token::unary_operator : token::numeric_literal;
-                    // JJ_DEBUG("consumed unary operator or numeric literal: '%s'", value.c_str());
+                    // LOG_DEBUG("consumed unary operator or numeric literal: '{}'", value.c_str());
                     tokens.push_back({t, value, start_pos});
                     continue;
                 }
@@ -308,7 +309,7 @@ lexer_result lexer::tokenize(const std::string & source) {
             start_pos = pos;
             ++pos; // Skip opening quote
             std::string str = consume_while([ch](char c) { return c != ch; });
-            // JJ_DEBUG("consumed string literal: '%s'", str.c_str());
+            // LOG_DEBUG("consumed string literal: '{}'", str.c_str());
             tokens.push_back({token::string_literal, str, start_pos});
             ++pos; // Skip closing quote
             continue;
@@ -318,7 +319,7 @@ lexer_result lexer::tokenize(const std::string & source) {
         if (is_integer(ch)) {
             start_pos = pos;
             std::string num = consume_numeric();
-            // JJ_DEBUG("consumed numeric literal: '%s'", num.c_str());
+            // LOG_DEBUG("consumed numeric literal: '{}'", num.c_str());
             tokens.push_back({token::numeric_literal, num, start_pos});
             continue;
         }
@@ -327,7 +328,7 @@ lexer_result lexer::tokenize(const std::string & source) {
         if (is_word(ch)) {
             start_pos = pos;
             std::string word = consume_while(is_word);
-            // JJ_DEBUG("consumed identifier: '%s'", word.c_str());
+            // LOG_DEBUG("consumed identifier: '{}'", word.c_str());
             tokens.push_back({token::identifier, word, start_pos});
             continue;
         }

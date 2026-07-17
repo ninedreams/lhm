@@ -66,7 +66,7 @@ struct common_chat_template {
         this->eos_tok = eos_token;
 
         this->caps = jinja::caps_get(prog);
-        // LOG_INFO("%s: caps:\n%s\n", __func__, this->caps.to_string().c_str());
+        // LOG_INFO("caps:\n{}", this->caps.to_string().c_str());
     }
 
     const std::string & source() const { return src; }

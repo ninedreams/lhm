@@ -119,7 +119,7 @@ bool common_json_parse(
     if (err_loc.found_error) {
         it = start;
         auto temptative_end = it + err_loc.position;
-        // LOG_DEBUG("Error at position %zu (is_end = %s): %s\n", err_loc.position, temptative_end == end ? "true" : "false", err_loc.exception_message.c_str());
+        // LOG_DEBUG("Error at position {:d} (is_end = {}): {}", err_loc.position, temptative_end == end ? "true" : "false", err_loc.exception_message.c_str());
 
         auto input = std::string(it, temptative_end);
         try {
@@ -129,7 +129,7 @@ bool common_json_parse(
             return true;
         } catch (const std::exception & ex) {
             // No, needs healing.
-            LOG_DEBUG("Failed to parse up to error: %s: <<<%s>>>\n", ex.what(), std::string(it, temptative_end).c_str());
+            LOG_DEBUG("Failed to parse up to error: {}: <<<{}>>>", ex.what(), std::string(it, temptative_end).c_str());
         }
         auto can_parse = [](const std::string & str) {
             try {
@@ -293,7 +293,6 @@ bool common_json_parse(
             } else {
                 throw std::runtime_error("Cannot heal a truncated JSON object stopped in an unknown location");
             }
-            // fprintf(stderr, "HEALED:\nSTRING <<<\n%s\n>>>\n\nmagic_cut: <<<\n%s\n>>>\n\n", str.c_str(), out.healing_marker.json_dump_marker.c_str());
             out.json = json::parse(str);
             it = temptative_end;
             return true;
