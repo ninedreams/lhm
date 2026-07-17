@@ -356,9 +356,7 @@ std::vector<common_chat_msg> common_chat_msgs_parse_oaicompat(const json & messa
                         msg.content_parts.push_back(msg_part);
                     }
                 } else if (!content.is_null()) {
-                    throw std::invalid_argument("Invalid 'content' type: expected string or array, got " +
-                                                content.dump() +
-                                                " (ref: https://github.com/ggml-org/llama.cpp/issues/8367)");
+                    throw std::invalid_argument("Invalid 'content' type: expected string or array, got " + content.dump());
                 }
             }
             if (has_tool_calls) {
@@ -393,8 +391,7 @@ std::vector<common_chat_msg> common_chat_msgs_parse_oaicompat(const json & messa
             }
             if (!has_content && !has_tool_calls) {
                 throw std::invalid_argument(
-                    "Expected 'content' or 'tool_calls' (ref: https://github.com/ggml-org/llama.cpp/issues/8367 & "
-                    "https://github.com/ggml-org/llama.cpp/issues/12279)");
+                    "Expected 'content' or 'tool_calls'");
             }
             if (message.contains("reasoning_content")) {
                 msg.reasoning_content = message.at("reasoning_content");
@@ -685,7 +682,6 @@ common_chat_templates_ptr common_chat_templates_init(const struct lhm_model * mo
     }
 
     // TODO @ngxson : this is a temporary hack to prevent chat template from throwing an error
-    // Ref: https://github.com/ggml-org/llama.cpp/pull/15230#issuecomment-3173959633
     if (default_template_src.find("<|channel|>") != std::string::npos
         // search for the error message and patch it
         && default_template_src.find("in message.content or") != std::string::npos) {
@@ -696,7 +692,6 @@ common_chat_templates_ptr common_chat_templates_init(const struct lhm_model * mo
     }
 
     // TODO @aldehir : this is a temporary fix, pending Minja changes
-    // Ref: https://github.com/ggml-org/llama.cpp/pull/17713#issuecomment-3631342664
     if (default_template_src.find("[TOOL_CALLS]") != std::string::npos
         // search for the error message and patch it
         && default_template_src.find("if (message['content'] is none or") != std::string::npos) {
@@ -1069,7 +1064,6 @@ static common_chat_params common_chat_params_init_gpt_oss(const common_chat_temp
 
     // Check if we need to replace the return token with end token during
     // inference and without generation prompt. For more details see:
-    // https://github.com/ggml-org/llama.cpp/issues/15417
     if (inputs.is_inference && !inputs.add_generation_prompt) {
         static constexpr std::string_view return_token = "<|return|>";
         static constexpr std::string_view end_token    = "<|end|>";

@@ -254,7 +254,6 @@ struct lhm_hparams {
     std::array<int32_t, LHM_MAX_LAYERS> deepstack_mapping_arr;
 
     // needed by encoder-decoder models (e.g. T5, FLAN-T5)
-    // ref: https://github.com/ggml-org/lhm.cpp/pull/8141
     lhm_token dec_start_token_id = LHM_TOKEN_NULL;
     uint32_t    dec_n_layer        = 0;
 

@@ -86,7 +86,6 @@ int llm_server() {
 
     // validate batch size for embeddings
     // embeddings require all tokens to be processed in a single ubatch
-    // see https://github.com/ggml-org/llama.cpp/issues/12836
     if (params.embedding && params.n_batch > params.n_ubatch) {
         LOG_WARN("embeddings enabled with n_batch ({:d}) > n_ubatch ({:d})", params.n_batch, params.n_ubatch);
         LOG_WARN("setting n_batch = n_ubatch = {:d} to avoid assertion failure", params.n_ubatch);

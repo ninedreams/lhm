@@ -491,7 +491,6 @@ static const std::map<llm_tensor, const char *> LLM_TENSOR_NAMES = {
 //
 // a mismatch between the declared information and the actual layer/op in which the tensor is used can lead to sub-optimal
 //   assignment of the buffer types and extra overhead during computation
-// example: https://github.com/ggml-org/lhm.cpp/pull/17548
 //
 static const std::map<llm_tensor, llm_tensor_info> LLM_TENSOR_INFOS = {
     {LLM_TENSOR_TOKEN_EMBD,                 {LLM_TENSOR_LAYER_INPUT,     GGML_OP_GET_ROWS}},

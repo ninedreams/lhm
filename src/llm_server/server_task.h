@@ -233,7 +233,6 @@ struct server_task {
         copy.id_slot   = -1; // child tasks cannot specify slot
 
         // use different sampling seed for each child
-        // note: https://github.com/ggml-org/llama.cpp/pull/18700#discussion_r2675115723
         if (copy.params.sampling.seed != LHM_DEFAULT_SEED) {
             copy.params.sampling.seed += (uint32_t)child_tasks.size() + 1;
         }
@@ -420,7 +419,6 @@ struct server_task_result_cmpl_partial : server_task_result {
     bool post_sampling_probs;
     bool is_progress = false;
     bool is_begin = false; // whether to send 200 status to HTTP client (begin of SSE stream)
-                           // ref: https://github.com/ggml-org/llama.cpp/pull/23884
     completion_token_output prob_output;
     result_timings timings;
     result_prompt_progress progress;

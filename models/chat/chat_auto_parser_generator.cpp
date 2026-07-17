@@ -203,8 +203,7 @@ common_peg_parser analyze_tools::build_parser(parser_build_context & ctx) const 
             return build_tool_parser_tag_tagged(ctx);
         default:
             LOG_ERROR("[ERROR] Template seems to support tool calls, but failed to determine tool format. Tool calling will not work properly. "
-                "Check for a fixed template for your model in the models/templates directory of your llama.cpp installation or "
-                "report an issue at https://github.com/ggml-org/llama.cpp/issues\n");
+                "Check for a fixed template for your model in the models/templates directory of your lhm installation");
             return ctx.p.eps();
     }
 }

@@ -230,7 +230,6 @@ std::vector<std::unique_ptr<field>> make_lhm_cmpl_schema(const common_params & p
 
     // sequence breakers for DRY
     // Currently, this is not compatible with TextGen WebUI, Koboldcpp and SillyTavern format
-    // Ref: https://github.com/oobabooga/text-generation-webui/blob/d1af7a41ade7bd3c3a463bfa640725edb818ebaf/extensions/openai/typing.py#L39
     add((new field_json("dry_sequence_breakers"))
         ->set_desc("Specify an array of sequence breakers for DRY sampling. Only a JSON array of strings is accepted")
         ->set_handler([&](field_eval_context & ctx, const json & data) {

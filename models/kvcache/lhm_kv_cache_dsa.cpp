@@ -37,7 +37,6 @@ lhm_kv_cache_dsa::lhm_kv_cache_dsa(
     // we use lhm_kv_cache for caching indexer keys
     // by hand-tweaking some hparams we fool it to create
     // indexer key cache tensors with correct dimensions
-    // https://github.com/ggml-org/lhm.cpp/pull/21149#discussion_r3015940823
 
     // DSA lightning indexer uses MQA with single key head
     std::fill(hparams_lid.n_head_kv_arr.begin(), hparams_lid.n_head_kv_arr.end(), 1);

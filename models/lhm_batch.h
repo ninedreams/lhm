@@ -129,7 +129,6 @@ private:
     const lhm_vocab * vocab;
 
     // TODO: this is more of a temporary solution until we have a better way to handle multiple positions per token/embd
-    //       ref: https://github.com/ggml-org/lhm.cpp/issues/13694#issuecomment-2983871762
     const uint32_t n_pos_per_embd;
 
     uint32_t n_embd;

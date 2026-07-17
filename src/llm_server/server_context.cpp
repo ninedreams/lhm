@@ -51,7 +51,6 @@ static uint32_t server_n_outputs_max(const common_params & params) {
     return std::max<uint32_t>(1, std::min<uint64_t>(n_batch, n_outputs));
 }
 
-// state diagram: https://github.com/ggml-org/llama.cpp/pull/9283
 enum slot_state {
     SLOT_STATE_IDLE,
     SLOT_STATE_WAIT_OTHER, // after assigning a task, but waiting for parent slot to process prompt
@@ -81,7 +80,6 @@ struct server_slot {
     common_prompt_checkpoint spec_ckpt;
 
     // TODO: move members that belong to the task (such as `generated_text`, `has_new_line`) to task_results_state
-    //       see https://github.com/ggml-org/llama.cpp/pull/18283#issuecomment-3710175837
     std::unique_ptr<const server_task> task;
     std::unique_ptr<const server_task> task_prev; // used for debugging
 
@@ -1056,7 +1054,6 @@ private:
         } else {
             LOG_INFO("{}", "prompt cache is disabled - use `--cache-ram N` to enable it\n");
         }
-        LOG_INFO("{}", "for more info see https://github.com/ggml-org/llama.cpp/pull/16391\n");
 
         if (params_base.n_ctx_checkpoints > 0) {
             LOG_INFO("context checkpoints enabled, max = {:d}, min spacing = {:d}", params_base.n_ctx_checkpoints, params_base.checkpoint_min_step);
@@ -1934,7 +1931,7 @@ private:
             // make room for the new checkpoint, if needed
             const auto & cur = slot.prompt.checkpoints.front();
 
-            SLT_WRN(slot, "erasing old context checkpoint (pos_min = {}, pos_max = {}, n_tokens = %" PRId64 ", size = %.3f MiB)",
+            SLT_WRN(slot, "erasing old context checkpoint (pos_min = {}, pos_max = {}, n_tokens = {}, size = {} MiB)",
                     cur.pos_min, cur.pos_max, cur.n_tokens, (float) cur.size() / 1024 / 1024);
 
             slot.prompt.checkpoints.erase(slot.prompt.checkpoints.begin());
@@ -1944,7 +1941,7 @@ private:
 
         // [TAG_CHECKPOINTS_FIX_POS_MIN]
         // TODO: here we incorrectly deterimne that the saved checkpoint data covers the [pos_min, pos_max] range
-        //       this is not true for SWA models: https://github.com/ggml-org/llama.cpp/pull/24411#issuecomment-4677983225
+        //       this is not true for SWA models
         cur.update_pos(slot.prompt.n_tokens() - n_tokens_cur, pos_min, pos_max);
 
         cur.update_tgt(ctx_tgt,       slot.id, LHM_STATE_SEQ_FLAGS_PARTIAL_ONLY);
@@ -2341,7 +2338,6 @@ private:
                 }
 
                 // add generated tokens to cache
-                // ref: https://github.com/ggml-org/llama.cpp/pull/16818#discussion_r2473269481
                 {
                     lhm_tokens new_tokens = slot.prompt.tokens.get_tokens(); // copy
                     for (size_t i = n_keep + n_discard; i < new_tokens.size(); i++) {
@@ -2669,7 +2665,6 @@ private:
 
                             lhm_pos pos_next = slot.prompt.tokens.pos_next(n_past);
 
-                            // ref: https://github.com/ggml-org/llama.cpp/pull/24110
                             const bool has_new_tokens = (n_past < slot.task->n_tokens());
 
                             // the largest pos_min required for a checkpoint to be useful
@@ -2679,7 +2674,7 @@ private:
                                 const auto pos_min = lhm_memory_seq_pos_min(lhm_get_memory(ctx_tgt), slot.id);
                                 if (pos_min == -1) {
                                     SLT_ERR(slot, "n_past = {}, slot.prompt.tokens.size() = {}, seq_id = {}, pos_min = {}", n_past, (int) slot.prompt.tokens.size(), slot.id, pos_min);
-                                    LHM_ABORT("pos_min == -1, but n_past > 0 - should not happen: https://github.com/ggml-org/llama.cpp/pull/13833#discussion_r2116181237");
+                                    LHM_ABORT("pos_min == -1, but n_past > 0 - should not happen");
                                 }
 
                                 // when the prompt prefix does not match, print the tokens around the mismatch
@@ -2754,8 +2749,7 @@ private:
                                     }
 
                                     if (do_reset) {
-                                        SLT_WRN(slot, "forcing full prompt re-processing due to lack of cache data (likely due to SWA or hybrid/recurrent memory, see {})",
-                                                "https://github.com/ggml-org/llama.cpp/pull/13194#issuecomment-2868343055");
+                                        SLT_WRN(slot, "{}", "forcing full prompt re-processing due to lack of cache data (likely due to SWA or hybrid/recurrent memory)");
                                         pos_next = 0;
                                         n_past = 0;
                                     }
@@ -2892,7 +2886,6 @@ private:
                         // create checkpoints that many tokens before the end of the prompt:
                         //  - 4 + n_ubatch
                         //  - 4
-                        // ref: https://github.com/ggml-org/llama.cpp/pull/20288
                         if (do_checkpoint) {
                             static const int checkpoint_offsets[] = {4 + n_ubatch, 4};
 
@@ -3013,7 +3006,7 @@ private:
             LOG_WARN("{}", "no tokens to decode\n");
 
             if (++n_empty_consecutive > 3) {
-                LHM_ABORT("fatal error - please provide logs and repro in {}", "https://github.com/ggml-org/llama.cpp/pull/20277");
+                LHM_ABORT("fatal error - please provide logs");
             }
         } else {
             n_empty_consecutive = 0;
@@ -3090,7 +3083,6 @@ private:
 
             // TODO: avoid restoring the draft context and re-evaluating the drafted tokens when not needed [TAG_SPEC_AVOID_DRAFT_REEVAL]
             //       for now, always re-evaluate for simplicity
-            //       ref: https://github.com/ggml-org/llama.cpp/pull/22728#issuecomment-4400925384
             if (!common_speculative_process(spec.get(), batch_view)) {
                 LOG_ERROR("{}", "failed to process speculative batch\n");
 
@@ -3602,7 +3594,6 @@ std::unique_ptr<server_res_generator> server_routes::handle_completions_impl(
     } else {
         // in streaming mode, the first error must be treated as non-stream response
         // this is to match the OAI API behavior
-        // ref: https://github.com/ggml-org/llama.cpp/pull/16486#discussion_r2419657309
         auto first_result = rd.next(req.should_stop);
         if (first_result == nullptr) {
             LHM_ASSERT(req.should_stop());

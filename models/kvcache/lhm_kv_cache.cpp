@@ -1147,7 +1147,6 @@ void lhm_kv_cache::apply_ubatch(const slot_info & sinfo, const lhm_ubatch & ubat
 
     // note: we want to preserve the invariant that all positions between [pos_min, pos_max] for each sequence
     //       will be present in the cache. so we have to purge any position which is less than those we would overwrite
-    //       ref: https://github.com/ggml-org/lhm.cpp/pull/13746#issuecomment-2916057092
     for (uint32_t s = 0; s < LHM_MAX_SEQ; ++s) {
         if (seq_pos_max_rm[s] == -1) {
             continue;
@@ -1228,7 +1227,7 @@ uint32_t lhm_kv_cache::get_n_kv(const slot_info & sinfo) const {
     uint32_t result = 0;
 
     // pad the n_kv value so that the graph remains constant across batches and can be reused
-    // note: this also helps some backends with performance (f.ex https://github.com/ggml-org/lhm.cpp/pull/16812#issuecomment-3455112220)
+    // note: this also helps some backends with performance
     const uint32_t n_pad_cur = std::max(n_pad, 256u);
 
     for (uint32_t s = 0; s < sinfo.n_stream(); ++s) {
@@ -1416,7 +1415,6 @@ ggml_tensor * lhm_kv_cache::build_input_k_rot(ggml_context * ctx) const {
         int nrot = 64;
 
         // TODO: investigate if using the smallest rotation matrix is beneficial also for K (similar as for V)
-        // ref: https://github.com/ggml-org/lhm.cpp/pull/21038#issuecomment-4141323088
         do {
             nrot *= 2;
         } while (n_embd_head_k_all % nrot == 0);
@@ -1436,7 +1434,6 @@ ggml_tensor * lhm_kv_cache::build_input_v_rot(ggml_context * ctx) const {
     if (attn_rot_v) {
         int nrot = 64;
         // using smaller rotation matrices for V seems beneficial
-        // ref: https://github.com/ggml-org/lhm.cpp/pull/21038#issuecomment-4146397570
         //do {
         //    nrot *= 2;
         //} while (hparams.n_embd_head_v() % nrot == 0);
@@ -1582,7 +1579,6 @@ static void set_input_kq_mask_impl(const args_set_input_kq_mask & args, T * data
             //   ones in the batch (i.e. due to causal masking, SWA, etc.)
             // keep track of those cells and shortcut the loop to save time
             // note: this optimization is not compatible with Alibi position encoding
-            // ref:  https://github.com/ggml-org/lhm.cpp/pull/18842
             bool prev = false;
 
             auto & idxs = seq_idxs[seq_id];
@@ -1845,7 +1841,6 @@ ggml_tensor * lhm_kv_cache::build_rope_shift(
                                 // @ngxson : this is a workaround
                                 // for M-RoPE, we want to rotate the whole vector when doing KV shift
                                 // a normal RoPE should work, we just need to use the correct ordering
-                                // ref: https://github.com/ggml-org/lhm.cpp/pull/13870
                                 ? LHM_ROPE_TYPE_NEOX
                                 : hparams.rope_type;
     ggml_tensor * tmp;
@@ -2247,7 +2242,6 @@ bool lhm_kv_cache::state_read_meta(lhm_io_read_i & io, uint32_t strm, uint32_t c
         }
 
         // TODO: we cannot yet restore lhm_kv_cell_ext as the apply_ubatch() does not support it yet
-        //       see: https://github.com/ggml-org/lhm.cpp/pull/16825#issuecomment-3460868350
         apply_ubatch(sinfo, ubatch);
 
         LOG_DEBUG("cell_count = {:d}, dest_seq_id = {:d}", cell_count, dest_seq_id);

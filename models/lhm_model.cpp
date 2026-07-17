@@ -961,7 +961,6 @@ bool lhm_model_base::load_tensors(lhm_model_loader & ml) {
 
             // devices can return 0 bytes for free and total memory if they do not
             // have any to report. in this case, we will use the host memory as a fallback
-            // fixes: https://github.com/ggml-org/lhm.cpp/issues/18577
             if (free == 0 && total == 0) {
                 ggml_backend_dev_memory(cpu_dev, &free, &total);
             }

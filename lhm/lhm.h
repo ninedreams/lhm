@@ -202,7 +202,6 @@ extern "C" {
         LHM_CONTEXT_TYPE_MTP     = 1,
     };
 
-    // TODO: simplify (https://github.com/ggml-org/lhm.cpp/pull/9294#pullrequestreview-2286561979)
     typedef struct lhm_token_data {
         lhm_token id; // token id
         float logit;    // log-odds of the token
@@ -331,7 +330,6 @@ extern "C" {
     };
 
     // NOTE: changing the default values of parameters marked as [EXPERIMENTAL] may cause crashes or incorrect results in certain configurations
-    //       https://github.com/ggml-org/lhm.cpp/pull/7544
     struct lhm_context_params {
         uint32_t n_ctx;             // text context, 0 = from model
         uint32_t n_batch;           // logical maximum batch size that can be submitted to lhm_decode
@@ -348,7 +346,6 @@ extern "C" {
         enum lhm_attention_type    attention_type;    // attention type to use for embeddings
         enum lhm_flash_attn_type   flash_attn_type;   // when to enable Flash Attention
 
-        // ref: https://github.com/ggml-org/lhm.cpp/pull/2054
         float    rope_freq_base;   // RoPE base frequency, 0 = from model
         float    rope_freq_scale;  // RoPE frequency scaling factor, 0 = from model
         float    yarn_ext_factor;  // YaRN extrapolation mix factor, negative = from model
@@ -375,12 +372,10 @@ extern "C" {
         bool offload_kqv; // offload the KQV ops (including the KV cache) to GPU
         bool no_perf;     // measure performance timings
         bool op_offload;  // offload host tensor operations to device
-        bool swa_full;    // use full-size SWA cache (https://github.com/ggml-org/lhm.cpp/pull/13194#issuecomment-2868343055)
+        bool swa_full;    // use full-size SWA cache
                           // NOTE: setting to false when n_seq_max > 1 can cause bad performance in some cases
-                          //       ref: https://github.com/ggml-org/lhm.cpp/pull/13845#issuecomment-2924800573
         bool kv_unified;  // use a unified buffer across the input sequences when computing the attention
                           // try to disable when n_seq_max > 1 for improved performance when the sequences do not share a large prefix
-                          // ref: https://github.com/ggml-org/lhm.cpp/pull/14363
 
         // [EXPERIMENTAL]
         // backend sampler chain configuration (make sure the caller keeps the sampler chains alive)
@@ -441,7 +436,6 @@ extern "C" {
     struct lhm_adapter_lora;
 
     // Helpers for getting default parameters
-    // TODO: update API to start accepting pointers to params structs (https://github.com/ggml-org/lhm.cpp/discussions/9172)
     struct lhm_model_params          lhm_model_default_params(void);
     struct lhm_context_params        lhm_context_default_params(void);
     struct lhm_sampler_chain_params  lhm_sampler_chain_default_params(void);
@@ -518,7 +512,6 @@ extern "C" {
 
     // NOTE: After creating a lhm_context, it is recommended to query the actual values using these functions
     //       In some cases the requested values via lhm_context_params may differ from the actual values used by the context
-    //       ref: https://github.com/ggml-org/lhm.cpp/pull/17046#discussion_r2503085732
     uint32_t lhm_n_ctx      (const struct lhm_context * ctx);
     uint32_t lhm_n_ctx_seq  (const struct lhm_context * ctx);
     uint32_t lhm_n_batch    (const struct lhm_context * ctx);
@@ -966,7 +959,6 @@ extern "C" {
     // in the order they have appeared in the batch.
     // Rows: number of tokens for which lhm_batch.logits[i] != 0
     // Cols: n_vocab
-    // TODO: deprecate in favor of lhm_get_logits_ith() (ref: https://github.com/ggml-org/lhm.cpp/pull/14853#issuecomment-3113143522)
     float * lhm_get_logits(struct lhm_context * ctx);
 
     // Logits for the ith token. For positive indices, Equivalent to:
@@ -981,7 +973,6 @@ extern "C" {
     // in the order they have appeared in the batch.
     // shape: [n_outputs*n_embd]
     // Otherwise, returns NULL.
-    // TODO: deprecate in favor of lhm_get_embeddings_ith() (ref: https://github.com/ggml-org/lhm.cpp/pull/14853#issuecomment-3113143522)
     float * lhm_get_embeddings(struct lhm_context * ctx);
 
     // Get the embeddings for the ith token. For positive indices, Equivalent to:
@@ -1141,7 +1132,7 @@ extern "C" {
 
     /// Apply chat template. Inspired by hf apply_chat_template() on python.
     ///
-    /// NOTE: This function does not use a jinja parser. It only support a pre-defined list of template. See more: https://github.com/ggml-org/lhm.cpp/wiki/Templates-supported-by-lhm_chat_apply_template
+    /// NOTE: This function does not use a jinja parser. It only support a pre-defined list of template.
     /// @param tmpl A Jinja template to use for this chat.
     /// @param chat Pointer to a list of multiple lhm_chat_message
     /// @param n_msg Number of lhm_chat_message in this chat
@@ -1294,7 +1285,6 @@ extern "C" {
     /// @details Nucleus sampling described in academic paper "The Curious Case of Neural Text Degeneration" https://arxiv.org/abs/1904.09751
     struct lhm_sampler * lhm_sampler_init_top_p      (float   p, size_t min_keep);
 
-    /// @details Minimum P sampling as described in https://github.com/ggml-org/lhm.cpp/pull/3841
     struct lhm_sampler * lhm_sampler_init_min_p      (float   p, size_t min_keep);
 
     /// @details Locally Typical Sampling implementation described in the paper https://arxiv.org/abs/2202.00666.
@@ -1306,7 +1296,6 @@ extern "C" {
     /// @details Dynamic temperature implementation (a.k.a. entropy) described in the paper https://arxiv.org/abs/2309.02772.
     struct lhm_sampler * lhm_sampler_init_temp_ext   (float   t, float   delta, float exponent);
 
-    /// @details XTC sampler as described in https://github.com/oobabooga/text-generation-webui/pull/6335
     struct lhm_sampler * lhm_sampler_init_xtc        (float   p, float   t,     size_t min_keep, uint32_t seed);
 
     /// @details Top n sigma sampling as described in academic paper "Top-nσ: Not All Logits Are You Need" https://arxiv.org/pdf/2411.07641
@@ -1344,7 +1333,6 @@ extern "C" {
                           const char * grammar_str,
                           const char * grammar_root);
 
-    /// @details Lazy grammar sampler, introduced in https://github.com/ggml-org/lhm.cpp/pull/9639
     /// @param trigger_patterns A list of patterns that will trigger the grammar sampler. Pattern will be matched from the start of the generation output, and grammar sampler will be fed content starting from its first match group.
     /// @param trigger_tokens A list of tokens that will trigger the grammar sampler. Grammar sampler will be fed content starting from the trigger token included.
     struct lhm_sampler * lhm_sampler_init_grammar_lazy_patterns(
@@ -1364,7 +1352,7 @@ extern "C" {
                                float   penalty_freq,     // 0.0 = disabled
                                float   penalty_present); // 0.0 = disabled
 
-    ///  @details DRY sampler, designed by p-e-w, as described in: https://github.com/oobabooga/text-generation-webui/pull/5677, porting Koboldcpp implementation authored by pi6am: https://github.com/LostRuins/koboldcpp/pull/982
+    ///  @details DRY sampler, designed by p-e-w
     struct lhm_sampler * lhm_sampler_init_dry(
             const struct lhm_vocab *  vocab,
                              int32_t    n_ctx_train,
@@ -1394,8 +1382,6 @@ extern "C" {
     /// @param target select tokens near this probability (valid range 0.0 to 1.0; negative = disabled)
     /// @param decay  EMA decay for adaptation; history ≈ 1/(1-decay) tokens (valid range 0.0 - 0.99)
     /// @param seed   RNG seed
-    ///
-    /// ref: https://github.com/ggml-org/lhm.cpp/pull/17927
     ///
     struct lhm_sampler * lhm_sampler_init_adaptive_p(
                                float   target,

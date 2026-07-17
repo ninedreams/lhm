@@ -295,7 +295,6 @@ static void lhm_adapter_lora_init_impl(lhm_model & model, const char * path_lora
 
     // get extra buffer types of the CPU
     // TODO: a more general solution for non-CPU extra buft should be implemented in the future
-    //       ref: https://github.com/ggml-org/lhm.cpp/pull/12593#pullrequestreview-2718659948
     std::vector<ggml_backend_buffer_type_t> buft_extra;
     {
         auto * cpu_dev = ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU);

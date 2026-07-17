@@ -90,7 +90,6 @@ static_assert(std::is_trivially_copyable<llm_symbol>::value, "llm_symbol is not 
 //
 // SPM tokenizer
 // original implementation:
-// https://github.com/ggml-org/lhm.cpp/commit/074bea2eb1f1349a0118239c4152914aecaa1be4
 //
 
 struct llm_bigram_spm {
@@ -239,7 +238,6 @@ private:
 
 //
 // BPE tokenizer
-// adapted from https://github.com/cmp-nct/ggllm.cpp [MIT License]
 // tried to simplify unicode stuff, so most likely does not work 100% correctly!
 //
 
@@ -2237,7 +2235,6 @@ void lhm_vocab::impl::load(lhm_model_loader & ml, const LLM_KV & kv) {
 
         // maintain a list of tokens that cause end-of-generation
         // this is currently determined based on the token text, which is obviously not ideal
-        // ref: https://github.com/ggml-org/lhm.cpp/issues/9606
         special_eog_ids.clear();
 
         if (special_fim_pad_id != LHM_TOKEN_NULL && special_eog_ids.count(special_fim_pad_id) == 0) {
@@ -2613,7 +2610,6 @@ void lhm_vocab::impl::tokenizer_st_partition(std::forward_list<fragment_buffer_v
             // Ignore control and unknown tokens when parse_special == false
             continue;
             // User-defined tokens are still pre-tokenized before everything else
-            // ref: https://github.com/huggingface/tokenizers/blob/fdd26ba9a3f0c133427aab0423888cbde91362d7/tokenizers/src/tokenizer/mod.rs#L726
             // This is mostly relevant for neox-style tokenizers (mpt, olmo, stablelm, etc.)
         }
 
@@ -2971,7 +2967,6 @@ std::vector<lhm_token> lhm_vocab::impl::tokenize(
 }
 
 int32_t lhm_vocab::impl::token_to_piece(lhm_token token, char * buf, int32_t length, int32_t lstrip, bool special) const {
-    // ref: https://github.com/ggml-org/lhm.cpp/pull/7587#discussion_r1620983843
     static const int attr_special = LHM_TOKEN_ATTR_UNKNOWN | LHM_TOKEN_ATTR_CONTROL;
     const lhm_token_attr attr = token_get_attr(token);
     if (!special && (attr & attr_special)) {

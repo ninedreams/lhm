@@ -113,8 +113,6 @@ llm_chat_template llm_chat_detect_template(const std::string & tmpl) {
             || tmpl_contains("[AVAILABLE_TOOLS]")
         ) {
             // Official mistral 'v1', 'v3' and 'v3-tekken' templates
-            // See: https://github.com/mistralai/cookbook/blob/main/concept-deep-dive/tokenization/chat_templates.md
-            // See: https://github.com/mistralai/cookbook/blob/main/concept-deep-dive/tokenization/templates.md
             if (tmpl_contains(" [INST]")) {
                 return LLM_CHAT_TEMPLATE_MISTRAL_V1;
             } else if (tmpl_contains("\"[INST]\"")) {
@@ -246,7 +244,6 @@ int32_t llm_chat_apply_template(
     llm_chat_template tmpl,
     const std::vector<const lhm_chat_message *> & chat,
     std::string & dest, bool add_ass) {
-    // Taken from the research: https://github.com/ggml-org/lhm.cpp/issues/5527
     std::stringstream ss;
     if (tmpl == LLM_CHAT_TEMPLATE_CHATML) {
         // chatml template
@@ -275,8 +272,6 @@ int32_t llm_chat_apply_template(
     } else if (tmpl == LLM_CHAT_TEMPLATE_MISTRAL_V1
             || tmpl == LLM_CHAT_TEMPLATE_MISTRAL_V3
             || tmpl == LLM_CHAT_TEMPLATE_MISTRAL_V3_TEKKEN) {
-        // See: https://github.com/mistralai/cookbook/blob/main/concept-deep-dive/tokenization/chat_templates.md
-        // See: https://github.com/mistralai/cookbook/blob/main/concept-deep-dive/tokenization/templates.md
         std::string leading_space = tmpl == LLM_CHAT_TEMPLATE_MISTRAL_V1 ? " " : "";
         std::string trailing_space = tmpl == LLM_CHAT_TEMPLATE_MISTRAL_V3_TEKKEN ? "" : " ";
         bool trim_assistant_message = tmpl == LLM_CHAT_TEMPLATE_MISTRAL_V3;

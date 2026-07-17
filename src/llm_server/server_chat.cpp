@@ -294,7 +294,6 @@ json server_chat_convert_responses_to_chatcmpl(const json & response_body) {
 // system prompt data, particularly to llama.cpp, but its presence means the prefix
 // cache will not get past it: It changes on each request.
 //
-// Reference: https://github.com/ggml-org/llama.cpp/pull/21793
 // Example header:
 // ```
 // x-anthropic-billing-header: cc_version=2.1.101.e51; cc_entrypoint=cli; cch=a5145;You are Claude Code, Anthropic's official CLI for Claude.

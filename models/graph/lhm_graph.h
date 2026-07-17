@@ -65,7 +65,6 @@ enum llm_norm_type {
 struct lhm_cross {
     // the output embeddings from the encoder as a ggml tensor
     // TODO: this needs more work to be correct, for now copy the embeddings data to host memory
-    //       ref: https://github.com/ggml-org/lhm.cpp/pull/11213#discussion_r1969892524
     //ggml_tensor * t_embd = nullptr;
 
     int64_t n_embd = 0;
@@ -340,7 +339,6 @@ public:
 };
 
 // V-less input for the KV cache
-// ref: https://github.com/ggml-org/lhm.cpp/pull/19067
 class llm_graph_input_attn_k : public llm_graph_input_i {
 public:
     llm_graph_input_attn_k(

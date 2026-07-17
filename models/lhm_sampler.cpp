@@ -1699,7 +1699,6 @@ static void lhm_sampler_typical_apply(struct lhm_sampler * smpl, lhm_token_data_
     auto * ctx = (lhm_sampler_typical *) smpl->ctx;
 
     // Reference implementation:
-    // https://github.com/huggingface/transformers/compare/main...cimeister:typical-sampling:typical-pr
     if (ctx->p >= 1.0f) {
         return;
     }
@@ -2870,7 +2869,6 @@ struct lhm_sampler_dry {
     ring_buffer<lhm_token> last_tokens;
 };
 
-// Ported from Koboldcpp, original PR: https://github.com/LostRuins/koboldcpp/pull/982 (Original author: pi6am)
 static void get_overlapping_token_sequences(const lhm_vocab & vocab, const std::string& str, std::unordered_multimap<lhm_token, std::vector<lhm_token>>& token_sequences, int max_tail_len = -1) {
     for (lhm_token token_id = 0; token_id < (lhm_token) vocab.n_tokens(); token_id++) {
         std::string word = vocab.detokenize({token_id}, true);
@@ -2926,7 +2924,6 @@ static void lhm_sampler_dry_accept(struct lhm_sampler * smpl, lhm_token token) {
     ctx->last_tokens.push_back(token);
 }
 
-// Ported from Koboldcpp, original PR: https://github.com/LostRuins/koboldcpp/pull/982 (Original author: pi6am)
 static void lhm_sampler_dry_apply(struct lhm_sampler * smpl, lhm_token_data_array * cur_p) {
     auto * ctx = (lhm_sampler_dry *) smpl->ctx;
 
@@ -3013,7 +3010,6 @@ static void lhm_sampler_dry_apply(struct lhm_sampler * smpl, lhm_token_data_arra
     // https://ivanyu.me/blog/2014/10/15/z-algorithm/
     //
     // The code below is adapted from the public domain implementation by the same author here:
-    // https://github.com/ivanyu/string-algorithms/blob/master/z_algorithm.py
     //
     // Example:
     // Last N tokens: a b c c b c y a b c
@@ -3265,8 +3261,6 @@ struct lhm_sampler * lhm_sampler_init_dry_testing(int32_t context_size, float dr
 // of selected tokens, used to compute an adapted target at each sampling step.
 //
 // see lhm.h for a full description of the sampler
-//
-// ref: https://github.com/ggml-org/lhm.cpp/pull/17927
 //
 struct lhm_sampler_adaptive_p {
     const float        target;            // target probability (0.0 - 1.0; negative = disabled)

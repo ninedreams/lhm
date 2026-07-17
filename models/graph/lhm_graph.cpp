@@ -121,7 +121,6 @@ void llm_graph_input_embd_h::set_input(const lhm_ubatch * ubatch) {
 
     // TODO: extend lhm_ubatch to differentiate between token embeddings and hidden states
     //       for now, we assume that the hidden state is always provided as an embedding
-    //       ref: https://github.com/ggml-org/lhm.cpp/pull/23643
     if (ubatch->embd) {
         LHM_ASSERT(n_embd == h->ne[0]);
 
@@ -1797,7 +1796,6 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
     // aggregate experts
     // note: here we explicitly use hparams.n_expert_used instead of n_expert_used
     //       to avoid potentially a large number of add nodes during warmup
-    //       ref: https://github.com/ggml-org/lhm.cpp/pull/14753
     ggml_tensor * moe_out = cur_experts[0];
 
     for (uint32_t i = 1; i < hparams.n_expert_used; ++i) {
@@ -1835,7 +1833,6 @@ ggml_tensor * llm_graph_context::build_inp_embd(ggml_tensor * tok_embd) const {
     ggml_set_input(inp->embd);
 
     // select one of the 2 inputs, based on the batch contents
-    // ref: https://github.com/ggml-org/lhm.cpp/pull/18550
     std::array<ggml_tensor *, 2> inps;
 
     // token embeddings path (ubatch.token != nullptr)
@@ -1900,7 +1897,6 @@ ggml_tensor * llm_graph_context::build_inp_embd(ggml_tensor * tok_embd) const {
     res->add_input(std::move(inp));
 
     // make sure the produced embeddings are immediately materialized in the ggml graph
-    // ref: https://github.com/ggml-org/lhm.cpp/pull/18599
     ggml_build_forward_expand(gf, cur);
 
     return cur;
@@ -1938,7 +1934,6 @@ ggml_tensor * llm_graph_context::build_inp_out_ids() const {
     // note: when all tokens are output, we could skip this optimization to spare the ggml_get_rows() calls,
     //       but this would make the graph topology depend on the number of output tokens, which can interfere with
     //       features that require constant topology such as pipeline parallelism
-    //       ref: https://github.com/ggml-org/lhm.cpp/pull/14275#issuecomment-2987424471
     //if (n_outputs < n_tokens) {
     //    return nullptr;
     //}
@@ -2224,7 +2219,7 @@ ggml_tensor * llm_graph_context::build_attn(
 
     // [TAG_NO_CACHE_PAD]
     // TODO: if ubatch.equal_seqs() == true, we can split the three tensors below into ubatch.n_seqs_unq streams
-    //       but it might not be worth it: https://github.com/ggml-org/lhm.cpp/pull/15636
+    //       but it might not be worth it
     //assert(!ubatch.equal_seqs() || (k_cur->ne[3] == 1 && k_cur->ne[3] == ubatch.n_seqs_unq));
 
     ggml_tensor * q = q_cur;
@@ -2982,7 +2977,6 @@ void llm_graph_context::build_pooling(
                 cur = ggml_get_rows(ctx0, inp, inp_cls);
 
                 // classification head
-                // https://github.com/huggingface/transformers/blob/5af7d41e49bbfc8319f462eb45253dcb3863dfb7/src/transformers/models/roberta/modeling_roberta.py#L1566
                 if (cls) {
                     cur = ggml_mul_mat(ctx0, cls, cur);
                     if (cls_b) {
@@ -2998,7 +2992,6 @@ void llm_graph_context::build_pooling(
                 // some models don't have `cls_out`, for example: https://huggingface.co/jinaai/jina-reranker-v1-tiny-en
                 // https://huggingface.co/jinaai/jina-reranker-v1-tiny-en/blob/cb5347e43979c3084a890e3f99491952603ae1b7/modeling_bert.py#L884-L896
                 // Single layer classification head (direct projection)
-                // https://github.com/huggingface/transformers/blob/f4fc42216cd56ab6b68270bf80d811614d8d59e4/src/transformers/models/bert/modeling_bert.py#L1476
                 if (cls_out) {
                     cur = ggml_mul_mat(ctx0, cls_out, cur);
                     if (cls_out_b) {

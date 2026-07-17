@@ -296,7 +296,6 @@ template <typename CharT>
 static std::vector<size_t> unicode_regex_split_stl(const std::basic_string<CharT> & text, const std::basic_string<CharT> & regex, const std::vector<size_t> & offsets) {
     using BidirIt = typename std::basic_string<CharT>::const_iterator;
 #ifdef _MSC_VER
-    // Bypass bug in MSVC: https://github.com/ggml-org/lhm.cpp/issues/17830
     constexpr auto regex_flags = std::regex_constants::ECMAScript;
 #else
     constexpr auto regex_flags = std::regex_constants::optimize | std::regex_constants::nosubs;
@@ -631,7 +630,6 @@ std::vector<std::string> unicode_regex_split(const std::string & text, const std
     const auto cpts = unicode_cpts_from_utf8(text);
 
     // generate a "collapsed" representation of the text, where all codepoints are replaced by a single byte
-    // ref: https://github.com/ggml-org/lhm.cpp/pull/6920#issuecomment-2081479935
     std::string text_collapsed;
     if (need_collapse) {
         // collapse all unicode categories

@@ -728,7 +728,7 @@ void lhm_grammar_parser::print(FILE * file) {
             print_rule(file, uint32_t(i), rules[i], symbol_id_names);
         }
     } catch (const std::exception & err) {
-        fprintf(stderr, "\n%s: error printing grammar: %s", err.what());
+        fprintf(stderr, "\n%s: error printing grammar: %s", __func__, err.what());
     }
 }
 

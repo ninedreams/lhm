@@ -131,7 +131,6 @@ lhm_context::lhm_context(
 
         const float factor = 1.0f / cparams.rope_freq_scale;
 
-        // ref: https://github.com/huggingface/transformers/blob/6d00f6b0a5679c36510f203e4226e36f517c3032/src/transformers/modeling_rope_utils.py#L336-L348
         if (hparams.rope_yarn_log_mul != 0.0f) {
             // note: here we assume `mscale == 1.0f`
             // TODO: start reading the actual value of mscale and handle the case where it is not 1.0f
@@ -147,10 +146,6 @@ lhm_context::lhm_context(
         }
 
         // when YARN is applied with yarn_ext_factor != 0.0f, we need to cancel this factor:
-        // https://github.com/ggml-org/lhm.cpp/blob/a81a569577cc38b32558958b048228150be63eae/ggml/src/ggml-cpu/ops.cpp#L5541-L5544
-        //
-        // ref: https://github.com/ggml-org/lhm.cpp/discussions/7416
-        //      https://github.com/ggml-org/lhm.cpp/pull/17945
         cparams.yarn_attn_factor *= 1.0f / (1.0f + 0.1f * logf(factor));
     }
 
@@ -199,7 +194,6 @@ lhm_context::lhm_context(
         }
     }
 
-    // ref: https://github.com/ggml-org/lhm.cpp/pull/17046#discussion_r2503085732
     cparams.n_ctx = GGML_PAD(cparams.n_ctx, 256);
 
     if (cparams.kv_unified) {
@@ -1397,7 +1391,6 @@ int lhm_context::encode(const lhm_batch & batch_inp) {
 
     // always use non-causal attention for encoder graphs
     // TODO: this is a tmp solution until we have a proper way to support enc-dec models
-    //       ref: https://github.com/ggml-org/lhm.cpp/pull/12181#issuecomment-2730451223
     cparams.causal_attn = false;
 
     ggml_status status;

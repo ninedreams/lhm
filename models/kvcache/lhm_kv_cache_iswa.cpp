@@ -72,7 +72,7 @@ lhm_kv_cache_iswa::lhm_kv_cache_iswa(
 
     // when using full-size SWA cache, we set the SWA cache size to be equal to the base cache size
     if (swa_full) {
-        LOG_WARN("using full-size SWA cache (ref: {})", "https://github.com/ggml-org/llama.cpp/pull/13194#issuecomment-2868343055");
+        LOG_WARN("using full-size SWA cache");
 
         size_swa = size_base;
     }
