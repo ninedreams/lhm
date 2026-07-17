@@ -22,6 +22,9 @@
 #include "kvcache/lhm_kv_cache_iswa.h"
 #include "kvcache/lhm_kv_cache_dsa.h"
 #include "kvcache/lhm_kv_cache_dsv4.h"
+#ifdef LHM_ENABLE_MOONCAKE
+#include "kvcache/lhm_kv_cache_mooncake.h"
+#endif
 #include "memory/lhm_memory_hybrid.h"
 #include "memory/lhm_memory_hybrid_iswa.h"
 #include "memory/lhm_memory_recurrent.h"
@@ -1747,6 +1750,45 @@ lhm_memory_i * lhm_model::create_memory(const lhm_memory_params & params, const 
                     } else {
                         LHM_ASSERT(!hparams.is_swa_any());
 
+#ifdef LHM_ENABLE_MOONCAKE
+                        if (FLAGS_enable_mooncake) {
+                            res = new lhm_kv_cache_mooncake(
+                                    *this,
+                                    hparams,
+                                    params.type_k,
+                                    params.type_v,
+                                    !cparams.flash_attn,
+                                    cparams.offload_kqv,
+                                    cparams.kv_unified,
+                                    cparams.n_ctx_seq,
+                                    cparams.n_seq_max,
+                                    1,
+                                    hparams.n_swa,
+                                    hparams.swa_type,
+                                    nullptr,
+                                    filter,
+                                    nullptr,
+                                    nullptr);
+                        } else {
+                            res = new lhm_kv_cache(
+                                    *this,
+                                    hparams,
+                                    params.type_k,
+                                    params.type_v,
+                                    !cparams.flash_attn,
+                                    cparams.offload_kqv,
+                                    cparams.kv_unified,
+                                    cparams.n_ctx_seq,
+                                    cparams.n_seq_max,
+                                    1,
+                                    hparams.n_swa,
+                                    hparams.swa_type,
+                                    nullptr,
+                                    filter,
+                                    nullptr,
+                                    nullptr);
+                        }
+#else
                         res = new lhm_kv_cache(
                                 *this,
                                 hparams,
@@ -1764,6 +1806,7 @@ lhm_memory_i * lhm_model::create_memory(const lhm_memory_params & params, const 
                                 filter,
                                 nullptr,
                                 nullptr);
+#endif
                     }
                 }
             }
