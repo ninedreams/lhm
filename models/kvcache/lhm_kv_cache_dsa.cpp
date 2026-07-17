@@ -1,8 +1,11 @@
 #include "lhm_kv_cache_dsa.h"
-
+#ifdef LHM_ENABLE_MOONCAKE
+#include "kvcache/lhm_kv_cache_mooncake.h"
+#endif
 #include "lhm_impl.h"
 #include "lhm_batch.h"
 #include "lhm_model.h"
+#include "config.h"
 
 #include <algorithm>
 #include <cassert>
@@ -29,10 +32,23 @@ lhm_kv_cache_dsa::lhm_kv_cache_dsa(
 
     LOG_INFO("creating main KV cache, size = {:d} cells", kv_size);
 
+#ifdef LHM_ENABLE_MOONCAKE
+    kv_mla = FLAGS_enable_mooncake ?
+            std::make_unique<lhm_kv_cache_mooncake>(
+                model, model.hparams, type_k, type_v,
+                v_trans, offload, unified, kv_size, n_seq_max, n_pad,
+                n_swa, swa_type, nullptr, filter, reuse, nullptr)
+            :
+            std::make_unique<lhm_kv_cache>(
+                model, model.hparams, type_k, type_v,
+                v_trans, offload, unified, kv_size, n_seq_max, n_pad,
+                n_swa, swa_type, nullptr, filter, reuse, nullptr);
+#else
     kv_mla = std::make_unique<lhm_kv_cache>(
-            model, model.hparams, type_k, type_v,
-            v_trans, offload, unified, kv_size, n_seq_max, n_pad,
-            n_swa, swa_type, nullptr, filter, reuse, nullptr);
+                model, model.hparams, type_k, type_v,
+                v_trans, offload, unified, kv_size, n_seq_max, n_pad,
+                n_swa, swa_type, nullptr, filter, reuse, nullptr);
+#endif
 
     // we use lhm_kv_cache for caching indexer keys
     // by hand-tweaking some hparams we fool it to create
@@ -45,10 +61,23 @@ lhm_kv_cache_dsa::lhm_kv_cache_dsa(
 
     LOG_INFO("creating indexer KV cache, size = {:d} cells", kv_size);
 
+#ifdef LHM_ENABLE_MOONCAKE
+    kv_lid = FLAGS_enable_mooncake ?
+            std::make_unique<lhm_kv_cache_mooncake>(
+                model, hparams_lid, type_k, type_v,
+                v_trans, offload, unified, kv_size, n_seq_max, n_pad,
+                n_swa, swa_type, nullptr, filter, reuse, nullptr)
+            :
+            std::make_unique<lhm_kv_cache>(
+                model, hparams_lid, type_k, type_v,
+                v_trans, offload, unified, kv_size, n_seq_max, n_pad,
+                n_swa, swa_type, nullptr, filter, reuse, nullptr);
+#else
     kv_lid = std::make_unique<lhm_kv_cache>(
             model, hparams_lid, type_k, type_v,
             v_trans, offload, unified, kv_size, n_seq_max, n_pad,
             n_swa, swa_type, nullptr, filter, reuse, nullptr);
+#endif
 }
 
 void lhm_kv_cache_dsa::clear(bool data) {

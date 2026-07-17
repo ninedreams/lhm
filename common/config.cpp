@@ -156,7 +156,7 @@ DEFINE_string(defrag_thold, "", "KV cache defragmentation threshold");
 // ============================================================================
 DEFINE_bool(enable_mooncake, false, "enable mooncake as kvcache");
 DEFINE_string(mooncake_protocol, "tcp", "which protocol to mooncake (rdma, tcp)");
-DEFINE_string(mooncake_engine_meta_url, "http://localhost:8080/metadata", "meta data server");
+DEFINE_string(mooncake_engine_meta_url, "http://localhost:8081/metadata", "meta data server");
 DEFINE_string(mooncake_master_server_entry, "localhost:50051", "master server entry");
 DEFINE_string(mooncake_device_name, "", "device name");
 

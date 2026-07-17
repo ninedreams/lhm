@@ -332,6 +332,7 @@ lhm_kv_cache_mooncake::lhm_kv_cache_mooncake(
     lhm_kv_cache(model, hparams, type_k, type_v, v_trans, offload, unified, 
         kv_size, n_seq_max, n_pad, n_swa, swa_type, mem_other, filter, reuse, share) {
 
+    LOG_INFO("{}", "use mooncake as kvcache");
     // use default
     HandleCreateClient();
 }

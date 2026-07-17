@@ -1,10 +1,14 @@
 #include <algorithm>
 #include <cassert>
 
+#ifdef LHM_ENABLE_MOONCAKE
+#include "kvcache/lhm_kv_cache_mooncake.h"
+#endif
 #include "lhm_kv_cache_iswa.h"
 #include "lhm_impl.h"
 #include "lhm_batch.h"
 #include "lhm_model.h"
+#include "config.h"
 
 //
 // lhm_kv_cache_iswa
@@ -89,17 +93,43 @@ lhm_kv_cache_iswa::lhm_kv_cache_iswa(
         mem_other_swa = static_cast<lhm_kv_cache_iswa *>(mem_other)->get_swa();
     }
 
+#ifdef LHM_ENABLE_MOONCAKE
+    kv_base = FLAGS_enable_mooncake ?
+            std::make_unique<lhm_kv_cache_mooncake>(
+                model, hparams, type_k, type_v,
+                v_trans, offload, unified, size_base, n_seq_max, n_pad,
+                0, LHM_SWA_TYPE_NONE, mem_other_base, filter_base, reuse, share)
+            :
+            std::make_unique<lhm_kv_cache>(
+                model, hparams, type_k, type_v,
+                v_trans, offload, unified, size_base, n_seq_max, n_pad,
+                0, LHM_SWA_TYPE_NONE, mem_other_base, filter_base, reuse, share);
+#else
     kv_base = std::make_unique<lhm_kv_cache>(
             model, hparams, type_k, type_v,
             v_trans, offload, unified, size_base, n_seq_max, n_pad,
             0, LHM_SWA_TYPE_NONE, mem_other_base, filter_base, reuse, share);
+#endif
 
     LOG_INFO("creating     SWA KV cache, size = {:d} cells", size_swa);
 
+#ifdef LHM_ENABLE_MOONCAKE
+    kv_swa = FLAGS_enable_mooncake ?
+            std::make_unique<lhm_kv_cache_mooncake>(
+                model, hparams, type_k, type_v,
+                v_trans, offload, unified, size_swa, n_seq_max, n_pad,
+                hparams.n_swa, hparams.swa_type, mem_other_swa, filter_swa, reuse, share)
+            :
+            std::make_unique<lhm_kv_cache>(
+                model, hparams, type_k, type_v,
+                v_trans, offload, unified, size_swa, n_seq_max, n_pad,
+                hparams.n_swa, hparams.swa_type, mem_other_swa, filter_swa, reuse, share);
+#else
     kv_swa = std::make_unique<lhm_kv_cache>(
             model, hparams, type_k, type_v,
             v_trans, offload, unified, size_swa, n_seq_max, n_pad,
             hparams.n_swa, hparams.swa_type, mem_other_swa, filter_swa, reuse, share);
+#endif
 }
 
 void lhm_kv_cache_iswa::clear(bool data) {
