@@ -36,6 +36,7 @@
 #include "lhm_impl.h"
 #include "lhm_mmap.h"
 #include "lhm_cparams.h"
+#include "config.h"
 
 static lhm_model * lhm_model_mapping(llm_arch arch, const lhm_model_params & params) {
     switch (arch) {
@@ -1751,8 +1752,26 @@ lhm_memory_i * lhm_model::create_memory(const lhm_memory_params & params, const 
                         LHM_ASSERT(!hparams.is_swa_any());
 
 #ifdef LHM_ENABLE_MOONCAKE
-                        if (FLAGS_enable_mooncake) {
-                            res = new lhm_kv_cache_mooncake(
+                        res = FLAGS_enable_mooncake ?
+                            new lhm_kv_cache_mooncake(
+                                    *this,
+                                    hparams,
+                                    params.type_k,
+                                    params.type_v,
+                                    !cparams.flash_attn,
+                                    cparams.offload_kqv,
+                                    cparams.kv_unified,
+                                    cparams.n_ctx_seq,
+                                    cparams.n_seq_max,
+                                    1,
+                                    hparams.n_swa,
+                                    hparams.swa_type,
+                                    nullptr,
+                                    filter,
+                                    nullptr,
+                                    nullptr)
+                            :
+                            new lhm_kv_cache(
                                     *this,
                                     hparams,
                                     params.type_k,
@@ -1769,25 +1788,6 @@ lhm_memory_i * lhm_model::create_memory(const lhm_memory_params & params, const 
                                     filter,
                                     nullptr,
                                     nullptr);
-                        } else {
-                            res = new lhm_kv_cache(
-                                    *this,
-                                    hparams,
-                                    params.type_k,
-                                    params.type_v,
-                                    !cparams.flash_attn,
-                                    cparams.offload_kqv,
-                                    cparams.kv_unified,
-                                    cparams.n_ctx_seq,
-                                    cparams.n_seq_max,
-                                    1,
-                                    hparams.n_swa,
-                                    hparams.swa_type,
-                                    nullptr,
-                                    filter,
-                                    nullptr,
-                                    nullptr);
-                        }
 #else
                         res = new lhm_kv_cache(
                                 *this,

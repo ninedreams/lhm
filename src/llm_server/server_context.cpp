@@ -158,7 +158,7 @@ struct server_slot {
             LHM_ASSERT(!is_processing());
         }
 
-        SLT_INF(*this, "clearing prompt with %zu tokens", prompt.tokens.size());
+        SLT_INF(*this, "clearing prompt with {} tokens", prompt.tokens.size());
 
         common_context_seq_rm(ctx_tgt, id, -1, -1);
         if (ctx_dft) {
@@ -351,7 +351,7 @@ struct server_slot {
             SLT_DBG(*this, "slot decode token, id={}, n_ctx = {}, n_tokens = {}, truncated = {}",
                     sampled, n_ctx, prompt.n_tokens(), truncated);
         } else {
-            SLT_DBG(*this, "generate_draft: id={}, #tokens=%zu, #draft=%zu, pos_next={}",
+            SLT_DBG(*this, "generate_draft: id={}, #tokens={}, #draft={}, pos_next={}",
                     sampled, prompt.tokens.size(), spec_draft.size(), prompt.tokens.pos_next());
 
             LHM_ASSERT(spec_i_batch.empty());
@@ -466,7 +466,7 @@ struct server_slot {
         t_print_last = t_now;
         n_decoded_last = n_decoded;
 
-        SLT_INF(*this, "n_decoded = %6d, tg = %6.2f t/s, tg_3s = %6.2f t/s", n_decoded, n_gen_second, n_gen_second_win);
+        SLT_INF(*this, "n_decoded = {}, tg = {} t/s, tg_3s = {} t/s", n_decoded, n_gen_second, n_gen_second_win);
     }
 
     void print_timings_pp() const {
@@ -477,7 +477,7 @@ struct server_slot {
             return;
         }
 
-        SLT_INF(*this, "prompt processing, n_tokens = %6d, progress = %.2f, t = %6.2f s / %.2f tokens per second",
+        SLT_INF(*this, "prompt processing, n_tokens = {}, progress = {}, t = {} s / {} tokens per second",
                 n_prompt_tokens_processed, f_progress, t_prompt_processing / 1e3, n_prompt_second);
     }
 
@@ -489,19 +489,19 @@ struct server_slot {
         const double n_gen_second = 1e3 / t_token_generation * n_decoded;
 
         SLT_INF(*this,
-                "prompt eval time = %10.2f ms / %5d tokens (%8.2f ms per token, %8.2f tokens per second)",
+                "prompt eval time = {} ms / {} tokens ({} ms per token, {} tokens per second)",
                 t_prompt_processing, n_prompt_tokens_processed, t_prompt, n_prompt_second);
 
         SLT_INF(*this,
-                "       eval time = %10.2f ms / %5d tokens (%8.2f ms per token, %8.2f tokens per second)",
+                "       eval time = {} ms / {} tokens ({} ms per token, {} tokens per second)",
                 t_token_generation, n_decoded, t_gen, n_gen_second);
 
         SLT_INF(*this,
-                "      total time = %10.2f ms / %5d tokens",
+                "      total time = {} ms / {} tokens",
                 t_prompt_processing + t_token_generation, n_prompt_tokens_processed + n_decoded);
 
         SLT_INF(*this,
-                "   graphs reused = %10d",
+                "   graphs reused = {}",
                 lhm_perf_context(ctx_tgt).n_reused);
 
         if (n_draft_total > 0) {
@@ -514,12 +514,12 @@ struct server_slot {
                     if (i > 0) {
                         acceptance_rates_per_pos += ", ";
                     }
-                    acceptance_rates_per_pos += fmt::format("%.3f", (double) n_accepted_per_pos[i] / (double) n_draft_verif_steps);
+                    acceptance_rates_per_pos += fmt::format("{}", (double) n_accepted_per_pos[i] / (double) n_draft_verif_steps);
                 }
             }
 
             SLT_INF(*this,
-                    "draft acceptance = %0.5f (%5d accepted / %5d generated), mean acceptance length = %5.2f, acceptance rate per position = ({})",
+                    "draft acceptance = {} ({} accepted / {} generated), mean acceptance length = {}, acceptance rate per position = ({})",
                     draft_ratio, n_draft_accepted, n_draft_total, mean_acc_len, acceptance_rates_per_pos.c_str());
         }
 
@@ -1226,7 +1226,7 @@ private:
             if (ret != nullptr) {
                 const float f_keep = (sim_best*task.tokens.size()) / ret->prompt.tokens.size();
 
-                SLT_INF(*ret, "selected slot by LCP similarity, sim_best = %.3f (> %.3f thold), f_keep = %.3f",
+                SLT_INF(*ret, "selected slot by LCP similarity, sim_best = {} (> {} thold), f_keep = {}",
                         sim_best, slot_prompt_similarity, f_keep);
 
                 // if we are about to lose a large portion of the existing context - save it in the prompt cache
@@ -1254,7 +1254,7 @@ private:
             }
 
             if (ret != nullptr) {
-                SLT_INF(*ret, "selected slot by LRU, t_last = %" PRId64 "", t_last);
+                SLT_INF(*ret, "selected slot by LRU, t_last = {}", t_last);
 
                 update_cache = true;
             }
@@ -1338,10 +1338,10 @@ private:
             if (!are_lora_equal(task_loras, slot.lora)) {
                 // if lora has changed, check to see if the cache should be cleared
                 if (lora_should_clear_cache(slot.lora, task_loras)) {
-                    SLT_TRC(slot, "clearing cache for lora change. %zu loras -> %zu loras", slot.lora.size(), task.params.lora.size());
+                    SLT_TRC(slot, "clearing cache for lora change. {} loras -> {} loras", slot.lora.size(), task.params.lora.size());
                     slot.prompt.tokens.clear();
                 } else {
-                    SLT_TRC(slot, "keeping cache for alora. %zu target loras", task_loras.size());
+                    SLT_TRC(slot, "keeping cache for alora. {} target loras", task_loras.size());
                 }
                 slot.lora = task_loras;
             }
@@ -1389,10 +1389,10 @@ private:
 
             // if the activation string is not found, disable the alora
             if (alora_invocation_start == task.tokens.size()) {
-                SLT_DBG(slot, "alora %zu requested, but not found. deactivating", enabled_ids[0]);
+                SLT_DBG(slot, "alora {} requested, but not found. deactivating", enabled_ids[0]);
                 slot.lora[enabled_ids[0]].scale = 0.0f;
             } else {
-                SLT_DBG(slot, "alora %zu activated starting at %zu", enabled_ids[0], alora_invocation_start);
+                SLT_DBG(slot, "alora {} activated starting at {}", enabled_ids[0], alora_invocation_start);
                 slot.alora_invocation_start = alora_invocation_start;
             }
         }
@@ -1578,7 +1578,7 @@ private:
             SLT_DBG(slot, "{}", "stopped by EOS\n");
         }
 
-        SLT_DBG(slot, "n_decoded = {}, n_remaining = {}, next token: %5d '{}'", slot.n_decoded, slot.n_remaining, result.tok, token_str.c_str());
+        SLT_DBG(slot, "n_decoded = {}, n_remaining = {}, next token: {} '{}'", slot.n_decoded, slot.n_remaining, result.tok, token_str.c_str());
 
         return slot.has_next_token; // continue
     }
@@ -1948,7 +1948,7 @@ private:
         cur.update_dft(ctx_dft.get(), slot.id, LHM_STATE_SEQ_FLAGS_PARTIAL_ONLY);
 
         SLT_INF(slot,
-                "created context checkpoint {} of {} (pos_min = {}, pos_max = {}, n_tokens = %" PRId64 ", size = %.3f MiB)",
+                "created context checkpoint {} of {} (pos_min = {}, pos_max = {}, n_tokens = {}, size = {} MiB)",
                 (int) slot.prompt.checkpoints.size(), params_base.n_ctx_checkpoints, cur.pos_min,
                 cur.pos_max, cur.n_tokens, (float) cur.size() / 1024 / 1024);
     }
@@ -2464,7 +2464,7 @@ private:
                     //const int64_t t_total = ggml_time_us() - t_start;
                     //printf("checkpoint total: %f ms", t_total / 1000.0);
 
-                    SLT_DBG(slot, "created speculative checkpoint (pos_min = {}, pos_max = {}, n_tokens = {}, size = %.3f MiB, draft = %.3f MiB)",
+                    SLT_DBG(slot, "created speculative checkpoint (pos_min = {}, pos_max = {}, n_tokens = {}, size = {} MiB, draft = {} MiB)",
                             ckpt.pos_min, ckpt.pos_max, slot.prompt.n_tokens(),
                             (float) ckpt.size() / 1024 / 1024,
                             (float) ckpt.data_dft.size() / 1024 / 1024);
@@ -2529,12 +2529,12 @@ private:
                         /*if (1) {
                             // first 16 tokens (avoid flooding logs)
                             for (int i = 0; i < std::min<int>(16, input_tokens.size()); i++) {
-                                SLT_DBG(slot, "prompt token %3d: %6d '{}'", i, input_tokens[i], common_token_to_piece(ctx_tgt, input_tokens[i]).c_str());
+                                SLT_DBG(slot, "prompt token %3d: {} '{}'", i, input_tokens[i], common_token_to_piece(ctx_tgt, input_tokens[i]).c_str());
                             }
                         } else {
                             // all
                             for (int i = 0; i < (int) input_tokens.size(); i++) {
-                                SLT_DBG(slot, "prompt token %3d: %6d '{}'", i, input_tokens[i], common_token_to_piece(ctx_tgt, input_tokens[i]).c_str());
+                                SLT_DBG(slot, "prompt token %3d: {} '{}'", i, input_tokens[i], common_token_to_piece(ctx_tgt, input_tokens[i]).c_str());
                             }
                         }*/
 
@@ -2629,9 +2629,9 @@ private:
                                         }
 
                                         if (n_match >= (size_t) n_cache_reuse) {
-                                            SLT_TRC(slot, "reusing chunk with size %zu, shifting KV cache [%zu, %zu) -> [%zu, %zu)", n_match, head_c, head_c + n_match, head_p, head_p + n_match);
+                                            SLT_TRC(slot, "reusing chunk with size {}, shifting KV cache [{}, {}) -> [{}, {})", n_match, head_c, head_c + n_match, head_p, head_p + n_match);
                                             //for (size_t i = head_p; i < head_p + n_match; i++) {
-                                            //    SLT_DBG(slot, "cache token %3zu: %6d '{}'", i, prompt_tokens[i], common_token_to_piece(ctx_tgt, prompt_tokens[i]).c_str());
+                                            //    SLT_DBG(slot, "cache token %3zu: {} '{}'", i, prompt_tokens[i], common_token_to_piece(ctx_tgt, prompt_tokens[i]).c_str());
                                             //}
 
                                             const int64_t kv_shift = (int64_t) head_p - (int64_t) head_c;
@@ -2745,7 +2745,7 @@ private:
 
                                         pos_next = std::min(pos_next, std::max(it->pos_min + 1, it->pos_max));
                                         n_past   = std::min(slot.prompt.tokens.size_up_to_pos(pos_next), (size_t) it->n_tokens);
-                                        SLT_WRN(slot, "restored context checkpoint (pos_min = {}, pos_max = {}, n_tokens = %" PRId64 ", n_past = {}, size = %.3f MiB)", it->pos_min, it->pos_max, it->n_tokens, n_past, (float) it->size() / 1024 / 1024);
+                                        SLT_WRN(slot, "restored context checkpoint (pos_min = {}, pos_max = {}, n_tokens = {}, n_past = {}, size = {} MiB)", it->pos_min, it->pos_max, it->n_tokens, n_past, (float) it->size() / 1024 / 1024);
                                     }
 
                                     if (do_reset) {
@@ -2761,7 +2761,7 @@ private:
                                 for (auto it = slot.prompt.checkpoints.begin(); it != slot.prompt.checkpoints.end();) {
                                     const auto & cur = *it;
                                     if (cur.pos_max > pos_next) {
-                                        SLT_WRN(slot, "erased invalidated context checkpoint (pos_min = {}, pos_max = {}, n_tokens = %" PRId64 ", n_swa = {}, pos_next = {}, size = %.3f MiB)", cur.pos_min, cur.pos_max, cur.n_tokens, n_swa, pos_next, (float) cur.size() / 1024 / 1024);
+                                        SLT_WRN(slot, "erased invalidated context checkpoint (pos_min = {}, pos_max = {}, n_tokens = {}, n_swa = {}, pos_next = {}, size = {} MiB)", cur.pos_min, cur.pos_max, cur.n_tokens, n_swa, pos_next, (float) cur.size() / 1024 / 1024);
                                         it = slot.prompt.checkpoints.erase(it);
                                     } else {
                                         ++it;
@@ -3248,7 +3248,7 @@ private:
 
                             const auto & ckpt = slot.spec_ckpt;
 
-                            SLT_DBG(slot, "restoring speculative checkpoint (pos_min = {}, pos_max = {}, size = %zu)", ckpt.pos_min, ckpt.pos_max, ckpt.size());
+                            SLT_DBG(slot, "restoring speculative checkpoint (pos_min = {}, pos_max = {}, size = {})", ckpt.pos_min, ckpt.pos_max, ckpt.size());
 
                             {
                                 ckpt.load_tgt(slot.ctx_tgt, slot.id, LHM_STATE_SEQ_FLAGS_PARTIAL_ONLY);
@@ -3300,7 +3300,7 @@ private:
                 slot.prompt.tokens.insert({ids.begin(), ids.end() - 1});
 
                 slot.sampled = ids.back(); // last accepted token
-                SLT_DBG(slot, "add accepted tokens: sampled={}, ids.size=%zu, n_draft=%zu", slot.sampled, ids.size(), n_draft);
+                SLT_DBG(slot, "add accepted tokens: sampled={}, ids.size={}, n_draft={}", slot.sampled, ids.size(), n_draft);
 
                 common_context_seq_rm(slot.ctx_tgt, slot.id, slot.prompt.tokens.pos_next(), -1);
                 if (slot.ctx_dft) {

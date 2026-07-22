@@ -56,6 +56,12 @@ target_include_directories(${TARGET} PUBLIC ${CMAKE_SOURCE_DIR}/lhm)
 target_include_directories(${TARGET} PUBLIC ${CMAKE_SOURCE_DIR}/common)
 target_include_directories(${TARGET} PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/fmt/include)
 target_include_directories(${TARGET} PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/spdlog/include)
+if (LHM_ENABLE_MOONCAKE)
+    target_include_directories(lhm_memory PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/Mooncake/mooncake-store/include)
+    target_include_directories(lhm_memory PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/Mooncake/mooncake-store/include/cachelib_memory_allocator)
+    target_include_directories(lhm_memory PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/Mooncake/mooncake-store/include/cachelib_memory_allocator/include)
+    target_include_directories(lhm_memory PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/Mooncake/mooncake-store/include/cachelib_memory_allocator/fake_include)
+endif()
 
 target_link_libraries(${TARGET} PRIVATE
     common

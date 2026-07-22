@@ -126,6 +126,7 @@ add_subdirectory(thirdparty/llama.cpp/ggml)
 
 # mooncake, depends see build.md in Mooncake
 if (LHM_ENABLE_MOONCAKE)
+    add_compile_definitions(LHM_ENABLE_MOONCAKE)
     set(BUILD_UNIT_TESTS OFF CACHE BOOL "")
     set(BUILD_BENCHMARK OFF CACHE BOOL "")
     set(BUILD_EXAMPLES OFF CACHE BOOL "")

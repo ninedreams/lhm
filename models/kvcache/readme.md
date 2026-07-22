@@ -5,7 +5,13 @@ git submodule update --init --recursive --depth=1
 `mkdir build; cd build; cmake .. -DLHM_ENABLE_MOONCAKE=ON`
 
 # run mini mooncake
-* `mooncake_master` (simple default config)  
+```bash
+mooncake_master \
+  --enable_http_metadata_server=true \
+  --http_metadata_server_host=0.0.0.0 \
+  --http_metadata_server_port=8081 \
+  --default_kv_lease_ttl=5000
+```
 * how to build and run, more info in mooncake
 
 # config use mooncake as kvcahe

@@ -6,6 +6,7 @@
 #include "lhm_impl.h"
 #include "lhm_model.h"
 #include "lhm_context.h"
+#include "config.h"
 
 //
 // lhm_memory_hybrid

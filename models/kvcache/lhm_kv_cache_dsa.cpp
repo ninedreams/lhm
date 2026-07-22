@@ -1,8 +1,11 @@
 #include "lhm_kv_cache_dsa.h"
-
+#ifdef LHM_ENABLE_MOONCAKE
+#include "kvcache/lhm_kv_cache_mooncake.h"
+#endif
 #include "lhm_impl.h"
 #include "lhm_batch.h"
 #include "lhm_model.h"
+#include "config.h"
 
 #include <algorithm>
 #include <cassert>
