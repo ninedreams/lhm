@@ -122,8 +122,6 @@ struct server_slot {
             return false;
         }
 
-        LHM_ASSERT(prompt.data.size() == 0);
-
         const size_t cur_size_tgt =           lhm_state_seq_get_size_ext(ctx_tgt, id, LHM_STATE_SEQ_FLAGS_NONE);
         const size_t cur_size_dft = ctx_dft ? lhm_state_seq_get_size_ext(ctx_dft, id, LHM_STATE_SEQ_FLAGS_NONE) : 0;
 
@@ -153,19 +151,15 @@ struct server_slot {
         return res;
     }
 
-    void prompt_clear(bool allow_processing) {
-        if (!allow_processing) {
-            LHM_ASSERT(!is_processing());
-        }
-
-        SLT_INF(*this, "clearing prompt with {} tokens", prompt.tokens.size());
+    void prompt_clear() {
+        SLT_TRC(*this, "clearing prompt with {} tokens", prompt.tokens.size());
 
         common_context_seq_rm(ctx_tgt, id, -1, -1);
         if (ctx_dft) {
             common_context_seq_rm(ctx_dft, id, -1, -1);
         }
 
-        prompt.tokens.clear();
+        prompt.clear();
     }
 
     std::vector<common_adapter_lora_info> lora;
@@ -386,7 +380,7 @@ struct server_slot {
 
             // do not keep context of the child slots - the parent's context is enough
             if (task->is_child()) {
-                prompt_clear(false);
+                prompt_clear();
             }
 
             reset();
@@ -854,6 +848,11 @@ private:
             return false;
         }
 
+        if (ctx_tgt == nullptr) {
+            LOG_ERROR("failed to create_context with model '{}'", params_base.model.path.c_str());
+            return false;
+        }
+
         vocab = lhm_model_get_vocab(model_tgt);
 
         n_ctx = lhm_n_ctx(ctx_tgt);
@@ -1274,7 +1273,7 @@ private:
                 ret->prompt_save(*prompt_cache);
 
                 if (!ret->prompt_load(*prompt_cache, task.tokens)) {
-                    ret->prompt_clear(false);
+                    ret->prompt_clear();
                 }
 
                 prompt_cache->update();
@@ -1306,7 +1305,7 @@ private:
             if (slot.prompt.n_tokens() > 0) {
                 LOG_WARN("purging slot {:d} with {:d} tokens", slot.id, slot.prompt.tokens.size());
 
-                slot.prompt_clear(false);
+                slot.prompt_clear();
 
                 res = true;
 
@@ -1339,7 +1338,7 @@ private:
                 // if lora has changed, check to see if the cache should be cleared
                 if (lora_should_clear_cache(slot.lora, task_loras)) {
                     SLT_TRC(slot, "clearing cache for lora change. {} loras -> {} loras", slot.lora.size(), task.params.lora.size());
-                    slot.prompt.tokens.clear();
+                    slot.prompt.clear();
                 } else {
                     SLT_TRC(slot, "keeping cache for alora. {} target loras", task_loras.size());
                 }
@@ -1927,6 +1926,24 @@ private:
 
     // n_tokens_cur: the number of tokens added to the batch for the current slot
     void create_checkpoint(server_slot & slot, const int64_t n_tokens_cur, lhm_pos pos_min, lhm_pos pos_max) {
+        const int id_task = slot.task->id;
+
+        // evict checkpoints within min-step of a previous checkpoint, unless they were
+        // created by the current task
+        int64_t last = -1;
+        for (auto it = slot.prompt.checkpoints.begin(); it != slot.prompt.checkpoints.end(); ) {
+            if (it->id_task != id_task && last >= 0 && it->n_tokens <= last + params_base.checkpoint_min_step) {
+                SLT_TRC(slot, "erasing context checkpoint too close to an earlier one (pos_min = {}, pos_max = {}, n_tokens = {}, size = {} MiB)",
+                        it->pos_min, it->pos_max, it->n_tokens, (float) it->size() / 1024 / 1024);
+
+                it = slot.prompt.checkpoints.erase(it);
+                continue;
+            }
+
+            last = it->n_tokens;
+            ++it;
+        }
+        
         while (slot.prompt.checkpoints.size() >= (size_t) params_base.n_ctx_checkpoints) {
             // make room for the new checkpoint, if needed
             const auto & cur = slot.prompt.checkpoints.front();
@@ -1938,6 +1955,8 @@ private:
         }
 
         auto & cur = slot.prompt.checkpoints.emplace_back();
+
+        cur.id_task = id_task;
 
         // [TAG_CHECKPOINTS_FIX_POS_MIN]
         // TODO: here we incorrectly deterimne that the saved checkpoint data covers the [pos_min, pos_max] range
@@ -2021,7 +2040,7 @@ private:
 
                                 if (params_base.kv_unified) {
                                     // [TAG_IDLE_SLOT_CLEAR]
-                                    slot.prompt_clear(false);
+                                    slot.prompt_clear();
                                 }
                             }
                         }
@@ -2182,12 +2201,12 @@ private:
                     size_t token_count = 0;
                     size_t nread = lhm_state_seq_load_file(ctx_tgt, filepath.c_str(), slot->id, tokens.data(), tokens.size(), &token_count);
                     if (nread == 0) {
-                        slot->prompt.tokens.clear(); // KV may already been invalidated?
+                        slot->prompt.clear(); // KV may already been invalidated?
                         send_error(task, "Unable to restore slot, no available space in KV cache or invalid slot save file", ERROR_TYPE_INVALID_REQUEST);
                         break;
                     }
                     tokens.resize(token_count);
-                    slot->prompt.tokens.clear();
+                    slot->prompt.clear();
                     slot->prompt.tokens.insert(tokens);
 
                     const int64_t t_end = ggml_time_us();
@@ -2221,7 +2240,7 @@ private:
                     // Erase token cache
                     const size_t n_erased = slot->prompt.tokens.size();
 
-                    slot->prompt_clear(false);
+                    slot->prompt_clear();
 
                     auto res = std::make_unique<server_task_result_slot_erase>();
                     res->id       = task.id;
@@ -2346,7 +2365,7 @@ private:
 
                     new_tokens.resize(slot.prompt.tokens.size() - n_discard);
 
-                    slot.prompt.tokens.clear();
+                    slot.prompt.clear();
                     slot.prompt.tokens.insert(new_tokens);
                 }
 
@@ -3063,7 +3082,7 @@ private:
 
                                 // note: it's complicated to keep track of how much of the current batch has been
                                 //       processed before the error occurred, so we simply clear the entire context
-                                slot.prompt_clear(false);
+                                slot.prompt_clear();
                             }
                         }
 

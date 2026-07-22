@@ -28,5 +28,5 @@ target_include_directories(lhm_kvcache PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(lhm_kvcache PUBLIC ${CMAKE_SOURCE_DIR}/models)
 target_include_directories(lhm_kvcache PUBLIC ${CMAKE_SOURCE_DIR}/lhm)
 
-target_link_libraries(lhm_kvcache PRIVATE lhm_params lhm_memory ggml)
+target_link_libraries(lhm_kvcache PRIVATE lhm_params lhm_memory ggml gflags)
 

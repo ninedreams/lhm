@@ -243,7 +243,10 @@ struct common_speculative_impl_draft_simple : public common_speculative_impl {
     bool process(const lhm_batch & batch) override {
         auto * ctx_dft = params.ctx_dft;
 
-        const int ret = lhm_decode(ctx_dft, batch);
+        lhm_batch batch_dft = batch;
+        batch_dft.logits = nullptr;
+
+        const int ret = lhm_decode(ctx_dft, batch_dft);
 
         if (ret != 0) {
             LOG_ERROR("failed to decode draft batch, ret = {:d}", ret);

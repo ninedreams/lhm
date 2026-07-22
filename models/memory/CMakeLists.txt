@@ -21,4 +21,4 @@ if (LHM_ENABLE_MOONCAKE)
     target_include_directories(lhm_kvcache PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/Mooncake/mooncake-store/include/cachelib_memory_allocator/fake_include)
 endif()
 
-target_link_libraries(lhm_memory PUBLIC lhm_params ggml)
+target_link_libraries(lhm_memory PRIVATE lhm_params ggml gflags)
