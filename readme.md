@@ -9,5 +9,31 @@ Focus on user local device to run one model.
 4. Just support one model to run
 5. Merge some code from llama.cpp by time
 
-# checkout
-git fetch && git reset --hard origin/$(git rev-parse --abbrev-ref HEAD) && git clean -fd
+# build
+#### linux cpu
+```linux
+cmake -B build -DGGML_CUDA=OFF
+cmake --build build --config Release -j 8
+```
+
+#### linux cuda
+```linux cuda
+cmake -B build -DGGML_CUDA=ON
+cmake --build build --config Release -j 8
+```
+
+#### mac
+```
+cmake -B build -DGGML_CUDA=OFF -DLLAMA_METAL=ON
+cmake --build build --config Release -j 8
+```
+
+#### windows
+
+#### build with mooncake
+[mooncake as kvcache](models/kvcache/readme.md)
+
+# run
+```
+./bin/llm_cli --model /modelpath/model.gguf --log_level info
+```
