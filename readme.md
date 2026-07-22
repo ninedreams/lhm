@@ -24,7 +24,7 @@ cmake --build build --config Release -j 8
 
 #### mac
 ```
-cmake -B build -DGGML_CUDA=OFF -DLLAMA_METAL=ON
+cmake -B build -DGGML_CUDA=OFF -DGGML_METAL=ON
 cmake --build build --config Release -j 8
 ```
 
