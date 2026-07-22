@@ -56,7 +56,8 @@ lhm_context::lhm_context(
 
     cparams.n_rs_seq = params.n_rs_seq;
     if (cparams.n_rs_seq > 0 && !llm_arch_supports_rs_rollback(model.arch)) {
-        LOG_DEBUG("n_rs_seq={:d} requested but model arch does not support recurrent partial rollback; clamping to 0", cparams.n_rs_seq);
+        LOG_DEBUG("n_rs_seq={} requested but model arch does not support recurrent partial rollback; clamping to 0\n",
+                        cparams.n_rs_seq);
         cparams.n_rs_seq = 0;
     }
 
@@ -106,7 +107,7 @@ lhm_context::lhm_context(
             if (set_sampler(config.seq_id, config.sampler)) {
                 const int n_samplers = lhm_sampler_chain_n(config.sampler);
 
-                LOG_INFO("setting backend sampler for seq_id {:d} (n = {:d})", config.seq_id, n_samplers);
+                LOG_INFO("setting backend sampler for seq_id {} (n = {})", config.seq_id, n_samplers);
             }
         }
     }
@@ -131,6 +132,7 @@ lhm_context::lhm_context(
 
         const float factor = 1.0f / cparams.rope_freq_scale;
 
+        // ref: https://github.com/huggingface/transformers/blob/6d00f6b0a5679c36510f203e4226e36f517c3032/src/transformers/modeling_rope_utils.py#L336-L348
         if (hparams.rope_yarn_log_mul != 0.0f) {
             // note: here we assume `mscale == 1.0f`
             // TODO: start reading the actual value of mscale and handle the case where it is not 1.0f
@@ -139,7 +141,7 @@ lhm_context::lhm_context(
 
             cparams.yarn_attn_factor = get_mscale(factor, mscale) / get_mscale(factor, mscale_all_dims);
 
-            LOG_WARN("setting new yarn_attn_factor = {:.4f} (mscale == {:.1f}, mscale_all_dim = {:.1f})",
+            LOG_WARN("setting new yarn_attn_factor = %.4f (mscale == %.1f, mscale_all_dim = %.1f)\n",
                     cparams.yarn_attn_factor, mscale, mscale_all_dims);
         } else {
             cparams.yarn_attn_factor = get_mscale(factor, 1.0f);
@@ -194,6 +196,7 @@ lhm_context::lhm_context(
         }
     }
 
+    // ref: https://github.com/ggml-org/lhm.cpp/pull/17046#discussion_r2503085732
     cparams.n_ctx = GGML_PAD(cparams.n_ctx, 256);
 
     if (cparams.kv_unified) {
@@ -212,26 +215,26 @@ lhm_context::lhm_context(
         }
     }
 
-    LOG_INFO("n_seq_max     = {:d}", cparams.n_seq_max);
-    LOG_INFO("n_ctx         = {:d}", cparams.n_ctx);
-    LOG_INFO("n_ctx_seq     = {:d}", cparams.n_ctx_seq);
-    LOG_INFO("n_batch       = {:d}", cparams.n_batch);
-    LOG_INFO("n_ubatch      = {:d}", cparams.n_ubatch);
-    LOG_INFO("causal_attn   = {:d}", cparams.causal_attn);
-    LOG_INFO("flash_attn    = {}", lhm_flash_attn_type_name(params.flash_attn_type));
-    LOG_INFO("kv_unified    = {}", cparams.kv_unified ? "true" : "false");
-    LOG_INFO("freq_base     = {:.1f}", cparams.rope_freq_base);
-    LOG_INFO("freq_scale    = {}", cparams.rope_freq_scale);
-    LOG_INFO("n_rs_seq      = {:d}", cparams.n_rs_seq);
-    LOG_INFO("n_outputs_max = {:d}", cparams.n_outputs_max);
+    LOG_INFO("n_seq_max     = {}",   cparams.n_seq_max);
+    LOG_INFO("n_ctx         = {}",   cparams.n_ctx);
+    LOG_INFO("n_ctx_seq     = {}",   cparams.n_ctx_seq);
+    LOG_INFO("n_batch       = {}",   cparams.n_batch);
+    LOG_INFO("n_ubatch      = {}",   cparams.n_ubatch);
+    LOG_INFO("causal_attn   = {}",   cparams.causal_attn);
+    LOG_INFO("flash_attn    = {}",   lhm_flash_attn_type_name(params.flash_attn_type));
+    LOG_INFO("kv_unified    = {}",   cparams.kv_unified ? "true" : "false");
+    LOG_INFO("freq_base     = {}", cparams.rope_freq_base);
+    LOG_INFO("freq_scale    = {}",   cparams.rope_freq_scale);
+    LOG_INFO("n_rs_seq      = {}",   cparams.n_rs_seq);
+    LOG_INFO("n_outputs_max = {}",   cparams.n_outputs_max);
 
     if (cparams.n_ctx_seq < hparams.n_ctx_train) {
-        LOG_WARN("n_ctx_seq ({}) < n_ctx_train ({}) -- the full capacity of the model will not be utilized",
+        LOG_INFO("n_ctx_seq ({}) < n_ctx_train ({}) -- the full capacity of the model will not be utilized\n",
                 cparams.n_ctx_seq, hparams.n_ctx_train);
     }
 
     if (cparams.n_ctx_seq > hparams.n_ctx_train) {
-        LOG_WARN("n_ctx_seq ({}) > n_ctx_train ({}) -- possible training context overflow",
+        LOG_WARN("n_ctx_seq ({}) > n_ctx_train ({}) -- possible training context overflow\n",
                 cparams.n_ctx_seq, hparams.n_ctx_train);
     }
 
@@ -284,7 +287,9 @@ lhm_context::lhm_context(
                 throw std::runtime_error("failed to reserve initial output buffer");
             }
 
-            LOG_INFO("{:10s}  output buffer size = {:8.2f} MiB", ggml_backend_buffer_name    (buf_output.get()), ggml_backend_buffer_get_size(buf_output.get()) / 1024.0 / 1024.0);
+            LOG_INFO("{}  output buffer size = {} MiB",
+                    ggml_backend_buffer_name    (buf_output.get()),
+                    ggml_backend_buffer_get_size(buf_output.get()) / 1024.0 / 1024.0);
         }
     }
 
@@ -327,7 +332,7 @@ lhm_context::lhm_context(
             backend_buf_exp_size.push_back(0);
         }
 
-        LOG_DEBUG("backend_ptrs.size() = {:d}", backend_ptrs.size());
+        LOG_DEBUG("backend_ptrs.size() = {}", backend_ptrs.size());
 
         // TODO: move these checks to ggml_backend_sched
         // enabling pipeline parallelism in the scheduler increases memory usage, so it is only done when necessary
@@ -393,9 +398,10 @@ lhm_context::~lhm_context() {
             const size_t size_exp = backend_buf_exp_size[i];
             const size_t size_act = ggml_backend_sched_get_buffer_size(sched.get(), backend);
             if (size_exp == size_act) {
-                LOG_DEBUG("{:10s} compute buffer size is {:8.4f} MiB, matches expectation of {:8.4f} MiB", ggml_backend_buft_name(buft), size_act / (1024.0*1024.0), size_exp / (1024.0*1024.0));
+                LOG_DEBUG("compute buffer size is {} MiB, matches expectation of {} MiB\n",
+                    ggml_backend_buft_name(buft), size_act / (1024.0*1024.0), size_exp / (1024.0*1024.0));
             } else {
-                LOG_WARN("{} compute buffer size of {:.4f} MiB, does not match expectation of {:.4f} MiB",
+                LOG_WARN("compute buffer size of {} MiB, does not match expectation of {} MiB\n",
                     ggml_backend_buft_name(buft), size_act / (1024.0*1024.0), size_exp / (1024.0*1024.0));
             }
         }
@@ -421,7 +427,7 @@ void lhm_context::sched_reserve() {
 
     const size_t max_nodes = this->graph_max_nodes(n_tokens);
 
-    LOG_DEBUG("max_nodes = {:d}", max_nodes);
+    LOG_DEBUG("max_nodes = {}", max_nodes);
 
     gf_res_prev.reset(new llm_graph_result(max_nodes));
     gf_res_reserve.reset(new llm_graph_result(max_nodes));
@@ -440,7 +446,7 @@ void lhm_context::sched_reserve() {
     // avoid reserving graphs with zero outputs - assume one output per sequence
     const int n_outputs = n_seqs;
 
-    LOG_DEBUG("worst-case: n_tokens = {:d}, n_seqs = {:d}, n_outputs = {:d}", n_tokens, n_seqs, n_outputs);
+    LOG_DEBUG("worst-case: n_tokens = {}, n_seqs = {}, n_outputs = {}", n_tokens, n_seqs, n_outputs);
 
     // resolve automatic Flash Attention use
     if (cparams.auto_fa) {
@@ -624,25 +630,28 @@ void lhm_context::sched_reserve() {
             backend_buf_exp_size[i] = ggml_backend_sched_get_buffer_size(sched.get(), backend);
         }
         if (backend_buf_exp_size[i] > 1) {
-            LOG_INFO("{:10s} compute buffer size = {:8.2f} MiB", ggml_backend_buft_name(buft), backend_buf_exp_size[i] / 1024.0 / 1024.0);
+            LOG_INFO("{} compute buffer size = {} MiB",
+                    ggml_backend_buft_name(buft),
+                    backend_buf_exp_size[i] / 1024.0 / 1024.0);
         }
     }
 
     if (n_nodes_pp == n_nodes_tg) {
-        LOG_INFO("graph nodes  = {:d}", n_nodes_pp);
+        LOG_INFO("graph nodes  = {}", n_nodes_pp);
     } else {
-        LOG_INFO("graph nodes  = {:d} (with bs={:d}), {:d} (with bs=1)", n_nodes_pp, n_tokens, n_nodes_tg);
+        LOG_INFO("graph nodes  = {} (with bs={}), {} (with bs=1)", n_nodes_pp, n_tokens, n_nodes_tg);
     }
 
     if (n_splits_pp == n_splits_tg) {
-        LOG_INFO("graph splits = {:d}", n_splits_pp);
+        LOG_INFO("graph splits = {}", n_splits_pp);
     } else {
-        LOG_INFO("graph splits = {:d} (with bs={:d}), {:d} (with bs=1)", n_splits_pp, n_tokens, n_splits_tg);
+        LOG_INFO("graph splits = {} (with bs={}), {} (with bs=1)", n_splits_pp, n_tokens, n_splits_tg);
     }
 
     const int64_t t_end_us = ggml_time_us();
 
-    LOG_INFO("reserve took {:.2f} ms, sched copies = {:d}", (t_end_us - t_start_us)/1000.0, ggml_backend_sched_get_n_copies(sched.get()));
+    LOG_INFO("reserve took {} ms, sched copies = {}\n",
+            (t_end_us - t_start_us)/1000.0, ggml_backend_sched_get_n_copies(sched.get()));
 }
 
 void lhm_context::synchronize() {
@@ -799,7 +808,7 @@ int64_t lhm_context::output_resolve_row(int32_t i) const {
             throw std::runtime_error(fmt::format("negative index out of range [0, {})", n_outputs));
         }
     } else if ((size_t) i >= output_ids.size()) {
-        throw std::runtime_error(fmt::format("out of range [0, %zu)", output_ids.size()));
+        throw std::runtime_error(fmt::format("out of range [0, {})", output_ids.size()));
     } else {
         // use output_ids to translate the batch token index into a row number
         // that holds this token's data.
@@ -812,7 +821,7 @@ int64_t lhm_context::output_resolve_row(int32_t i) const {
     }
 
     if (j >= n_outputs) {
-        throw std::runtime_error(fmt::format("corrupt output buffer (j=%" PRId64 ", n_outputs=%d)", j, n_outputs));
+        throw std::runtime_error(fmt::format("corrupt output buffer (j=%" PRId64 ", n_outputs={})", j, n_outputs));
     }
 
     return j;
@@ -829,7 +838,7 @@ float * lhm_context::get_logits_ith(int32_t i) {
         const int64_t j = output_resolve_row(i);
         return logits.data + j*model.vocab.n_tokens();
     } catch (const std::exception & err) {
-        LOG_ERROR("invalid logits id {:d}, reason: {}", i, err.what());
+        LOG_ERROR("invalid logits id {}, reason: {}", i, err.what());
 #ifndef NDEBUG
         LHM_ABORT("fatal error");
 #else
@@ -860,7 +869,7 @@ float * lhm_context::get_embeddings_ith(int32_t i) {
         const uint32_t n_embd_out = model.hparams.n_embd_out();
         return embd.data + j*n_embd_out;
     } catch (const std::exception & err) {
-        LOG_ERROR("invalid embeddings id {:d}, reason: {}", i, err.what());
+        LOG_ERROR("invalid embeddings id {}, reason: {}", i, err.what());
 #ifndef NDEBUG
         LHM_ABORT("fatal error");
 #else
@@ -897,7 +906,7 @@ float * lhm_context::get_embeddings_nextn_ith(int32_t i) {
         if (!cparams.embeddings_nextn_masked) {
             // unmasked: nextn rows are stored densely, indexed by raw token position.
             if (i < 0 || (size_t)(i + 1) * n_embd > embd_nextn.size) {
-                throw std::runtime_error(fmt::format("out of range [0, %zu)", embd_nextn.size / n_embd));
+                throw std::runtime_error(fmt::format("out of range [0, {})", embd_nextn.size / n_embd));
             }
             return embd_nextn.data + (size_t) i * n_embd;
         }
@@ -905,7 +914,7 @@ float * lhm_context::get_embeddings_nextn_ith(int32_t i) {
         const int64_t j = output_resolve_row(i);
         return embd_nextn.data + j*n_embd;
     } catch (const std::exception & err) {
-        LOG_ERROR("invalid nextn embeddings id {:d}, reason: {}", i, err.what());
+        LOG_ERROR("invalid nextn embeddings id {}, reason: {}", i, err.what());
 #ifndef NDEBUG
         LHM_ABORT("fatal error");
 #else
@@ -934,7 +943,7 @@ lhm_token lhm_context::get_sampled_token_ith(int32_t idx) {
         LHM_ASSERT(row < (int64_t) sampling.sampled.size);
         return sampling.sampled.data[row];
     } catch (const std::exception & err) {
-        LOG_ERROR("invalid backend sampled token id {:d}, reason: {}", idx, err.what());
+        LOG_ERROR("invalid backend sampled token id {}, reason: {}", idx, err.what());
         return LHM_TOKEN_NULL;
     }
 }
@@ -953,7 +962,7 @@ float * lhm_context::get_sampled_probs_ith(int32_t idx) {
         }
         return sampling.probs.data + row*model.vocab.n_tokens();
     } catch (const std::exception & err) {
-        LOG_ERROR("invalid backend sampled probs id {:d}, reason: {}", idx, err.what());
+        LOG_ERROR("invalid backend sampled probs id {}, reason: {}", idx, err.what());
         return nullptr;
     }
 }
@@ -972,7 +981,7 @@ float * lhm_context::get_sampled_logits_ith(int32_t idx) {
         }
         return sampling.logits.data + row*model.vocab.n_tokens();
     } catch (const std::exception & err) {
-        LOG_ERROR("invalid backend sampled logits id {:d}, reason: {}", idx, err.what());
+        LOG_ERROR("invalid backend sampled logits id {}, reason: {}", idx, err.what());
         return nullptr;
     }
 }
@@ -1009,7 +1018,7 @@ size_t lhm_context::get_sampled_candidates_count(int32_t idx) {
         }
         return sampling.candidates_count[row];
     } catch (const std::exception & err) {
-        LOG_ERROR("invalid backend sampled candidates count id {:d}, reason: {}", idx, err.what());
+        LOG_ERROR("invalid backend sampled candidates count id {}, reason: {}", idx, err.what());
         return 0;
     }
 }
@@ -1028,7 +1037,7 @@ size_t lhm_context::get_sampled_logits_count(int32_t idx) {
         }
         return sampling.logits_count[row];
     } catch (const std::exception & err) {
-        LOG_ERROR("invalid backend sampled logits count id {:d}, reason: {}", idx, err.what());
+        LOG_ERROR("invalid backend sampled logits count id {}, reason: {}", idx, err.what());
         return 0;
     }
 }
@@ -1047,7 +1056,7 @@ size_t lhm_context::get_sampled_probs_count(int32_t idx) {
         }
         return sampling.probs_count[row];
     } catch (const std::exception & err) {
-        LOG_ERROR("invalid backend sampled probs count id {:d}, reason: {}", idx, err.what());
+        LOG_ERROR("invalid backend sampled probs count id {}, reason: {}", idx, err.what());
         return 0;
     }
 }
@@ -1070,7 +1079,7 @@ void lhm_context::detach_threadpool() {
 }
 
 void lhm_context::set_n_threads(int32_t n_threads, int32_t n_threads_batch) {
-    LOG_DEBUG("n_threads = {:d}, n_threads_batch = {:d}", n_threads, n_threads_batch);
+    LOG_DEBUG("n_threads = {}, n_threads_batch = {}", n_threads, n_threads_batch);
 
     cparams.n_threads       = n_threads;
     cparams.n_threads_batch = n_threads_batch;
@@ -1094,7 +1103,7 @@ void lhm_context::set_abort_callback(bool (*abort_callback)(void * data), void *
 }
 
 void lhm_context::set_embeddings(bool value) {
-    LOG_DEBUG("value = {:d}", value);
+    LOG_DEBUG("value = {}", value);
 
     cparams.embeddings = value;
 
@@ -1103,14 +1112,14 @@ void lhm_context::set_embeddings(bool value) {
 }
 
 void lhm_context::set_embeddings_nextn(bool value, bool masked) {
-    LOG_DEBUG("value = {:d}, masked = {:d}", value, masked);
+    LOG_DEBUG("value = {}, masked = {}", value, masked);
 
     cparams.embeddings_nextn        = value;
     cparams.embeddings_nextn_masked = masked;
 }
 
 void lhm_context::set_embeddings_layer_inp(uint32_t lid, bool enable) {
-    LOG_DEBUG("lid = {:d}, enable = {:d}", lid, enable);
+    LOG_DEBUG("lid = {}, enable = {}", lid, enable);
 
     LHM_ASSERT(lid < model.hparams.n_layer());
 
@@ -1120,8 +1129,12 @@ void lhm_context::set_embeddings_layer_inp(uint32_t lid, bool enable) {
     sched_need_reserve = true;
 }
 
+void lhm_context::set_nextn_layer_offset(int32_t offset) {
+    cparams.nextn_layer_offset = offset;
+}
+
 void lhm_context::set_causal_attn(bool value) {
-    LOG_DEBUG("value = {:d}", value);
+    LOG_DEBUG("value = {}", value);
 
     if (cparams.causal_attn == value) {
         return;
@@ -1133,7 +1146,7 @@ void lhm_context::set_causal_attn(bool value) {
 }
 
 void lhm_context::set_warmup(bool value) {
-    LOG_DEBUG("value = {:d}", value);
+    LOG_DEBUG("value = {}", value);
 
     if (cparams.warmup == value) {
         return;
@@ -1150,7 +1163,7 @@ bool lhm_context::set_sampler(lhm_seq_id seq_id, lhm_sampler * sampler) {
         return true;
     }
 
-    LOG_DEBUG("seq_id = {:d}, sampler = {}", (int) seq_id, (void *) sampler);
+    LOG_DEBUG("seq_id = {}, sampler = %p", (int) seq_id, (void *) sampler);
 
     if (sampler && model.split_mode() == LHM_SPLIT_MODE_TENSOR) {
         static bool warned = false;
@@ -1203,7 +1216,7 @@ bool lhm_context::set_sampler(lhm_seq_id seq_id, lhm_sampler * sampler) {
 }
 
 void lhm_context::set_adapters_lora(lhm_adapter_lora ** adapters, size_t n_adapters, float * scales) {
-    LOG_DEBUG("adapters = {}", (void *) adapters);
+    LOG_DEBUG("adapters = %p", (void *) adapters);
 
     if (adapters_lora_are_same(adapters, n_adapters, scales)) {
         return;
@@ -1221,7 +1234,7 @@ void lhm_context::set_adapters_lora(lhm_adapter_lora ** adapters, size_t n_adapt
 }
 
 bool lhm_context::adapters_lora_are_same(lhm_adapter_lora ** adapters, size_t n_adapters, float * scales) {
-    LOG_DEBUG("adapters = {}", (void *) adapters);
+    LOG_DEBUG("adapters = %p", (void *) adapters);
 
     // Adapters with a zero scale are never added to `loras`, so also ignore them for the comparison.
     size_t n_non_zero = 0;
@@ -1252,7 +1265,7 @@ bool lhm_context::set_adapter_cvec(
                 int32_t   n_embd,
                 int32_t   il_start,
                 int32_t   il_end) {
-    LOG_DEBUG("il_start = {:d}, il_end = {:d}", il_start, il_end);
+    LOG_DEBUG("il_start = {}, il_end = {}", il_start, il_end);
 
     bool res = cvec->apply(model, data, len, n_embd, il_start, il_end);
 
@@ -1296,7 +1309,7 @@ llm_graph_result * lhm_context::process_ubatch(const lhm_ubatch & ubatch, llm_gr
 
         gf = model.build_graph(gparams);
 
-        //LOG_INFO("graph build time: {:.3f} ms", (ggml_time_us() - t_start_us)/1000.0);
+        //LOG_INFO("graph build time: {} ms", (ggml_time_us() - t_start_us)/1000.0);
 
         if (!gf) {
             LOG_ERROR("failed to initialize graph");
@@ -1318,7 +1331,7 @@ llm_graph_result * lhm_context::process_ubatch(const lhm_ubatch & ubatch, llm_gr
         // FIXME this call causes a crash if any model inputs were not used in the graph and were therefore not allocated
         res->set_inputs(&ubatch);
 
-        //LOG_INFO("graph set inputs time: {:.3f} ms", (ggml_time_us() - t_start_us)/1000.0);
+        //LOG_INFO("graph set inputs time: {} ms", (ggml_time_us() - t_start_us)/1000.0);
     }
 
     const auto status = graph_compute(res->get_gf(), ubatch.n_tokens > 1);
@@ -1377,7 +1390,7 @@ int lhm_context::encode(const lhm_batch & batch_inp) {
 
     // reserve output buffer
     if (output_reserve(n_tokens) < n_tokens) {
-        LOG_ERROR("could not reserve space for batch with {:d} outputs", n_tokens);
+        LOG_ERROR("could not reserve space for batch with {} outputs", n_tokens);
         return -2;
     };
 
@@ -1391,6 +1404,7 @@ int lhm_context::encode(const lhm_batch & batch_inp) {
 
     // always use non-causal attention for encoder graphs
     // TODO: this is a tmp solution until we have a proper way to support enc-dec models
+    //       ref: https://github.com/ggml-org/lhm.cpp/pull/12181#issuecomment-2730451223
     cparams.causal_attn = false;
 
     ggml_status status;
@@ -1653,7 +1667,8 @@ int lhm_context::decode(const lhm_batch & batch_inp) {
 
                 seq_output_count[seq_id]++;
                 if (seq_output_count[seq_id] > 1) {
-                    LOG_ERROR("backend sampling requires at most one output token per sequence (seq_id {:d} had {:d})", seq_id, seq_output_count[seq_id]);
+                    LOG_ERROR("backend sampling requires at most one output token per sequence (seq_id {} had {})\n",
+                            seq_id, seq_output_count[seq_id]);
                     return -1;
                 }
             }
@@ -1671,7 +1686,8 @@ int lhm_context::decode(const lhm_batch & batch_inp) {
     if (output_all) {
         // require that all tokens are output
         if (n_outputs_all != n_tokens_all) {
-            LOG_ERROR("pooled embedding requires that all tokens are output (n_outputs_all = {:d}, n_tokens_all = {:d})", n_outputs_all, n_tokens_all);
+            LOG_ERROR("pooled embedding requires that all tokens are output (n_outputs_all = {}, n_tokens_all = {})\n",
+                    n_outputs_all, n_tokens_all);
             return -1;
         }
     }
@@ -1720,19 +1736,19 @@ int lhm_context::decode(const lhm_batch & batch_inp) {
                         did_optimize = true;
 
                         if (memory_update(true)) {
-                            LOG_DEBUG("retrying batch size {:d} after cache optimization", balloc->get_n_tokens());
+                            LOG_DEBUG("retrying batch size {} after cache optimization", balloc->get_n_tokens());
 
                             continue;
                         }
                     }
 
-                    LOG_WARN("failed to find a memory slot for batch of size {:d}", balloc->get_n_tokens());
+                    LOG_WARN("failed to find a memory slot for batch of size {}", balloc->get_n_tokens());
 
                     return 1;
                 }
             case LHM_MEMORY_STATUS_FAILED_COMPUTE:
                 {
-                    LOG_ERROR("compute failed while preparing batch of size {:d}", balloc->get_n_tokens());
+                    LOG_ERROR("compute failed while preparing batch of size {}", balloc->get_n_tokens());
 
                     return -2;
                 }
@@ -1743,7 +1759,7 @@ int lhm_context::decode(const lhm_batch & batch_inp) {
 
     // reserve output buffer
     if (output_reserve(n_outputs_all) < n_outputs_all) {
-        LOG_ERROR("could not reserve space for batch with {:d} outputs", n_outputs_all);
+        LOG_ERROR("could not reserve space for batch with {} outputs", n_outputs_all);
         return -2;
     };
 
@@ -2048,7 +2064,7 @@ uint32_t lhm_context::output_reserve(int32_t n_outputs) {
         if (buf_output) {
 #ifndef NDEBUG
             // This doesn't happen often, but may be annoying in some cases (like the HellaSwag benchmark)
-            LOG_DEBUG("reallocating output buffer from size {:.02f} MiB to {:.02f} MiB", prev_size / 1024.0 / 1024.0, new_size / 1024.0 / 1024.0);
+            LOG_DEBUG("reallocating output buffer from size %.02f MiB to %.02f MiB", prev_size / 1024.0 / 1024.0, new_size / 1024.0 / 1024.0);
 #endif
             synchronize();
 
@@ -2071,7 +2087,7 @@ uint32_t lhm_context::output_reserve(int32_t n_outputs) {
         }
         buf_output.reset(ggml_backend_buft_alloc_buffer(buft, new_size));
         if (buf_output == nullptr) {
-            LOG_ERROR("failed to allocate output buffer of size {:.2f} MiB", new_size / (1024.0 * 1024.0));
+            LOG_ERROR("failed to allocate output buffer of size %.2f MiB", new_size / (1024.0 * 1024.0));
             return 0;
         }
         ggml_backend_buffer_clear(buf_output.get(), 0);
@@ -2264,12 +2280,12 @@ llm_graph_result * lhm_context::get_gf_res_reserve() const {
 
 ggml_cgraph * lhm_context::graph_reserve(
         uint32_t n_tokens, uint32_t n_seqs, uint32_t n_outputs, const lhm_memory_context_i * mctx, bool split_only, size_t * sizes) {
-    LOG_DEBUG("reserving a graph for ubatch with n_tokens = {:4d}, n_seqs = {:2d}, n_outputs = {:4d}", n_tokens, n_seqs, n_outputs);
+    LOG_DEBUG("reserving a graph for ubatch with n_tokens = {}, n_seqs = {}, n_outputs = {}", n_tokens, n_seqs, n_outputs);
     LHM_ASSERT(n_outputs >= 1);
 
     if (n_tokens % n_seqs != 0) {
         n_tokens = ((n_tokens + (n_seqs - 1)) / n_seqs) * n_seqs; // round to next multiple of n_seqs
-        LOG_DEBUG("making n_tokens a multiple of n_seqs - n_tokens = {:d}, n_seqs = {:d}, n_outputs = {:d}", n_tokens, n_seqs, n_outputs);
+        LOG_DEBUG("making n_tokens a multiple of n_seqs - n_tokens = {}, n_seqs = {}, n_outputs = {}", n_tokens, n_seqs, n_outputs);
     }
 
     ggml_backend_sched_reset(sched.get());
@@ -2368,8 +2384,6 @@ ggml_status lhm_context::graph_compute(
     if (status != GGML_STATUS_SUCCESS) {
         LOG_ERROR("ggml_backend_sched_graph_compute_async failed with error {}", int(status));
     }
-
-    // fprintf(stderr, "splits: %d", ggml_backend_sched_get_n_splits(sched));
 
     return status;
 }
@@ -2656,10 +2670,8 @@ public:
 
                     mbuf_cur.buf.reset(ggml_backend_alloc_ctx_tensors_from_buft(mbuf_cur.ctx.get(), buft));
 
-                    LOG_INFO("allocated '{}' buffer {:.3f} MiB", ggml_backend_buft_name(buft), mbuf.total_size/1024.0/1024.0);
+                    LOG_INFO("allocated '{}' buffer {} MiB", ggml_backend_buft_name(buft), mbuf.total_size/1024.0/1024.0);
                 } else {
-                    //LOG_INFO("reallocating tensors in '{}' buffer {:.3f} MiB", ggml_backend_buft_name(buft), mbuf.total_size/1024.0/1024.0);
-
                     // save the old buffer and allocate the new tensors in it
                     auto buf = std::move(mbuf_cur.buf);
 
@@ -2918,7 +2930,7 @@ bool lhm_context::state_load_file(const char * filepath, lhm_token * tokens_out,
         const uint32_t version = file.read_u32();
 
         if (magic != LHM_SESSION_MAGIC || version != LHM_SESSION_VERSION) {
-            LOG_ERROR("unknown (magic, version) for session file: {:08x}, {:08x}", magic, version);
+            LOG_ERROR("unknown (magic, version) for session file: {}, {}", magic, version);
             return false;
         }
     }
@@ -2928,7 +2940,7 @@ bool lhm_context::state_load_file(const char * filepath, lhm_token * tokens_out,
         const uint32_t n_token_count = file.read_u32();
 
         if (n_token_count > n_token_capacity) {
-            LOG_ERROR("token count in session file exceeded capacity! {:d} > {:d}", n_token_count, n_token_capacity);
+            LOG_ERROR("token count in session file exceeded capacity! {} > {}", n_token_count, n_token_capacity);
             return false;
         }
 
@@ -2944,7 +2956,7 @@ bool lhm_context::state_load_file(const char * filepath, lhm_token * tokens_out,
         const size_t n_read = state_read_data(io);
 
         if (n_read != n_state_size_cur) {
-            LOG_ERROR("did not read all of the session file data! size {:d}, got {:d}", n_state_size_cur, n_read);
+            LOG_ERROR("did not read all of the session file data! size {}, got {}", n_state_size_cur, n_read);
             return false;
         }
     }
@@ -2978,7 +2990,7 @@ size_t lhm_context::state_seq_load_file(lhm_seq_id seq_id, const char * filepath
         const uint32_t version = file.read_u32();
 
         if (magic != LHM_STATE_SEQ_MAGIC || version != LHM_STATE_SEQ_VERSION) {
-            LOG_ERROR("unknown (magic, version) for sequence state file: {:08x}, {:08x}", magic, version);
+            LOG_ERROR("unknown (magic, version) for sequence state file: {}, {}", magic, version);
             return 0;
         }
     }
@@ -2988,7 +3000,7 @@ size_t lhm_context::state_seq_load_file(lhm_seq_id seq_id, const char * filepath
         const uint32_t n_token_count = file.read_u32();
 
         if (n_token_count > n_token_capacity) {
-            LOG_ERROR("token count in sequence state file exceeded capacity! {:d} > {:d}", n_token_count, n_token_capacity);
+            LOG_ERROR("token count in sequence state file exceeded capacity! {} > {}", n_token_count, n_token_capacity);
             return 0;
         }
 
@@ -3259,7 +3271,7 @@ void lhm_context::opt_epoch_iter(
 
         // reserve output buffer
         if (output_reserve(n_outputs_all) < n_outputs_all) {
-            LOG_ERROR("could not reserve space for batch with {:d} outputs", n_outputs_all);
+            LOG_ERROR("could not reserve space for batch with {} outputs", n_outputs_all);
             LHM_ABORT("TODO: handle this error");
         };
 
@@ -3447,7 +3459,8 @@ lhm_context * lhm_init_from_model(
         const uint32_t blck_size = ggml_blck_size(params.type_k);
         for (uint32_t il = 0; il < model->hparams.n_layer(); ++il) {
             if (model->hparams.n_embd_head_k(il) % blck_size != 0) {
-                LOG_ERROR("K cache type {} with block size {:d} does not divide n_embd_head_k={:d}", ggml_type_name(params.type_k), blck_size, model->hparams.n_embd_head_k(il));
+                LOG_ERROR("K cache type {} with block size {} does not divide n_embd_head_k={}\n",
+                    ggml_type_name(params.type_k), blck_size, model->hparams.n_embd_head_k(il));
                 return nullptr;
             }
         }
@@ -3457,7 +3470,8 @@ lhm_context * lhm_init_from_model(
         const uint32_t blck_size = ggml_blck_size(params.type_v);
         for (uint32_t il = 0; il < model->hparams.n_layer(); ++il) {
             if (model->hparams.n_embd_head_v(il) % blck_size != 0) {
-                LOG_ERROR("V cache type {} with block size {:d} does not divide n_embd_head_v={:d}", ggml_type_name(params.type_v), blck_size, model->hparams.n_embd_head_v(il));
+                LOG_ERROR("V cache type {} with block size {} does not divide n_embd_head_v={}\n",
+                    ggml_type_name(params.type_v), blck_size, model->hparams.n_embd_head_v(il));
                 return nullptr;
             }
         }
@@ -3621,6 +3635,10 @@ void lhm_set_embeddings_nextn(lhm_context * ctx, bool value, bool masked) {
 
 void lhm_set_embeddings_layer_inp(lhm_context * ctx, uint32_t lid, bool value) {
     ctx->set_embeddings_layer_inp(lid, value);
+}
+
+void lhm_set_nextn_layer_offset(lhm_context * ctx, int32_t offset) {
+    ctx->set_nextn_layer_offset(offset);
 }
 
 lhm_memory_t lhm_get_memory(const struct lhm_context * ctx) {
@@ -3961,7 +3979,7 @@ int32_t lhm_encode(
           lhm_batch   batch) {
     const int ret = ctx->encode(batch);
     if (ret != 0) {
-        LOG_ERROR("failed to encode, ret = {:d}", ret);
+        LOG_ERROR("failed to encode, ret = {}", ret);
     }
 
     return ret;
@@ -3972,7 +3990,7 @@ int32_t lhm_decode(
           lhm_batch   batch) {
     const int ret = ctx->decode(batch);
     if (ret != 0 && ret != 1) {
-        LOG_ERROR("failed to decode, ret = {:d}", ret);
+        LOG_ERROR("failed to decode, ret = {}", ret);
     }
 
     return ret;

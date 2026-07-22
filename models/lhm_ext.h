@@ -10,22 +10,22 @@
 #include <map>
 
 // Reserve a new compute graph. It is valid until the next call to lhm_graph_reserve.
- struct ggml_cgraph * lhm_graph_reserve(
+struct ggml_cgraph * lhm_graph_reserve(
         struct lhm_context * ctx,
         uint32_t n_tokens,
         uint32_t n_seqs,
         uint32_t n_outputs);
 
 // Get the default ggml_type for a given ftype.
- ggml_type lhm_ftype_get_default_type(lhm_ftype ftype);
+ggml_type lhm_ftype_get_default_type(lhm_ftype ftype);
 
 struct quantize_state_impl;
 
- quantize_state_impl * lhm_quant_init(
+quantize_state_impl * lhm_quant_init(
         const lhm_model * model,
         const lhm_model_quantize_params * params);
 
- void lhm_quant_free(quantize_state_impl * qs);
+void lhm_quant_free(quantize_state_impl * qs);
 
 // Descriptor for constructing a mock model for quantization testing.
 struct lhm_quant_model_desc {
@@ -42,17 +42,17 @@ struct lhm_quant_model_desc {
 
 // Create a mock model from a metadata descriptor (for testing).
 // The returned model must be freed with lhm_model_free().
- lhm_model * lhm_quant_model_from_metadata(const lhm_quant_model_desc * desc);
+lhm_model * lhm_quant_model_from_metadata(const lhm_quant_model_desc * desc);
 
 // Returns true if this tensor should be quantized (based on name, dims, params).
- bool lhm_quant_tensor_allows_quantization(
+bool lhm_quant_tensor_allows_quantization(
         const quantize_state_impl * qs,
         const ggml_tensor * tensor);
 
 // Compute quantization type assignments for a list of tensors.
 // All tensors should be quantizable (use lhm_quant_tensor_allows_quantization to filter).
 // result_types: caller-allocated array of n_tensors elements, filled with assigned types.
- void lhm_quant_compute_types(
+void lhm_quant_compute_types(
         quantize_state_impl * qs,
         lhm_ftype ftype,
         ggml_tensor ** tensors,
@@ -83,39 +83,44 @@ struct lhm_device_memory_data {
 // TODO: convert to C-style data structure
 using lhm_memory_breakdown = std::map<ggml_backend_buffer_type_t, lhm_memory_breakdown_data>;
 
- int32_t lhm_model_n_expert (const struct lhm_model * model);
- int32_t lhm_model_n_devices(const struct lhm_model * model);
+int32_t lhm_model_n_expert (const struct lhm_model * model);
+int32_t lhm_model_n_devices(const struct lhm_model * model);
 
- ggml_backend_dev_t lhm_model_get_device(const struct lhm_model * model, int i);
+ggml_backend_dev_t lhm_model_get_device(const struct lhm_model * model, int i);
 
- lhm_memory_breakdown lhm_get_memory_breakdown(const struct lhm_context * ctx);
+lhm_memory_breakdown lhm_get_memory_breakdown(const struct lhm_context * ctx);
 
 // Set whether the context outputs nextn embeddings or not
 // If masked == true,  output the embeddings only for the tokens with batch.logits != 0
 // If masked == false, output the embeddings for all tokens in the batch regardless of batch.logits
- void lhm_set_embeddings_nextn(struct lhm_context * ctx, bool value, bool masked);
+void lhm_set_embeddings_nextn(struct lhm_context * ctx, bool value, bool masked);
+
+// Select which appended NextN block the DECODER_MTP graph runs (offset past
+// the trunk: il = n_layer() + offset). Used by the speculative NextN driver to
+// chain multiple trained NextN heads. Default 0 (first head).
+void lhm_set_nextn_layer_offset(struct lhm_context * ctx, int32_t offset);
 
 // mirrors:
-//  float * lhm_get_embeddings(struct lhm_context * ctx);
- float * lhm_get_embeddings_nextn(struct lhm_context * ctx);
+// float * lhm_get_embeddings(struct lhm_context * ctx);
+float * lhm_get_embeddings_nextn(struct lhm_context * ctx);
 
-//  float * lhm_get_embeddings_ith(struct lhm_context * ctx, int32_t i);
- float * lhm_get_embeddings_nextn_ith(struct lhm_context * ctx, int32_t i);
+// float * lhm_get_embeddings_ith(struct lhm_context * ctx, int32_t i);
+float * lhm_get_embeddings_nextn_ith(struct lhm_context * ctx, int32_t i);
 
 // Set whether the context outputs the input embeddings of a specific layer
- void lhm_set_embeddings_layer_inp(struct lhm_context * ctx, uint32_t lid, bool value);
+void lhm_set_embeddings_layer_inp(struct lhm_context * ctx, uint32_t lid, bool value);
 
 // mirrors:
-//  float * lhm_get_embeddings(struct lhm_context * ctx);
- float * lhm_get_embeddings_layer_inp(struct lhm_context * ctx, uint32_t lid);
+// float * lhm_get_embeddings(struct lhm_context * ctx);
+float * lhm_get_embeddings_layer_inp(struct lhm_context * ctx, uint32_t lid);
 
- lhm_context * lhm_get_ctx_other(struct lhm_context * ctx);
+lhm_context * lhm_get_ctx_other(struct lhm_context * ctx);
 
 //
 // model/context data extraction
 //
 
 // returns pointer to the target-model layer indices
- const int32_t * lhm_model_target_layer_ids  (const struct lhm_model * model);
+const int32_t * lhm_model_target_layer_ids  (const struct lhm_model * model);
 // returns the number of extracted layers from target model
- uint32_t        lhm_model_target_layer_ids_n(const struct lhm_model * model);
+uint32_t        lhm_model_target_layer_ids_n(const struct lhm_model * model);
