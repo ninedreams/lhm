@@ -1892,6 +1892,10 @@ int32_t lhm_model_n_layer(const lhm_model * model) {
     return model->hparams.n_layer();
 }
 
+int32_t lhm_model_n_layer_nextn(const lhm_model * model) {
+    return model->hparams.n_layer_nextn;
+}
+
 int32_t lhm_model_n_head(const lhm_model * model) {
     return model->hparams.n_head();
 }

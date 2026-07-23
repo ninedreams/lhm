@@ -538,6 +538,7 @@ extern "C" {
     int32_t lhm_model_n_embd_inp (const struct lhm_model * model);
     int32_t lhm_model_n_embd_out (const struct lhm_model * model);
     int32_t lhm_model_n_layer    (const struct lhm_model * model);
+    int32_t lhm_model_n_layer_nextn(const struct lhm_model * model);
     int32_t lhm_model_n_head     (const struct lhm_model * model);
     int32_t lhm_model_n_head_kv  (const struct lhm_model * model);
     int32_t lhm_model_n_swa      (const struct lhm_model * model);
