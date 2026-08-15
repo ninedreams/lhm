@@ -18,4 +18,4 @@ mooncake_master \
 * how to build and run, more info in [mooncake](https://github.com/kvcache-ai/Mooncake)
 
 ## config use mooncake as kvcahe
-`./llm_cli --model_path Qwen35.gguf --enable_mooncake true`
+`./llm_cli --model Qwen35.gguf --enable_mooncake true`

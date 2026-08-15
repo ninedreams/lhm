@@ -17,6 +17,7 @@ if (LHM_ENABLE_MOONCAKE)
         lhm_kv_cache_mooncake.cpp
         lhm_kv_cache_mooncake.h
     )
+    target_include_directories(lhm_kvcache PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/Mooncake/mooncake-transfer-engine/include)
     target_include_directories(lhm_kvcache PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/Mooncake/mooncake-store/include)
     target_include_directories(lhm_kvcache PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/Mooncake/mooncake-store/include/cachelib_memory_allocator)
     target_include_directories(lhm_kvcache PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/Mooncake/mooncake-store/include/cachelib_memory_allocator/include)
