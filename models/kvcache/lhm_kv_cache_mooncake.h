@@ -147,6 +147,14 @@ class lhm_kv_cache_mooncake : public lhm_kv_cache {
     // actually we just have one client
     ClientInfo client_info;
 
+    // Pending KV sync entries: recorded during cpy_k/cpy_v (graph build phase),
+    // flushed by sync_after_compute() after graph execution.
+    struct PendingSyncEntry {
+        std::string key;
+        const ggml_tensor * tensor;
+    };
+    mutable std::vector<PendingSyncEntry> pending_sync_;
+
     std::shared_ptr<MooncakeClientWrapper> GetClient() const {
         return client_info.client;
     }
@@ -159,11 +167,13 @@ class lhm_kv_cache_mooncake : public lhm_kv_cache {
 
     void HandleMountClient(const std::string& segment_name, const size_t size);
 
+    void HandleUnmountClient(const std::string& segment_name);
+
     std::string GenerateKey(const std::string& tensor_name, const int32_t il, const std::string& type) const;
 
    public:
     lhm_kv_cache_mooncake(/* args */) = delete;
-    ~lhm_kv_cache_mooncake() = default;
+    ~lhm_kv_cache_mooncake();
 
     // TODO: refactor the memory instances to not depend on `lhm_model`
     //       instead pass all necessary info (e.g. hparams, dev layers, arch, etc.) directly
@@ -193,4 +203,9 @@ class lhm_kv_cache_mooncake : public lhm_kv_cache {
     // store k_cur and v_cur in the cache based on the provided head location
     ggml_tensor * cpy_k(ggml_context * ctx, ggml_tensor * k_cur, ggml_tensor * k_idxs, int32_t il, const lhm_kv_cache::slot_info & sinfo) const;
     ggml_tensor * cpy_v(ggml_context * ctx, ggml_tensor * v_cur, ggml_tensor * v_idxs, int32_t il, const lhm_kv_cache::slot_info & sinfo) const;
+
+    // Synchronize updated KV cache data to Mooncake after graph execution.
+    // Must be called after ggml_graph_compute() completes, when SET_ROWS results
+    // are actually materialized in the KV buffer memory.
+    void sync_after_compute() override;
 };

@@ -123,12 +123,14 @@ mooncake::ErrorCode MooncakeClientWrapper::Get(const std::string& key, ggml_tens
         return error_code;
     }
 
-    // Fill value
-    std::string value;
+    // Copy data into the tensor's existing data buffer.
+    // Do NOT replace tensor->data with a pointer to a temporary buffer,
+    // as the temporary would be destroyed when this function returns.
+    size_t offset = 0;
     for (const auto& slice : slice_guard.slices_) {
-        value.append(static_cast<const char*>(slice.ptr), slice.size);
+        memcpy(static_cast<char*>(tensor->data) + offset, slice.ptr, slice.size);
+        offset += slice.size;
     }
-    tensor->data = (void*)value.data();
     return mooncake::ErrorCode::OK;
 }
 
@@ -258,6 +260,10 @@ void lhm_kv_cache_mooncake::HandleCreateClient(const std::string& host, const ui
 
     client_info = ClientInfo{client_opt.value(), {}, hostname};
     LOG_INFO("Successfully created client: {}", hostname);
+
+    // TODO: mount a default segment
+    size_t size = 1024*1024*1024;
+    HandleMountClient(hostname, size);
 }
 
 void lhm_kv_cache_mooncake::HandlePut(const std::string& key, const ggml_tensor * tensor) const {
@@ -306,6 +312,38 @@ void lhm_kv_cache_mooncake::HandleMountClient(const std::string& segment_name, c
     }
 
     client_info.segments[segment_name] = base;
+    LOG_INFO("Successfully mounted segment:{} buffer:{} size:{}", segment_name, base, size);
+}
+
+void lhm_kv_cache_mooncake::HandleUnmountClient(const std::string& segment_name) {
+    if (segment_name.empty()) {
+        LOG_WARN("Invalid unmount command format. Expected: unmount [segment_name:{}]", segment_name);
+        return;
+    }
+
+    auto seg_iter = client_info.segments.find(segment_name);
+    if (seg_iter == client_info.segments.end()) {
+        LOG_WARN("Segment {} not found", segment_name);
+        return;
+    }
+
+    mooncake::ErrorCode error_code = GetClient()->Unmount(seg_iter->second);
+    if (error_code != mooncake::ErrorCode::OK) {
+        LOG_WARN("Failed to unmount segment error code: {}", mooncake::toString(error_code));
+        return;
+    }
+
+    client_info.segments.erase(seg_iter);
+}
+
+lhm_kv_cache_mooncake::~lhm_kv_cache_mooncake() {
+    for (auto & seg : client_info.segments) {
+        mooncake::ErrorCode error_code = GetClient()->Unmount(seg.second);
+        if (error_code != mooncake::ErrorCode::OK) {
+            LOG_WARN("Failed to unmount segment error code: {}", mooncake::toString(error_code));
+        }
+    }
+    client_info.segments.clear();
 }
 
 std::string lhm_kv_cache_mooncake::GenerateKey(const std::string& tensor_name, const int32_t il, const std::string& type) const {
@@ -435,10 +473,15 @@ ggml_tensor * lhm_kv_cache_mooncake::cpy_k(ggml_context * ctx, ggml_tensor * k_c
     }
 
     // store the current K values into the cache
-    // TODO maybe wrong?
     ggml_tensor * result = ggml_set_rows(ctx, k, k_cur, k_idxs);
     LOG_TRACE("cpy_k key:{} data:{}", key, result->data);
-    HandlePut(key, result);
+    // Defer Mooncake Put until after graph execution, when SET_ROWS
+    // has actually written the data into the KV buffer.
+    // Record the original KV tensor (layers[ikv].k) instead of the view
+    // returned by ggml_set_rows, so that Put reads the full KV data
+    // from the stable backend buffer rather than a view whose nbytes
+    // may not match the actual data to sync.
+    pending_sync_.push_back({key, layers[ikv].k});
     return result;
 }
 
@@ -479,7 +522,9 @@ ggml_tensor * lhm_kv_cache_mooncake::cpy_v(ggml_context * ctx, ggml_tensor * v_c
 
         ggml_tensor * result = ggml_set_rows(ctx, v, v_cur, v_idxs);
         LOG_TRACE("cpy_v key:{} data:{}", key, result->data);
-        HandlePut(key, result);
+        // Defer Mooncake Put until after graph execution
+        // Record the original KV tensor instead of the view (see cpy_k).
+        pending_sync_.push_back({key, layers[ikv].v});
         return result;
     }
 
@@ -503,6 +548,15 @@ ggml_tensor * lhm_kv_cache_mooncake::cpy_v(ggml_context * ctx, ggml_tensor * v_c
 
     ggml_tensor * result = ggml_set_rows(ctx, v_view, v_cur, v_idxs);
     LOG_TRACE("cpy_v key:{} data:{}", key, result->data);
-    HandlePut(key, result);
+    // Defer Mooncake Put until after graph execution
+    // Record the original KV tensor instead of the view (see cpy_k).
+    pending_sync_.push_back({key, layers[ikv].v});
     return result;
+}
+
+void lhm_kv_cache_mooncake::sync_after_compute() {
+    for (const auto & entry : pending_sync_) {
+        HandlePut(entry.key, entry.tensor);
+    }
+    pending_sync_.clear();
 }

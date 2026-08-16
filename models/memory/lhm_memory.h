@@ -118,6 +118,16 @@ struct lhm_memory_i {
     virtual std::map<ggml_backend_buffer_type_t, size_t> memory_breakdown() const = 0;
 
     //
+    // post-compute sync
+    //
+
+    // Called after ggml_graph_compute() completes, when all graph operations
+    // (e.g. SET_ROWS) have been executed and tensor data is materialized.
+    // Subclasses that need to flush deferred writes (e.g. to a remote store)
+    // should override this. The default implementation is a no-op.
+    virtual void sync_after_compute() {}
+
+    //
     // state write/read
     //
 

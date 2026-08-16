@@ -1341,6 +1341,12 @@ llm_graph_result * lhm_context::process_ubatch(const lhm_ubatch & ubatch, llm_gr
         return nullptr;
     }
 
+    // Flush any deferred KV cache writes (e.g. Mooncake Put) now that
+    // the graph has been executed and tensor data is materialized.
+    if (memory) {
+        memory->sync_after_compute();
+    }
+
     ret = GGML_STATUS_SUCCESS;
 
     return res;
